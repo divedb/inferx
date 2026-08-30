@@ -1,3 +1,21 @@
 [submodule "third_party/abseil-cpp"]
 	path = third_party/abseil-cpp
 	url = https://github.com/abseil/abseil-cpp.git
+[submodule "third_party/tokenizer"]
+	path = third_party/tokenizer
+	url = https://github.com/divedb/tokenizer.git
+[submodule "third_party/folly"]
+	path = third_party/folly
+	url = https://github.com/facebook/folly.git
+[submodule "third_party/beast"]
+	path = third_party/beast
+	url = https://github.com/boostorg/beast.git
+[submodule "third_party/hpc-ops"]
+	path = third_party/hpc-ops
+	url = https://github.com/Tencent/hpc-ops.git
+[submodule "third_party/flashinfer"]
+	path = third_party/flashinfer
+	url = https://github.com/flashinfer-ai/flashinfer.git
+[submodule "third_party/cutlass"]
+	path = third_party/cutlass
+	url = https://github.com/NVIDIA/cutlass.git

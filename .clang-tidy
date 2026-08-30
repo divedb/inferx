@@ -1,0 +1,17 @@
+Checks: >
+  -*,
+  bugprone-*,
+  clang-analyzer-*,
+  cppcoreguidelines-avoid-goto,
+  cppcoreguidelines-init-variables,
+  cppcoreguidelines-pro-type-const-cast,
+  google-build-explicit-make-pair,
+  google-build-namespaces,
+  google-explicit-constructor,
+  modernize-use-nullptr,
+  performance-*,
+  portability-*
+WarningsAsErrors: '*'
+HeaderFilterRegex: '^(include|src|apps|tests|benchmarks)/'
+FormatStyle: file
+
