@@ -262,9 +262,22 @@ absl::StatusOr<FixedBufferPool> FixedBufferPool::Create(Buffer backing, PoolGeom
 FixedBufferPool::FixedBufferPool(std::shared_ptr<BufferPoolState> state) noexcept
     : state_(std::move(state)) {}
 
+FixedBufferPool::FixedBufferPool(FixedBufferPool&& other) noexcept
+    : state_(std::move(other.state_)) {}
+
+FixedBufferPool& FixedBufferPool::operator=(FixedBufferPool&& other) noexcept {
+  if (this != &other) {
+    if (state_ != nullptr && !state_->Close().ok()) {
+      std::terminate();
+    }
+    state_ = std::move(other.state_);
+  }
+  return *this;
+}
+
 FixedBufferPool::~FixedBufferPool() noexcept {
-  if (state_ != nullptr) {
-    static_cast<void>(state_->Close());
+  if (state_ != nullptr && !state_->Close().ok()) {
+    std::terminate();
   }
 }
 

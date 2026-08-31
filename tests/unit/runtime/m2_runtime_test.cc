@@ -199,6 +199,37 @@ TEST(M2BufferPoolTest, MaximumGenerationRetiresSlot) {
   EXPECT_TRUE(pool.Close().ok());
 }
 
+TEST(M2LifetimeDeathTest, TrackerDestructionRejectsLiveCharges) {
+  EXPECT_DEATH(([] {
+                 const std::array<MemoryLimit, 1> limits{
+                     MemoryLimit{Device::Host(), MemoryKind::kHost, ByteCount(128)}};
+                 auto tracker =
+                     std::make_unique<MemoryTracker>(MemoryTracker::Create(limits).value());
+                 CpuAllocator allocator(*tracker);
+                 Buffer buffer = allocator.Allocate(HostRequest(64, MemoryCategory::kTest)).value();
+                 tracker.reset();
+                 static_cast<void>(buffer);
+               }()),
+               "");
+}
+
+TEST(M2LifetimeDeathTest, PoolDestructionRejectsLiveLeases) {
+  EXPECT_DEATH(([] {
+                 CpuAllocator allocator;
+                 Buffer backing =
+                     allocator.Allocate(HostRequest(64, MemoryCategory::kRuntimeInternal)).value();
+                 auto pool = std::make_unique<FixedBufferPool>(
+                     FixedBufferPool::Create(
+                         std::move(backing),
+                         PoolGeometry{1, ByteCount(64), ByteCount(64), PoolGeneration(0)})
+                         .value());
+                 BufferLease lease = pool->Acquire().value();
+                 pool.reset();
+                 static_cast<void>(lease);
+               }()),
+               "");
+}
+
 TEST(M2WorkspaceTest, CheckedBumpAllocationDoesNotAdvanceOnFailure) {
   CpuAllocator allocator;
   Buffer backing = allocator.Allocate(HostRequest(128, MemoryCategory::kWorkspace)).value();

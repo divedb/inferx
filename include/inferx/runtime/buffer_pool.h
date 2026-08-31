@@ -72,8 +72,8 @@ class FixedBufferPool {
   [[nodiscard]] static absl::StatusOr<FixedBufferPool> Create(Buffer backing,
                                                               PoolGeometry geometry);
 
-  FixedBufferPool(FixedBufferPool&&) noexcept = default;
-  FixedBufferPool& operator=(FixedBufferPool&&) noexcept = default;
+  FixedBufferPool(FixedBufferPool&& other) noexcept;
+  FixedBufferPool& operator=(FixedBufferPool&& other) noexcept;
   FixedBufferPool(const FixedBufferPool&) = delete;
   FixedBufferPool& operator=(const FixedBufferPool&) = delete;
   ~FixedBufferPool() noexcept;

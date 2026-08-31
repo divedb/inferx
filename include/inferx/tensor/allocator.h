@@ -60,9 +60,9 @@ class Allocator {
 
 class CpuAllocator final : public Allocator {
  public:
-  CpuAllocator();
-  explicit CpuAllocator(AllocationAccounting& accounting);
-  ~CpuAllocator() override;
+  CpuAllocator() noexcept = default;
+  explicit CpuAllocator(AllocationAccounting& accounting) noexcept;
+  ~CpuAllocator() override = default;
 
   CpuAllocator(const CpuAllocator&) = delete;
   CpuAllocator& operator=(const CpuAllocator&) = delete;
@@ -72,8 +72,8 @@ class CpuAllocator final : public Allocator {
   [[nodiscard]] absl::StatusOr<Buffer> Allocate(const AllocationRequest& request) override;
 
  private:
-  class Impl;
-  Impl* impl_;
+  AllocationAccounting* accounting_ = nullptr;
+  bool active_ = true;
 };
 
 }  // namespace inferx

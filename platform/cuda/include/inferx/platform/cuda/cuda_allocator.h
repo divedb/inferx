@@ -2,8 +2,6 @@
 #ifndef INFERX_PLATFORM_CUDA_CUDA_ALLOCATOR_H_
 #define INFERX_PLATFORM_CUDA_CUDA_ALLOCATOR_H_
 
-#include <memory>
-
 #include "absl/status/statusor.h"
 #include "inferx/base/id.h"
 #include "inferx/platform/cuda/cuda_api.h"
@@ -16,8 +14,8 @@ namespace inferx::cuda {
 class CudaDeviceAllocator final : public Allocator {
  public:
   CudaDeviceAllocator(DeviceId device, MemoryTracker& tracker, CudaHealth& health,
-                      const CudaApi& api = CudaApi::Production());
-  ~CudaDeviceAllocator() override;
+                      const CudaApi& api = CudaApi::Production()) noexcept;
+  ~CudaDeviceAllocator() override = default;
   CudaDeviceAllocator(CudaDeviceAllocator&&) noexcept;
   CudaDeviceAllocator& operator=(CudaDeviceAllocator&&) noexcept;
   CudaDeviceAllocator(const CudaDeviceAllocator&) = delete;
@@ -26,15 +24,18 @@ class CudaDeviceAllocator final : public Allocator {
   [[nodiscard]] absl::StatusOr<Buffer> Allocate(const AllocationRequest& request) override;
 
  private:
-  struct Impl;
-  std::unique_ptr<Impl> impl_;
+  DeviceId device_ = DeviceId(0);
+  MemoryTracker* tracker_ = nullptr;
+  CudaHealth* health_ = nullptr;
+  const CudaApi* api_ = nullptr;
+  bool active_ = true;
 };
 
 class CudaPinnedAllocator final : public Allocator {
  public:
   CudaPinnedAllocator(DeviceId owning_device, MemoryTracker& tracker, CudaHealth& health,
-                      const CudaApi& api = CudaApi::Production());
-  ~CudaPinnedAllocator() override;
+                      const CudaApi& api = CudaApi::Production()) noexcept;
+  ~CudaPinnedAllocator() override = default;
   CudaPinnedAllocator(CudaPinnedAllocator&&) noexcept;
   CudaPinnedAllocator& operator=(CudaPinnedAllocator&&) noexcept;
   CudaPinnedAllocator(const CudaPinnedAllocator&) = delete;
@@ -43,8 +44,11 @@ class CudaPinnedAllocator final : public Allocator {
   [[nodiscard]] absl::StatusOr<Buffer> Allocate(const AllocationRequest& request) override;
 
  private:
-  struct Impl;
-  std::unique_ptr<Impl> impl_;
+  DeviceId owning_device_ = DeviceId(0);
+  MemoryTracker* tracker_ = nullptr;
+  CudaHealth* health_ = nullptr;
+  const CudaApi* api_ = nullptr;
+  bool active_ = true;
 };
 
 }  // namespace inferx::cuda

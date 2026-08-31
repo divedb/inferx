@@ -235,6 +235,24 @@ TEST(M2CudaIntegrationTest, PendingDestructionDefersTheWholeResourceBundle) {
   EXPECT_TRUE((*owned)->context->Shutdown(DeadlineAfter(std::chrono::seconds(10))).ok());
 }
 
+TEST(M2CudaIntegrationTest, PipelineDestructionTransfersPendingBundleToContext) {
+  const auto devices = DiscoverCudaDevices();
+  ASSERT_TRUE(devices.ok()) << devices.status();
+  auto owned = CreateContext(devices->front().ordinal);
+  ASSERT_TRUE(owned.ok()) << owned.status();
+  test::LaunchBoundedDelay(100000000, (*owned)->context->compute_stream().handle());
+  ASSERT_EQ((*owned)->context->api().peek_at_last_error(), cudaSuccess);
+  {
+    CudaTestPipeline pipeline(*(*owned)->context);
+    auto submission = pipeline.Submit(InputPattern(), ContiguousParameters());
+    ASSERT_TRUE(submission.ok()) << submission.status();
+  }
+  EXPECT_EQ((*owned)->context->deferred_resource_count(), 1);
+  EXPECT_TRUE((*owned)->context->Shutdown(DeadlineAfter(std::chrono::seconds(10))).ok());
+  EXPECT_EQ((*owned)->context->deferred_resource_count(), 0);
+  EXPECT_TRUE((*owned)->tracker.ValidateBaseline().ok());
+}
+
 TEST(M2CudaIntegrationTest, ShutdownRetainsCompletedUnacknowledgedWorkForRetry) {
   const auto devices = DiscoverCudaDevices();
   ASSERT_TRUE(devices.ok()) << devices.status();

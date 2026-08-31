@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <exception>
 #include <limits>
 #include <memory>
 #include <mutex>
@@ -192,6 +193,15 @@ absl::StatusOr<MemoryTracker> MemoryTracker::Create(std::span<const MemoryLimit>
     result.limits_.emplace(key, item.limit);
   }
   return result;
+}
+
+MemoryTracker::~MemoryTracker() noexcept {
+  // Leaked bytes are an explicit poisoned-domain diagnostic. Reservations or
+  // committed charges, however, mean an owner can still call back into this
+  // tracker and make destruction a lifetime error.
+  if (!ValidateBaseline(true).ok()) {
+    std::terminate();
+  }
 }
 
 MemoryTracker::MemoryTracker(MemoryTracker&& other) noexcept {

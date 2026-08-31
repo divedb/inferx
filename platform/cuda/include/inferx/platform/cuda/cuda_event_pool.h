@@ -48,7 +48,7 @@ class CudaEventPool final : public FenceDomain {
  public:
   [[nodiscard]] static absl::StatusOr<std::unique_ptr<CudaEventPool>> Create(
       DeviceId device, uint32_t slots, const CudaApi& api = CudaApi::Production(),
-      CudaHealth* health = nullptr);
+      CudaHealth* health = nullptr, FenceGeneration initial_generation = FenceGeneration(0));
   ~CudaEventPool() noexcept override;
   CudaEventPool(const CudaEventPool&) = delete;
   CudaEventPool& operator=(const CudaEventPool&) = delete;
@@ -57,6 +57,7 @@ class CudaEventPool final : public FenceDomain {
   [[nodiscard]] absl::Status ReclaimAbandoned();
   [[nodiscard]] absl::Status Close();
   [[nodiscard]] uint32_t available_slots() const noexcept;
+  [[nodiscard]] bool has_outstanding_events() const noexcept;
 
   [[nodiscard]] absl::StatusOr<FencePoll> Poll(FenceToken token) override;
   [[nodiscard]] absl::Status WaitUntil(FenceToken token, Deadline deadline,

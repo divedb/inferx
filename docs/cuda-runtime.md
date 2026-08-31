@@ -48,8 +48,12 @@ owns both staging leases, device-buffer views carved from its fixed workspace
 arena, metadata, compute event, and final fence. `Poll()` is its only
 pending-state observation;
 `FinishCompleted()` acknowledges completion and returns the pinned output.
-Destroying a pending submission moves the whole bundle to the pipeline's
-deferred queue, where it is reclaimed only after terminal observation.
+Destroying a pending submission moves the whole bundle to the device context's
+deferred queue, where it remains valid even if the pipeline is
+destroyed and is reclaimed only after terminal observation. If submission
+state is uncertain after a failed enqueue and failed named recovery sync, the
+bundle is retained and the context is poisoned rather than returning any pool
+lease early.
 
 ## Allocation and copies
 

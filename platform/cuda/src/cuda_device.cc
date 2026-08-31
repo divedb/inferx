@@ -75,6 +75,11 @@ absl::StatusOr<std::vector<CudaDeviceInfo>> DiscoverCudaDevices(const CudaApi& a
 
 absl::Status ValidateCudaCapabilities(const CudaDeviceInfo& info, std::span<const int> accepted_sms,
                                       ByteCount device_reserve, ByteCount device_budget) {
+  if (info.runtime_version < 12080) {
+    return WithErrorReason(
+        absl::UnimplementedError("cuda.capability: CUDA runtime 12.8 or newer is required"),
+        ErrorReason::kUnsupportedCapability);
+  }
   const int sm = info.compute_major * 10 + info.compute_minor;
   if (std::find(accepted_sms.begin(), accepted_sms.end(), sm) == accepted_sms.end()) {
     return WithErrorReason(
@@ -160,7 +165,12 @@ absl::Status CudaDeviceGuard::Restore() {
   if (!changed_) {
     return absl::OkStatus();
   }
-  return CudaErrorStatus(api->set_device(previous_), "restore-device", requested_, health_);
+  absl::Status status =
+      CudaErrorStatus(api->set_device(previous_), "restore-device", requested_, health_);
+  if (!status.ok() && health_ != nullptr) {
+    health_->Poison(status);
+  }
+  return status;
 }
 
 }  // namespace inferx::cuda

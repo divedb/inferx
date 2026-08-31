@@ -560,8 +560,8 @@ absl::StatusOr<std::unique_ptr<EngineSimulator>> EngineSimulator::Create(
       static_cast<size_t>(config.MaxQueuedRequests()));
   if (!executor.ok()) return executor.status();
   try {
-    auto impl = std::make_unique<Impl>(config, model, replay, std::move(*pool),
-                                       std::move(*executor));
+    auto impl =
+        std::make_unique<Impl>(config, model, replay, std::move(*pool), std::move(*executor));
     const size_t max_requests = static_cast<size_t>(impl->config_.MaxQueuedRequests());
     const size_t max_sequences = static_cast<size_t>(impl->config_.MaxSequencesPerStep());
     impl->all_views_.reserve(max_requests);

@@ -154,7 +154,7 @@ inferx_apply_project_options(inferx_m2_tensor_test)
 target_link_libraries(inferx_m2_tensor_test PRIVATE
   inferx::tensor GTest::gtest_main absl::status absl::statusor)
 gtest_discover_tests(inferx_m2_tensor_test
-  PROPERTIES LABELS "m2-unit" TIMEOUT 120)
+  PROPERTIES TIMEOUT 120)
 
 add_executable(inferx_m2_runtime_test
   unit/runtime/m2_runtime_test.cc
@@ -165,14 +165,14 @@ target_include_directories(inferx_m2_runtime_test PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(inferx_m2_runtime_test PRIVATE
   inferx::runtime GTest::gtest_main absl::status absl::statusor absl::strings)
 gtest_discover_tests(inferx_m2_runtime_test
-  PROPERTIES LABELS "m2-unit" TIMEOUT 120)
+  PROPERTIES TIMEOUT 120)
 
 add_executable(inferx_m2_config_test unit/config/m2_cuda_config_test.cc)
 inferx_apply_project_options(inferx_m2_config_test)
 target_link_libraries(inferx_m2_config_test PRIVATE
   inferx::config GTest::gtest_main absl::status absl::statusor)
 gtest_discover_tests(inferx_m2_config_test
-  PROPERTIES LABELS "m2-unit" TIMEOUT 120)
+  PROPERTIES TIMEOUT 120)
 
 add_executable(inferx_m2_runtime_stress_test
   stress/runtime/m2_runtime_stress_test.cc
@@ -181,8 +181,15 @@ inferx_apply_project_options(inferx_m2_runtime_stress_test)
 target_include_directories(inferx_m2_runtime_stress_test PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(inferx_m2_runtime_stress_test PRIVATE
   inferx::runtime GTest::gtest_main absl::status absl::statusor absl::strings)
+if(INFERX_ENABLE_TSAN)
+  # TSan provides strong global new/delete interceptors. The same warmed pool
+  # cycles still run in this lane, while allocation-count evidence is owned by
+  # the ordinary and ASan/UBSan lanes.
+  target_compile_definitions(inferx_m2_runtime_stress_test PRIVATE
+    INFERX_M2_TSAN_BUILD=1)
+endif()
 gtest_discover_tests(inferx_m2_runtime_stress_test
-  PROPERTIES LABELS "m2-stress" TIMEOUT 180)
+  PROPERTIES TIMEOUT 180)
 
 if(INFERX_ENABLE_CUDA AND INFERX_BUILD_GPU_TESTS)
   add_executable(inferx_m2_cuda_unit_test
@@ -197,7 +204,7 @@ if(INFERX_ENABLE_CUDA AND INFERX_BUILD_GPU_TESTS)
   target_compile_definitions(inferx_m2_cuda_unit_test PRIVATE
     INFERX_CUDA_DEBUG_POINTERS=1)
   gtest_discover_tests(inferx_m2_cuda_unit_test
-    PROPERTIES LABELS "m2-unit" TIMEOUT 120)
+    PROPERTIES TIMEOUT 120)
 
   add_executable(inferx_cuda_integration_test
     integration/cuda/cuda_test_pipeline.cc
@@ -209,7 +216,7 @@ if(INFERX_ENABLE_CUDA AND INFERX_BUILD_GPU_TESTS)
     inferx_cuda inferx_cuda_test_kernels GTest::gtest_main CUDA::cudart
     absl::status absl::statusor absl::strings)
   gtest_discover_tests(inferx_cuda_integration_test
-    PROPERTIES LABELS "m2-integration" TIMEOUT 600)
+    PROPERTIES TIMEOUT 600)
 
   add_executable(inferx_cuda_failure_child
     failure/cuda/m2_cuda_failure_child.cc)
@@ -223,11 +230,19 @@ if(INFERX_ENABLE_CUDA AND INFERX_BUILD_GPU_TESTS)
   add_test(NAME m2_cuda_illegal_address_child
     COMMAND inferx_cuda_failure_child --illegal-address)
   set_tests_properties(m2_cuda_illegal_address_child PROPERTIES
-    LABELS "m2-failure" TIMEOUT 60)
+    LABELS "m2;m2-failure" TIMEOUT 60)
   add_test(NAME m2_cuda_assert_child
     COMMAND inferx_cuda_failure_child --assert)
   set_tests_properties(m2_cuda_assert_child PROPERTIES
-    LABELS "m2-failure" TIMEOUT 60)
+    LABELS "m2;m2-failure" TIMEOUT 60)
+  add_test(NAME m2_cuda_timeout_classification_child
+    COMMAND inferx_cuda_failure_child --classify-timeout)
+  set_tests_properties(m2_cuda_timeout_classification_child PROPERTIES
+    LABELS "m2;m2-failure" TIMEOUT 60)
+  add_test(NAME m2_cuda_device_lost_classification_child
+    COMMAND inferx_cuda_failure_child --classify-device-lost)
+  set_tests_properties(m2_cuda_device_lost_classification_child PROPERTIES
+    LABELS "m2;m2-failure" TIMEOUT 60)
 
   add_executable(inferx_tensor_cuda_correctness
     correctness/tensor_cuda/m2_tensor_cuda_correctness.cc)
@@ -238,8 +253,14 @@ if(INFERX_ENABLE_CUDA AND INFERX_BUILD_GPU_TESTS)
     inferx_cuda inferx_cuda_test_kernels GTest::gtest_main CUDA::cudart
     absl::status absl::statusor)
   gtest_discover_tests(inferx_tensor_cuda_correctness
-    PROPERTIES LABELS "m2-correctness" TIMEOUT 900)
+    PROPERTIES TIMEOUT 900)
 endif()
+
+# GoogleTest discovers individual cases after build. Assign both the general
+# M2 label and the required category at CTest time; passing a semicolon list
+# through gtest_discover_tests loses the second label.
+set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/m2_test_labels.cmake")
 
 # ---------------------------------------------------------------------------
 # compile: C++23 feature sentinel. Exercises library facilities, not macros.
@@ -383,7 +404,7 @@ add_test(NAME m2_cuda_header_boundary
   COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/check_cuda_boundaries.py
           --source-root ${CMAKE_SOURCE_DIR})
 set_tests_properties(m2_cuda_header_boundary PROPERTIES
-  LABELS "m2-unit" TIMEOUT 60)
+  LABELS "m2;m2-unit" TIMEOUT 60)
 
 # ---------------------------------------------------------------------------
 # Aggregate convenience targets (m0.md section 9.4). They never configure

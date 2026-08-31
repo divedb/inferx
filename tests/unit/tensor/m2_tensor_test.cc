@@ -1,11 +1,16 @@
+#include <absl/status/statusor.h>
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <span>
+#include <utility>
 
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
+#include "inferx/base/token.h"
 #include "inferx/tensor/allocator.h"
 #include "inferx/tensor/buffer.h"
 #include "inferx/tensor/device.h"
@@ -85,6 +90,40 @@ TEST(M2StrideTest, ClassifiesContiguousPaddedAndOverlapping) {
   const LayoutAnalysis overlapping =
       AnalyzeLayout(shape, Strides::CreateElements(kOverlapping).value(), DType::kUInt8).value();
   EXPECT_EQ(overlapping.overlap, OverlapKind::kMayOverlap);
+}
+
+TEST(M2StrideTest, ZeroStrideRuleAndSliceOverflowAreChecked) {
+  constexpr std::array<uint64_t, 1> kZeroStride{0};
+  EXPECT_TRUE(AnalyzeLayout(Shape::Create(std::array<uint64_t, 1>{0}).value(),
+                            Strides::CreateElements(kZeroStride).value(), DType::kUInt8)
+                  .ok());
+  EXPECT_TRUE(AnalyzeLayout(Shape::Create(std::array<uint64_t, 1>{1}).value(),
+                            Strides::CreateElements(kZeroStride).value(), DType::kUInt8)
+                  .ok());
+  EXPECT_EQ(AnalyzeLayout(Shape::Create(std::array<uint64_t, 1>{2}).value(),
+                          Strides::CreateElements(kZeroStride).value(), DType::kUInt8)
+                .status()
+                .code(),
+            absl::StatusCode::kInvalidArgument);
+  constexpr std::array<uint64_t, 3> kHugeEmpty{std::numeric_limits<uint64_t>::max(),
+                                               std::numeric_limits<uint64_t>::max(), 0};
+  const Shape huge_empty = Shape::Create(kHugeEmpty).value();
+  const Strides huge_empty_strides = Strides::Contiguous(huge_empty).value();
+  const LayoutAnalysis huge_empty_layout =
+      AnalyzeLayout(huge_empty, huge_empty_strides, DType::kFloat64).value();
+  EXPECT_TRUE(huge_empty_layout.contiguous);
+  EXPECT_EQ(huge_empty_layout.reachable_bytes.value(), 0);
+
+  CpuAllocator allocator;
+  Buffer buffer = allocator.Allocate(HostRequest(1)).value();
+  constexpr std::array<uint64_t, 1> kOne{1};
+  constexpr std::array<uint64_t, 1> kLargeStride{std::numeric_limits<uint64_t>::max() / 2 + 1};
+  const TensorView view =
+      TensorView::Create(buffer.View({ByteCount(0), ByteCount(1)}).value(), DType::kUInt8,
+                         Shape::Create(kOne).value(), Strides::CreateElements(kLargeStride).value())
+          .value();
+  EXPECT_EQ(view.Slice(0, 0, 1, 2).status().code(), absl::StatusCode::kOutOfRange);
+  EXPECT_TRUE(buffer.Release().ok());
 }
 
 TEST(M2BufferTest, MoveSubviewAlignmentHostAccessAndRelease) {
@@ -171,6 +210,62 @@ TEST(M2TensorTest, EmptyTensorMayEndAtBufferBoundary) {
   EXPECT_TRUE(TensorView::Create(buffer.View(ByteRange{ByteCount(0), ByteCount(16)}).value(),
                                  DType::kFloat32, shape, strides, ByteCount(16))
                   .ok());
+  EXPECT_TRUE(buffer.Release().ok());
+}
+
+TEST(M2TensorTest, DTypeAlignmentOffsetAndReachableBoundsAreChecked) {
+  CpuAllocator allocator;
+  Buffer buffer = allocator.Allocate(HostRequest(32)).value();
+  constexpr std::array<uint64_t, 1> kFour{4};
+  const Shape shape = Shape::Create(kFour).value();
+  const Strides strides = Strides::Contiguous(shape).value();
+  const BufferView full = buffer.View({ByteCount(0), ByteCount(32)}).value();
+  EXPECT_EQ(TensorView::Create(full, DType::kFloat32, shape, strides, ByteCount(2)).status().code(),
+            absl::StatusCode::kInvalidArgument);
+  EXPECT_EQ(TensorView::Create(buffer.View({ByteCount(2), ByteCount(16)}).value(), DType::kFloat32,
+                               shape, strides)
+                .status()
+                .code(),
+            absl::StatusCode::kInvalidArgument);
+  EXPECT_EQ(TensorView::Create(full, DType::kFloat64, shape, strides, ByteCount(8)).status().code(),
+            absl::StatusCode::kOutOfRange);
+  EXPECT_TRUE(buffer.Release().ok());
+}
+
+TEST(M2TensorTest, SameAllocationUsesMemmoveOnlyForContiguousCopies) {
+  CpuAllocator allocator;
+  Buffer buffer = allocator.Allocate(HostRequest(32)).value();
+  MutableBufferView storage = buffer.MutableView({ByteCount(0), ByteCount(32)}).value();
+  for (size_t index = 0; index < storage.HostBytes()->size(); ++index) {
+    (*storage.HostBytes())[index] = static_cast<std::byte>(index);
+  }
+
+  constexpr std::array<uint64_t, 1> kEight{8};
+  const Shape contiguous_shape = Shape::Create(kEight).value();
+  const Strides contiguous_strides = Strides::Contiguous(contiguous_shape).value();
+  const TensorView contiguous_source =
+      TensorView::Create(storage.AsConst(), DType::kUInt8, contiguous_shape, contiguous_strides)
+          .value();
+  const MutableTensorView contiguous_destination =
+      MutableTensorView::Create(storage, DType::kUInt8, contiguous_shape, contiguous_strides,
+                                ByteCount(2))
+          .value();
+  EXPECT_TRUE(CopyTensorCpu(contiguous_source, contiguous_destination).ok());
+  for (size_t index = 0; index < 8; ++index) {
+    EXPECT_EQ((*storage.HostBytes())[index + 2], static_cast<std::byte>(index));
+  }
+
+  constexpr std::array<uint64_t, 2> kShape{2, 2};
+  constexpr std::array<uint64_t, 2> kStrides{3, 1};
+  const Shape strided_shape = Shape::Create(kShape).value();
+  const Strides strided = Strides::CreateElements(kStrides).value();
+  const TensorView strided_source =
+      TensorView::Create(storage.AsConst(), DType::kUInt8, strided_shape, strided).value();
+  const MutableTensorView strided_destination =
+      MutableTensorView::Create(storage, DType::kUInt8, strided_shape, strided, ByteCount(1))
+          .value();
+  EXPECT_EQ(CopyTensorCpu(strided_source, strided_destination).code(),
+            absl::StatusCode::kInvalidArgument);
   EXPECT_TRUE(buffer.Release().ok());
 }
 

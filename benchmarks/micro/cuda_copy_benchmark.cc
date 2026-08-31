@@ -94,6 +94,18 @@ void RunCudaCopy(benchmark::State& state, CopyCase copy_case) {
     state.SkipWithError("CUDA stream setup failed");
     return;
   }
+  cudaEvent_t timing_start = nullptr;
+  cudaEvent_t timing_stop = nullptr;
+  if (cudaEventCreate(&timing_start) != cudaSuccess ||
+      cudaEventCreate(&timing_stop) != cudaSuccess) {
+    if (timing_start != nullptr) cudaEventDestroy(timing_start);
+    state.SkipWithError("CUDA timing event setup failed");
+    stream->Close().IgnoreError();
+    second.Release().IgnoreError();
+    first.Release().IgnoreError();
+    guard->Restore().IgnoreError();
+    return;
+  }
 
   const bool wrapper = copy_case == CopyCase::kPinnedH2DWrapper ||
                        copy_case == CopyCase::kPinnedD2HWrapper ||
@@ -105,8 +117,17 @@ void RunCudaCopy(benchmark::State& state, CopyCase copy_case) {
     direction = cudaMemcpyDeviceToDevice;
   }
 
+  double device_milliseconds = 0.0;
+  int64_t completed_iterations = 0;
   for (auto _ : state) {
     static_cast<void>(_);
+    state.PauseTiming();
+    if (cudaEventRecord(timing_start, stream->handle()) != cudaSuccess) {
+      state.ResumeTiming();
+      state.SkipWithError("copy timing start failed");
+      break;
+    }
+    state.ResumeTiming();
     if (wrapper) {
       const absl::Status status =
           inferx::cuda::CopyAsync({source, destination, inferx::ByteCount(bytes)}, *stream,
@@ -119,6 +140,18 @@ void RunCudaCopy(benchmark::State& state, CopyCase copy_case) {
       const void* source_address = copy_case == CopyCase::kPageableH2DRawBenchmarkAdapter
                                        ? static_cast<const void*>(source.HostBytes()->data())
                                        : inferx::cuda::BufferAccess::Address(source);
+      if (copy_case != CopyCase::kPageableH2DRawBenchmarkAdapter) {
+        cudaPointerAttributes source_attributes{};
+        cudaPointerAttributes destination_attributes{};
+        if (cudaPointerGetAttributes(&source_attributes, source_address) != cudaSuccess ||
+            cudaPointerGetAttributes(&destination_attributes, inferx::cuda::BufferAccess::Address(
+                                                                  destination)) != cudaSuccess) {
+          state.SkipWithError("direct pointer validation failed");
+          break;
+        }
+        benchmark::DoNotOptimize(source_attributes.type);
+        benchmark::DoNotOptimize(destination_attributes.type);
+      }
       const cudaError_t error =
           cudaMemcpyAsync(inferx::cuda::BufferAccess::Address(destination), source_address,
                           static_cast<size_t>(bytes), direction, stream->handle());
@@ -127,12 +160,38 @@ void RunCudaCopy(benchmark::State& state, CopyCase copy_case) {
         break;
       }
     }
-    if (cudaStreamSynchronize(stream->handle()) != cudaSuccess) {
-      state.SkipWithError("copy completion failed");
+    state.PauseTiming();
+    float elapsed_milliseconds = 0.0F;
+    const cudaError_t stop_error = cudaEventRecord(timing_stop, stream->handle());
+    const cudaError_t completion_error =
+        stop_error == cudaSuccess ? cudaEventSynchronize(timing_stop) : stop_error;
+    const cudaError_t elapsed_error =
+        completion_error == cudaSuccess
+            ? cudaEventElapsedTime(&elapsed_milliseconds, timing_start, timing_stop)
+            : completion_error;
+    state.ResumeTiming();
+    if (elapsed_error != cudaSuccess) {
+      state.SkipWithError("copy device timing failed");
       break;
     }
+    device_milliseconds += static_cast<double>(elapsed_milliseconds);
+    ++completed_iterations;
   }
-  state.SetBytesProcessed(state.iterations() * static_cast<int64_t>(bytes));
+  state.SetBytesProcessed(completed_iterations * static_cast<int64_t>(bytes));
+  state.counters["cuda_memcpy_async_calls"] = static_cast<double>(completed_iterations);
+  state.counters["cuda_pointer_attribute_calls"] =
+      copy_case == CopyCase::kPageableH2DRawBenchmarkAdapter
+          ? 0.0
+          : static_cast<double>(completed_iterations * 2);
+  state.counters["cuda_timing_event_sync_calls"] = static_cast<double>(completed_iterations);
+  if (device_milliseconds > 0.0) {
+    constexpr double kBytesPerGiB = 1024.0 * 1024.0 * 1024.0;
+    state.counters["device_GiB_per_second"] =
+        (static_cast<double>(completed_iterations) * static_cast<double>(bytes) / kBytesPerGiB) /
+        (device_milliseconds / 1000.0);
+  }
+  cudaEventDestroy(timing_stop);
+  cudaEventDestroy(timing_start);
   stream->Close().IgnoreError();
   second.Release().IgnoreError();
   first.Release().IgnoreError();
@@ -161,7 +220,12 @@ void BM_CudaD2DWrapper(benchmark::State& state) { RunCudaCopy(state, CopyCase::k
 void BM_CudaD2DDirect(benchmark::State& state) { RunCudaCopy(state, CopyCase::kD2DDirect); }
 
 #define INFERX_REGISTER_COPY_BENCHMARK(function_name) \
-  BENCHMARK(function_name)->RangeMultiplier(8)->Range(4096, 256 * 1024 * 1024)->Repetitions(30)
+  BENCHMARK(function_name)                            \
+      ->RangeMultiplier(8)                            \
+      ->Range(4096, 256 * 1024 * 1024)                \
+      ->Repetitions(30)                               \
+      ->MinWarmUpTime(0.1)                            \
+      ->UseRealTime()
 
 INFERX_REGISTER_COPY_BENCHMARK(BM_CudaPinnedH2DWrapper);
 INFERX_REGISTER_COPY_BENCHMARK(BM_CudaPinnedH2DDirect);

@@ -100,6 +100,7 @@ class MemoryTracker : public AllocationAccounting {
  public:
   [[nodiscard]] static absl::StatusOr<MemoryTracker> Create(std::span<const MemoryLimit> limits);
 
+  ~MemoryTracker() noexcept;
   MemoryTracker(MemoryTracker&& other) noexcept;
   MemoryTracker& operator=(MemoryTracker&&) = delete;
   MemoryTracker(const MemoryTracker&) = delete;

@@ -1,14 +1,18 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <utility>
 
 #include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "gtest/gtest.h"
 #include "inferx/base/status.h"
 #include "inferx/platform/cuda/cuda_copy.h"
 #include "inferx/platform/cuda/cuda_device.h"
+#include "inferx/platform/cuda/cuda_device_context.h"
 #include "inferx/platform/cuda/cuda_error.h"
 #include "inferx/platform/cuda/cuda_event_pool.h"
 #include "inferx/platform/cuda/cuda_stream.h"
@@ -30,6 +34,18 @@ struct FakeCudaState {
   int wait_calls = 0;
   int pointer_attribute_calls = 0;
   int copy_calls = 0;
+  int allocation_calls = 0;
+  int successful_allocations = 0;
+  int free_calls = 0;
+  int device_sync_calls = 0;
+  int fail_stream_create_at = 0;
+  int fail_event_create_at = 0;
+  int fail_allocation_at = 0;
+  int fail_set_device_at = 0;
+  bool fail_stream_destroy = false;
+  bool fail_event_destroy = false;
+  bool fail_free = false;
+  bool return_null_allocation = false;
   bool event_recorded = false;
   unsigned int stream_flags = 0;
   unsigned int event_flags = 0;
@@ -48,8 +64,9 @@ cudaError_t FakeGetDevice(int* device) {
   return cudaSuccess;
 }
 cudaError_t FakeSetDevice(int device) {
+  const int ordinal = ++g_fake->set_device_calls;
+  if (g_fake->fail_set_device_at == ordinal) return cudaErrorUnknown;
   g_fake->current_device = device;
-  ++g_fake->set_device_calls;
   return cudaSuccess;
 }
 cudaError_t FakeGetDeviceProperties(cudaDeviceProp* properties, int) {
@@ -83,28 +100,30 @@ cudaError_t FakePriorityRange(int* least, int* greatest) {
   return cudaSuccess;
 }
 cudaError_t FakeStreamCreate(cudaStream_t* stream, unsigned int flags, int) {
+  const int ordinal = ++g_fake->stream_create_calls;
+  if (g_fake->fail_stream_create_at == ordinal) return cudaErrorMemoryAllocation;
   *stream = reinterpret_cast<cudaStream_t>(g_fake->stream_storage.data());
   g_fake->stream_flags = flags;
-  ++g_fake->stream_create_calls;
   return cudaSuccess;
 }
 cudaError_t FakeStreamDestroy(cudaStream_t) {
   ++g_fake->stream_destroy_calls;
-  return cudaSuccess;
+  return g_fake->fail_stream_destroy ? cudaErrorUnknown : cudaSuccess;
 }
 cudaError_t FakeStreamWait(cudaStream_t, cudaEvent_t, unsigned int) {
   ++g_fake->wait_calls;
   return cudaSuccess;
 }
 cudaError_t FakeEventCreate(cudaEvent_t* event, unsigned int flags) {
+  const int ordinal = ++g_fake->event_create_calls;
+  if (g_fake->fail_event_create_at == ordinal) return cudaErrorMemoryAllocation;
   *event = reinterpret_cast<cudaEvent_t>(g_fake->event_storage.data());
   g_fake->event_flags = flags;
-  ++g_fake->event_create_calls;
   return cudaSuccess;
 }
 cudaError_t FakeEventDestroy(cudaEvent_t) {
   ++g_fake->event_destroy_calls;
-  return cudaSuccess;
+  return g_fake->fail_event_destroy ? cudaErrorUnknown : cudaSuccess;
 }
 cudaError_t FakeEventRecord(cudaEvent_t, cudaStream_t) {
   g_fake->event_recorded = true;
@@ -122,6 +141,37 @@ cudaError_t FakePointerAttributes(cudaPointerAttributes* attributes, const void*
 }
 cudaError_t FakeMemcpy(void*, const void*, size_t, cudaMemcpyKind, cudaStream_t) {
   ++g_fake->copy_calls;
+  return cudaSuccess;
+}
+cudaError_t FakeAllocate(void** address, size_t bytes) {
+  const int ordinal = ++g_fake->allocation_calls;
+  if (g_fake->fail_allocation_at == ordinal) return cudaErrorMemoryAllocation;
+  if (g_fake->return_null_allocation) {
+    *address = nullptr;
+    ++g_fake->successful_allocations;
+    return cudaSuccess;
+  }
+  constexpr size_t kAlignment = 256;
+  const size_t rounded = (bytes + kAlignment - 1) & ~(kAlignment - 1);
+  *address = std::aligned_alloc(kAlignment, rounded);
+  if (*address == nullptr) return cudaErrorMemoryAllocation;
+  ++g_fake->successful_allocations;
+  return cudaSuccess;
+}
+cudaError_t FakeHostAllocate(void** address, size_t bytes, unsigned int) {
+  return FakeAllocate(address, bytes);
+}
+cudaError_t FakeFree(void* address) {
+  if (g_fake->fail_free) {
+    ++g_fake->free_calls;
+    return cudaErrorUnknown;
+  }
+  std::free(address);
+  ++g_fake->free_calls;
+  return cudaSuccess;
+}
+cudaError_t FakeDeviceSynchronize() {
+  ++g_fake->device_sync_calls;
   return cudaSuccess;
 }
 
@@ -144,8 +194,50 @@ CudaApi MakeFakeApi(FakeCudaState& state) {
   api.event_query = &FakeEventQuery;
   api.pointer_get_attributes = &FakePointerAttributes;
   api.memcpy_async = &FakeMemcpy;
+  api.malloc_device = &FakeAllocate;
+  api.free_device = &FakeFree;
+  api.host_alloc = &FakeHostAllocate;
+  api.free_host = &FakeFree;
+  api.device_synchronize = &FakeDeviceSynchronize;
   return api;
 }
+
+CudaContextConfig FakeContextConfig() {
+  CudaContextConfig config;
+  config.device = DeviceId(0);
+  config.accepted_sm = 89;
+  config.device_reserve = ByteCount(0);
+  config.device_budget = ByteCount(4ULL * 1024 * 1024);
+  config.pinned_budget = ByteCount(4ULL * 1024 * 1024);
+  config.event_pool_slots = 8;
+  config.metadata_ring_slots = 2;
+  config.metadata_slot_bytes = ByteCount(4096);
+  config.staging_pool_slots = 2;
+  config.staging_slot_bytes = ByteCount(4096);
+  config.workspace_slots = 1;
+  config.workspace_bytes_per_slot = ByteCount(1024 * 1024);
+  return config;
+}
+
+MemoryTracker FakeContextTracker() {
+  const std::array<MemoryLimit, 2> limits{
+      MemoryLimit{Device::Host(), MemoryKind::kPinnedHost, ByteCount(4ULL * 1024 * 1024)},
+      MemoryLimit{Device::Cuda(DeviceId(0)), MemoryKind::kDevice, ByteCount(4ULL * 1024 * 1024)}};
+  return MemoryTracker::Create(limits).value();
+}
+
+class CountingDeferredResource final : public CudaDeferredResource {
+ public:
+  explicit CountingDeferredResource(int* polls) : polls_(polls) {}
+
+  absl::StatusOr<bool> TryReclaim() override {
+    ++*polls_;
+    return *polls_ >= 2;
+  }
+
+ private:
+  int* polls_;
+};
 
 TEST(M2CudaUnitTest, DiscoveryCapabilityAndNestedGuardRestore) {
   FakeCudaState state;
@@ -162,6 +254,10 @@ TEST(M2CudaUnitTest, DiscoveryCapabilityAndNestedGuardRestore) {
   EXPECT_EQ(
       ValidateCudaCapabilities(devices->front(), kRejected, ByteCount(0), ByteCount(0)).code(),
       absl::StatusCode::kUnimplemented);
+  CudaDeviceInfo old_runtime = devices->front();
+  old_runtime.runtime_version = 12070;
+  EXPECT_EQ(ValidateCudaCapabilities(old_runtime, kAccepted, ByteCount(0), ByteCount(0)).code(),
+            absl::StatusCode::kUnimplemented);
 
   CudaDeviceGuard outer = CudaDeviceGuard::Create(DeviceId(1), api).value();
   EXPECT_EQ(state.current_device, 1);
@@ -199,6 +295,13 @@ TEST(M2CudaUnitTest, ErrorMappingPoisonsOnlyStickyFaults) {
   EXPECT_EQ(lost.code(), absl::StatusCode::kUnavailable);
   EXPECT_EQ(GetErrorReason(lost).value(), ErrorReason::kCudaDeviceLost);
   EXPECT_EQ(lost_health.state(), CudaHealthState::kPoisoned);
+
+  CudaHealth timeout_health;
+  absl::Status timeout =
+      CudaErrorStatus(cudaErrorLaunchTimeout, "test", DeviceId(7), &timeout_health);
+  EXPECT_EQ(timeout.code(), absl::StatusCode::kUnavailable);
+  EXPECT_EQ(GetErrorReason(timeout).value(), ErrorReason::kCudaAsyncFault);
+  EXPECT_EQ(timeout_health.state(), CudaHealthState::kPoisoned);
 }
 
 TEST(M2CudaUnitTest, NonblockingStreamAndGenerationCheckedEventLifecycle) {
@@ -225,6 +328,194 @@ TEST(M2CudaUnitTest, NonblockingStreamAndGenerationCheckedEventLifecycle) {
   EXPECT_TRUE(stream.Close().ok());
   EXPECT_EQ(state.event_create_calls, state.event_destroy_calls);
   EXPECT_EQ(state.stream_create_calls, state.stream_destroy_calls);
+}
+
+TEST(M2CudaUnitTest, EventGenerationWrapRetiresTheSlotWithoutOutstandingWork) {
+  FakeCudaState state;
+  const CudaApi api = MakeFakeApi(state);
+  CudaHealth health;
+  CudaStream stream =
+      CudaStream::Create(DeviceId(0), CudaStreamRole::kCompute, 0, api, &health).value();
+  std::unique_ptr<CudaEventPool> pool =
+      std::move(CudaEventPool::Create(DeviceId(0), 1, api, &health,
+                                      FenceGeneration(std::numeric_limits<uint64_t>::max() - 1))
+                    .value());
+  CudaEventLease final_generation = pool->Acquire().value();
+  EXPECT_TRUE(final_generation.Record(stream).ok());
+  EXPECT_EQ(final_generation.Poll()->state, FenceState::kComplete);
+  EXPECT_TRUE(final_generation.Release().ok());
+  EXPECT_EQ(pool->Acquire().status().code(), absl::StatusCode::kResourceExhausted);
+  EXPECT_EQ(pool->available_slots(), 0);
+  EXPECT_FALSE(pool->has_outstanding_events());
+  EXPECT_TRUE(pool->Close().ok());
+  EXPECT_TRUE(stream.Close().ok());
+}
+
+TEST(M2CudaUnitTest, MetadataGenerationWrapRetiresSlotsAndReleasesBacking) {
+  FakeCudaState state;
+  const CudaApi api = MakeFakeApi(state);
+  CudaHealth health;
+  MemoryTracker tracker = FakeContextTracker();
+  CudaPinnedAllocator pinned(DeviceId(0), tracker, health, api);
+  CudaDeviceAllocator device(DeviceId(0), tracker, health, api);
+  std::unique_ptr<CudaEventPool> events =
+      std::move(CudaEventPool::Create(DeviceId(0), 8, api, &health).value());
+  CudaMetadataRing ring =
+      CudaMetadataRing::Create(2, ByteCount(4096), pinned, device, *events, DeviceId(0), api,
+                               &health, PoolGeneration(std::numeric_limits<uint64_t>::max()))
+          .value();
+  EXPECT_EQ(ring.Acquire().status().code(), absl::StatusCode::kResourceExhausted);
+  EXPECT_TRUE(ring.ValidateInvariants().ok());
+  EXPECT_TRUE(ring.Close().ok());
+  EXPECT_TRUE(events->Close().ok());
+  EXPECT_EQ(state.successful_allocations, state.free_calls);
+  EXPECT_TRUE(tracker.ValidateBaseline().ok());
+}
+
+TEST(M2CudaUnitTest, ContextCreationClosesEveryInjectedFailurePrefix) {
+  struct FailurePoint {
+    int stream = 0;
+    int event = 0;
+    int allocation = 0;
+  };
+  constexpr std::array<FailurePoint, 9> kFailures{
+      FailurePoint{1, 0, 0}, FailurePoint{2, 0, 0}, FailurePoint{0, 3, 0},
+      FailurePoint{0, 0, 1}, FailurePoint{0, 0, 2}, FailurePoint{0, 0, 3},
+      FailurePoint{0, 0, 4}, FailurePoint{0, 0, 5}, FailurePoint{0, 0, 6}};
+
+  for (const FailurePoint failure : kFailures) {
+    FakeCudaState state;
+    state.fail_stream_create_at = failure.stream;
+    state.fail_event_create_at = failure.event;
+    state.fail_allocation_at = failure.allocation;
+    const CudaApi api = MakeFakeApi(state);
+    MemoryTracker tracker = FakeContextTracker();
+    const auto context = CudaDeviceContext::Create(FakeContextConfig(), tracker, api);
+    EXPECT_FALSE(context.ok());
+    EXPECT_EQ(state.stream_destroy_calls,
+              state.stream_create_calls - (failure.stream == 0 ? 0 : 1));
+    EXPECT_EQ(state.event_destroy_calls, state.event_create_calls - (failure.event == 0 ? 0 : 1));
+    EXPECT_EQ(state.free_calls, state.successful_allocations);
+    EXPECT_TRUE(tracker.ValidateBaseline().ok());
+  }
+}
+
+TEST(M2CudaUnitTest, ContextSuccessfulShutdownClosesTheCompletePrefix) {
+  FakeCudaState state;
+  const CudaApi api = MakeFakeApi(state);
+  MemoryTracker tracker = FakeContextTracker();
+  auto context = CudaDeviceContext::Create(FakeContextConfig(), tracker, api);
+  ASSERT_TRUE(context.ok()) << context.status();
+  EXPECT_TRUE((*context)->Shutdown(Deadline(Nanoseconds::max())).ok());
+  EXPECT_EQ(state.stream_create_calls, state.stream_destroy_calls);
+  EXPECT_EQ(state.event_create_calls, state.event_destroy_calls);
+  EXPECT_EQ(state.successful_allocations, state.free_calls);
+  EXPECT_EQ(state.device_sync_calls, 1);
+  EXPECT_TRUE(tracker.ValidateBaseline().ok());
+}
+
+TEST(M2CudaUnitTest, ContextOwnsDeferredResourcesUntilTheyReportReclaimed) {
+  FakeCudaState state;
+  const CudaApi api = MakeFakeApi(state);
+  MemoryTracker tracker = FakeContextTracker();
+  auto context = CudaDeviceContext::Create(FakeContextConfig(), tracker, api);
+  ASSERT_TRUE(context.ok()) << context.status();
+  int polls = 0;
+  EXPECT_TRUE((*context)->DeferResource(std::make_unique<CountingDeferredResource>(&polls)).ok());
+  EXPECT_EQ((*context)->deferred_resource_count(), 1);
+  EXPECT_TRUE((*context)->ReclaimDeferredResources().ok());
+  EXPECT_EQ((*context)->deferred_resource_count(), 1);
+  EXPECT_TRUE((*context)->ReclaimDeferredResources().ok());
+  EXPECT_EQ((*context)->deferred_resource_count(), 0);
+  EXPECT_TRUE((*context)->Shutdown(Deadline(Nanoseconds::max())).ok());
+  EXPECT_TRUE(tracker.ValidateBaseline().ok());
+}
+
+TEST(M2CudaUnitTest, DestroyFailuresPoisonResourceOwnership) {
+  FakeCudaState stream_state;
+  stream_state.fail_stream_destroy = true;
+  const CudaApi stream_api = MakeFakeApi(stream_state);
+  CudaHealth stream_health;
+  CudaStream stream =
+      CudaStream::Create(DeviceId(0), CudaStreamRole::kCompute, 0, stream_api, &stream_health)
+          .value();
+  EXPECT_FALSE(stream.Close().ok());
+  EXPECT_EQ(stream_health.state(), CudaHealthState::kPoisoned);
+  EXPECT_TRUE(stream_health.poison_cause().has_value());
+
+  FakeCudaState event_state;
+  event_state.fail_event_destroy = true;
+  const CudaApi event_api = MakeFakeApi(event_state);
+  CudaHealth event_health;
+  std::unique_ptr<CudaEventPool> pool =
+      std::move(CudaEventPool::Create(DeviceId(0), 1, event_api, &event_health).value());
+  EXPECT_FALSE(pool->Close().ok());
+  EXPECT_EQ(event_health.state(), CudaHealthState::kPoisoned);
+  EXPECT_TRUE(event_health.poison_cause().has_value());
+  const int destroy_calls = event_state.event_destroy_calls;
+  EXPECT_FALSE(pool->Close().ok());
+  EXPECT_EQ(event_state.event_destroy_calls, destroy_calls);
+}
+
+TEST(M2CudaUnitTest, StreamCreationRestoreFailureDestroysTheCreatedStream) {
+  FakeCudaState state;
+  state.fail_set_device_at = 2;
+  const CudaApi api = MakeFakeApi(state);
+  CudaHealth health;
+  const auto stream = CudaStream::Create(DeviceId(1), CudaStreamRole::kCompute, 0, api, &health);
+  EXPECT_FALSE(stream.ok());
+  EXPECT_EQ(state.stream_create_calls, 1);
+  EXPECT_EQ(state.stream_destroy_calls, 1);
+  EXPECT_EQ(health.state(), CudaHealthState::kPoisoned);
+}
+
+TEST(M2CudaUnitTest, EventCreationPreservesPrimaryFailureAndAnnotatesCleanup) {
+  FakeCudaState state;
+  state.fail_event_create_at = 2;
+  state.fail_event_destroy = true;
+  const CudaApi api = MakeFakeApi(state);
+  CudaHealth health;
+  const auto pool = CudaEventPool::Create(DeviceId(0), 3, api, &health);
+  EXPECT_FALSE(pool.ok());
+  EXPECT_EQ(pool.status().code(), absl::StatusCode::kResourceExhausted);
+  EXPECT_NE(pool.status().message().find("cleanup failure"), absl::string_view::npos);
+  EXPECT_EQ(state.event_create_calls, 2);
+  EXPECT_EQ(state.event_destroy_calls, 1);
+  EXPECT_EQ(health.state(), CudaHealthState::kPoisoned);
+}
+
+TEST(M2CudaUnitTest, FailedCleanupFreePoisonsAndAccountsLeakedBytes) {
+  FakeCudaState state;
+  state.return_null_allocation = true;
+  state.fail_free = true;
+  const CudaApi api = MakeFakeApi(state);
+  CudaHealth health;
+  MemoryTracker tracker = FakeContextTracker();
+  CudaDeviceAllocator allocator(DeviceId(0), tracker, health, api);
+  const absl::Status result = allocator
+                                  .Allocate({Device::Cuda(DeviceId(0)), MemoryKind::kDevice,
+                                             ByteCount(4096), ByteCount(64), MemoryCategory::kTest})
+                                  .status();
+  EXPECT_EQ(result.code(), absl::StatusCode::kInvalidArgument);
+  EXPECT_NE(result.message().find("cleanup failure"), absl::string_view::npos);
+  EXPECT_EQ(health.state(), CudaHealthState::kPoisoned);
+  const auto snapshot = tracker.Snapshot();
+  ASSERT_EQ(snapshot.size(), 1);
+  EXPECT_EQ(snapshot.front().second.leaked.value(), 4096);
+  EXPECT_EQ(snapshot.front().second.live_allocations, 1);
+  EXPECT_FALSE(tracker.ValidateBaseline().ok());
+  EXPECT_TRUE(tracker.ValidateBaseline(true).ok());
+}
+
+TEST(M2CudaLifetimeDeathTest, ContextDestructionRequiresExplicitShutdown) {
+  EXPECT_DEATH(([] {
+                 FakeCudaState state;
+                 const CudaApi api = MakeFakeApi(state);
+                 MemoryTracker tracker = FakeContextTracker();
+                 auto context = CudaDeviceContext::Create(FakeContextConfig(), tracker, api);
+                 if (!context.ok()) std::abort();
+               }()),
+               "");
 }
 
 #if !defined(NDEBUG) || defined(INFERX_CUDA_DEBUG_POINTERS)
@@ -259,6 +550,11 @@ TEST(M2CudaUnitTest, CopyChecksPointerKindsAndRejectsPageableMemory) {
                 stream, api, &health)
           .code(),
       absl::StatusCode::kFailedPrecondition);
+  const int pointer_calls_before_poison = state.pointer_attribute_calls;
+  health.Poison(absl::UnavailableError("test poison"));
+  EXPECT_EQ(MemsetAsync(device_view, 0, stream, api, &health).code(),
+            absl::StatusCode::kUnavailable);
+  EXPECT_EQ(state.pointer_attribute_calls, pointer_calls_before_poison);
   EXPECT_TRUE(pageable.Release().ok());
   EXPECT_TRUE(device.Release().ok());
   EXPECT_TRUE(pinned.Release().ok());

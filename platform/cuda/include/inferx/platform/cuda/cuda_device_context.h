@@ -2,6 +2,7 @@
 #ifndef INFERX_PLATFORM_CUDA_CUDA_DEVICE_CONTEXT_H_
 #define INFERX_PLATFORM_CUDA_CUDA_DEVICE_CONTEXT_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 
@@ -22,6 +23,12 @@
 #include "inferx/runtime/workspace.h"
 
 namespace inferx::cuda {
+
+class CudaDeferredResource {
+ public:
+  virtual ~CudaDeferredResource() = default;
+  [[nodiscard]] virtual absl::StatusOr<bool> TryReclaim() = 0;
+};
 
 struct CudaContextConfig {
   DeviceId device = DeviceId(0);
@@ -49,6 +56,7 @@ class CudaDeviceContext {
   CudaDeviceContext& operator=(const CudaDeviceContext&) = delete;
 
   [[nodiscard]] const CudaDeviceInfo& info() const noexcept;
+  [[nodiscard]] const CudaApi& api() const noexcept;
   [[nodiscard]] CudaHealth& health() noexcept;
   [[nodiscard]] CudaStream& compute_stream() noexcept;
   [[nodiscard]] CudaStream& transfer_stream() noexcept;
@@ -58,6 +66,9 @@ class CudaDeviceContext {
   [[nodiscard]] FixedBufferPool& staging_pool() noexcept;
   [[nodiscard]] WorkspaceArenaPool& workspace_pool() noexcept;
   [[nodiscard]] CudaMetadataRing& metadata_ring() noexcept;
+  [[nodiscard]] absl::Status DeferResource(std::unique_ptr<CudaDeferredResource> resource);
+  [[nodiscard]] absl::Status ReclaimDeferredResources();
+  [[nodiscard]] size_t deferred_resource_count() const noexcept;
   [[nodiscard]] absl::Status Shutdown(Deadline deadline);
 
  private:

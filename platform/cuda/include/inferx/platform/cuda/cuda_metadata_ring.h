@@ -54,7 +54,8 @@ class CudaMetadataRing {
   [[nodiscard]] static absl::StatusOr<CudaMetadataRing> Create(
       uint32_t slots, ByteCount slot_bytes, CudaPinnedAllocator& pinned_allocator,
       CudaDeviceAllocator& device_allocator, CudaEventPool& event_pool, DeviceId device,
-      const CudaApi& api = CudaApi::Production());
+      const CudaApi& api = CudaApi::Production(), CudaHealth* health = nullptr,
+      PoolGeneration initial_generation = PoolGeneration(0));
   CudaMetadataRing(CudaMetadataRing&&) noexcept = default;
   CudaMetadataRing& operator=(CudaMetadataRing&&) noexcept = default;
   CudaMetadataRing(const CudaMetadataRing&) = delete;

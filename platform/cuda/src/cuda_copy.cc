@@ -103,6 +103,10 @@ absl::Status CopyAsync(const CopyRequest& request, CudaStream& stream, const Cud
 
 absl::Status MemsetAsync(MutableBufferView destination, uint8_t value, CudaStream& stream,
                          const CudaApi& api, CudaHealth* health) {
+  if (health != nullptr) {
+    absl::Status status = health->CheckAcceptingWork();
+    if (!status.ok()) return status;
+  }
   if (destination.memory_kind() != MemoryKind::kDevice ||
       destination.device() != Device::Cuda(stream.device())) {
     return absl::InvalidArgumentError(

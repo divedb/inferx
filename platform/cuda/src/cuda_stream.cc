@@ -4,9 +4,25 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "inferx/platform/cuda/cuda_device.h"
 
 namespace inferx::cuda {
+namespace {
+
+absl::Status AnnotateCleanup(absl::Status primary, const absl::Status& cleanup) {
+  if (cleanup.ok()) return primary;
+  absl::Status annotated(
+      primary.code(), absl::StrCat(primary.message(), "; cleanup failure: ", cleanup.ToString()));
+  primary.ForEachPayload([&annotated](absl::string_view url, const absl::Cord& payload) {
+    annotated.SetPayload(url, payload);
+  });
+  return annotated;
+}
+
+}  // namespace
 
 CudaStream::CudaStream(const CudaApi* api, CudaHealth* health, DeviceId device, CudaStreamRole role,
                        int priority, cudaStream_t stream) noexcept
@@ -43,8 +59,10 @@ absl::StatusOr<CudaStream> CudaStream::Create(DeviceId device, CudaStreamRole ro
   }
   absl::Status restore = guard->Restore();
   if (!restore.ok()) {
-    static_cast<void>(api.stream_destroy(stream));
-    return restore;
+    absl::Status cleanup =
+        CudaErrorStatus(api.stream_destroy(stream), "stream-destroy", device, health);
+    if (!cleanup.ok() && health != nullptr) health->Poison(cleanup);
+    return AnnotateCleanup(std::move(restore), cleanup);
   }
   return CudaStream(&api, health, device, role, actual_priority, stream);
 }
@@ -79,7 +97,12 @@ CudaStream& CudaStream::operator=(CudaStream&& other) noexcept {
 absl::Status CudaStream::Close() {
   if (stream_ == nullptr) return absl::OkStatus();
   cudaStream_t stream = std::exchange(stream_, nullptr);
-  return CudaErrorStatus(api_->stream_destroy(stream), "stream-destroy", device_, health_);
+  absl::Status status =
+      CudaErrorStatus(api_->stream_destroy(stream), "stream-destroy", device_, health_);
+  if (!status.ok() && health_ != nullptr) {
+    health_->Poison(status);
+  }
+  return status;
 }
 
 }  // namespace inferx::cuda

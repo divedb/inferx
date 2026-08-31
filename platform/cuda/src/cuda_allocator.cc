@@ -10,6 +10,9 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "inferx/base/checked_math.h"
 #include "inferx/base/status.h"
 #include "inferx/platform/cuda/cuda_device.h"
@@ -24,6 +27,49 @@ ByteCount PointerAlignment(void* address) {
   const uintptr_t numeric = reinterpret_cast<uintptr_t>(address);
   if (numeric == 0) return ByteCount(1);
   return ByteCount(uint64_t{1} << std::countr_zero(numeric));
+}
+
+absl::Status AnnotateCleanup(absl::Status primary, const absl::Status& cleanup) {
+  if (cleanup.ok()) return primary;
+  absl::Status annotated(
+      primary.code(), absl::StrCat(primary.message(), "; cleanup failure: ", cleanup.ToString()));
+  primary.ForEachPayload([&annotated](absl::string_view url, const absl::Cord& payload) {
+    annotated.SetPayload(url, payload);
+  });
+  return annotated;
+}
+
+cudaError_t FreeRawAllocation(void* address, AllocationFlavor flavor, const CudaApi& api) {
+  return flavor == AllocationFlavor::kDevice ? api.free_device(address) : api.free_host(address);
+}
+
+absl::Status CleanupUncommittedAllocation(void* address, AllocationFlavor flavor,
+                                          DeviceId cuda_device, MemoryReservation& reservation,
+                                          CudaHealth& health, const CudaApi& api,
+                                          absl::Status primary) {
+  const cudaError_t error = FreeRawAllocation(address, flavor, api);
+  if (error == cudaSuccess) return primary;
+
+  absl::Status cleanup = CudaErrorStatus(
+      error, flavor == AllocationFlavor::kDevice ? "free" : "free-host", cuda_device, &health);
+  health.Poison(cleanup);
+
+  // The runtime still owns bytes that failed to free. Convert their reservation
+  // to an explicit leaked charge so the tracker never pretends capacity returned.
+  absl::StatusOr<AllocationCharge> charge = reservation.Commit();
+  if (!charge.ok()) {
+    cleanup = absl::Status(
+        cleanup.code(),
+        absl::StrCat(cleanup.message(), "; leak-accounting failure: ", charge.status().ToString()));
+  } else {
+    const absl::Status leaked = charge->MarkLeaked();
+    if (!leaked.ok()) {
+      cleanup = absl::Status(
+          cleanup.code(),
+          absl::StrCat(cleanup.message(), "; leak-accounting failure: ", leaked.ToString()));
+    }
+  }
+  return AnnotateCleanup(std::move(primary), cleanup);
 }
 
 class CudaAllocationDomain final : public AllocationDomain {
@@ -51,8 +97,9 @@ class CudaAllocationDomain final : public AllocationDomain {
       released_ = true;
       return status;
     }
+    released_ = true;
     absl::Status status = charge_.active() ? charge_.Release() : absl::OkStatus();
-    if (status.ok()) released_ = true;
+    if (!status.ok() && health_ != nullptr) health_->Poison(status);
     return status;
   }
 
@@ -122,28 +169,26 @@ absl::StatusOr<Buffer> AllocateCuda(const AllocationRequest& request, DeviceId c
     }
     ByteCount actual_alignment = PointerAlignment(address);
     if (actual_alignment.value() < request.alignment.value()) {
-      if (flavor == AllocationFlavor::kDevice) {
-        static_cast<void>(api.free_device(address));
-      } else {
-        static_cast<void>(api.free_host(address));
-      }
-      return absl::InvalidArgumentError(
-          "cuda.allocation.alignment: runtime pointer does not satisfy request");
+      return CleanupUncommittedAllocation(
+          address, flavor, cuda_device, *reservation, health, api,
+          absl::InvalidArgumentError(
+              "cuda.allocation.alignment: runtime pointer does not satisfy request"));
     }
     absl::StatusOr<AllocationCharge> committed = reservation->Commit();
     if (!committed.ok()) {
-      if (flavor == AllocationFlavor::kDevice) {
-        static_cast<void>(api.free_device(address));
-      } else {
-        static_cast<void>(api.free_host(address));
-      }
-      return committed.status();
+      const cudaError_t cleanup_error = FreeRawAllocation(address, flavor, api);
+      if (cleanup_error == cudaSuccess) return committed.status();
+      absl::Status cleanup =
+          CudaErrorStatus(cleanup_error, flavor == AllocationFlavor::kDevice ? "free" : "free-host",
+                          cuda_device, &health);
+      health.Poison(cleanup);
+      return AnnotateCleanup(committed.status(), cleanup);
     }
     domain->AdoptCharge(std::move(*committed));
     absl::StatusOr<Buffer> buffer = Buffer::Adopt(address, request, actual_alignment, id, domain);
     if (!buffer.ok()) {
-      static_cast<void>(domain->Release(address, request.bytes, actual_alignment, id));
-      return buffer.status();
+      return AnnotateCleanup(buffer.status(),
+                             domain->Release(address, request.bytes, actual_alignment, id));
     }
     return buffer;
   }
@@ -153,48 +198,77 @@ absl::StatusOr<Buffer> AllocateCuda(const AllocationRequest& request, DeviceId c
 
 }  // namespace
 
-struct CudaDeviceAllocator::Impl {
-  DeviceId device;
-  MemoryTracker* tracker;
-  CudaHealth* health;
-  const CudaApi* api;
-};
-
 CudaDeviceAllocator::CudaDeviceAllocator(DeviceId device, MemoryTracker& tracker,
-                                         CudaHealth& health, const CudaApi& api)
-    : impl_(std::make_unique<Impl>(Impl{device, &tracker, &health, &api})) {}
-CudaDeviceAllocator::~CudaDeviceAllocator() = default;
-CudaDeviceAllocator::CudaDeviceAllocator(CudaDeviceAllocator&&) noexcept = default;
-CudaDeviceAllocator& CudaDeviceAllocator::operator=(CudaDeviceAllocator&&) noexcept = default;
+                                         CudaHealth& health, const CudaApi& api) noexcept
+    : device_(device), tracker_(&tracker), health_(&health), api_(&api) {}
 
-absl::StatusOr<Buffer> CudaDeviceAllocator::Allocate(const AllocationRequest& request) {
-  if (impl_ == nullptr) {
-    return absl::FailedPreconditionError("cuda.allocator: allocator was moved");
-  }
-  return AllocateCuda(request, impl_->device, AllocationFlavor::kDevice, *impl_->tracker,
-                      *impl_->health, *impl_->api);
+CudaDeviceAllocator::CudaDeviceAllocator(CudaDeviceAllocator&& other) noexcept
+    : device_(other.device_),
+      tracker_(other.tracker_),
+      health_(other.health_),
+      api_(other.api_),
+      active_(std::exchange(other.active_, false)) {
+  other.tracker_ = nullptr;
+  other.health_ = nullptr;
+  other.api_ = nullptr;
 }
 
-struct CudaPinnedAllocator::Impl {
-  DeviceId owning_device;
-  MemoryTracker* tracker;
-  CudaHealth* health;
-  const CudaApi* api;
-};
+CudaDeviceAllocator& CudaDeviceAllocator::operator=(CudaDeviceAllocator&& other) noexcept {
+  if (this != &other) {
+    device_ = other.device_;
+    tracker_ = other.tracker_;
+    health_ = other.health_;
+    api_ = other.api_;
+    active_ = std::exchange(other.active_, false);
+    other.tracker_ = nullptr;
+    other.health_ = nullptr;
+    other.api_ = nullptr;
+  }
+  return *this;
+}
+
+absl::StatusOr<Buffer> CudaDeviceAllocator::Allocate(const AllocationRequest& request) {
+  if (!active_) {
+    return absl::FailedPreconditionError("cuda.allocator: allocator was moved");
+  }
+  return AllocateCuda(request, device_, AllocationFlavor::kDevice, *tracker_, *health_, *api_);
+}
 
 CudaPinnedAllocator::CudaPinnedAllocator(DeviceId owning_device, MemoryTracker& tracker,
-                                         CudaHealth& health, const CudaApi& api)
-    : impl_(std::make_unique<Impl>(Impl{owning_device, &tracker, &health, &api})) {}
-CudaPinnedAllocator::~CudaPinnedAllocator() = default;
-CudaPinnedAllocator::CudaPinnedAllocator(CudaPinnedAllocator&&) noexcept = default;
-CudaPinnedAllocator& CudaPinnedAllocator::operator=(CudaPinnedAllocator&&) noexcept = default;
+                                         CudaHealth& health, const CudaApi& api) noexcept
+    : owning_device_(owning_device), tracker_(&tracker), health_(&health), api_(&api) {}
+
+CudaPinnedAllocator::CudaPinnedAllocator(CudaPinnedAllocator&& other) noexcept
+    : owning_device_(other.owning_device_),
+      tracker_(other.tracker_),
+      health_(other.health_),
+      api_(other.api_),
+      active_(std::exchange(other.active_, false)) {
+  other.tracker_ = nullptr;
+  other.health_ = nullptr;
+  other.api_ = nullptr;
+}
+
+CudaPinnedAllocator& CudaPinnedAllocator::operator=(CudaPinnedAllocator&& other) noexcept {
+  if (this != &other) {
+    owning_device_ = other.owning_device_;
+    tracker_ = other.tracker_;
+    health_ = other.health_;
+    api_ = other.api_;
+    active_ = std::exchange(other.active_, false);
+    other.tracker_ = nullptr;
+    other.health_ = nullptr;
+    other.api_ = nullptr;
+  }
+  return *this;
+}
 
 absl::StatusOr<Buffer> CudaPinnedAllocator::Allocate(const AllocationRequest& request) {
-  if (impl_ == nullptr) {
+  if (!active_) {
     return absl::FailedPreconditionError("cuda.pinned_allocator: allocator was moved");
   }
-  return AllocateCuda(request, impl_->owning_device, AllocationFlavor::kPinned, *impl_->tracker,
-                      *impl_->health, *impl_->api);
+  return AllocateCuda(request, owning_device_, AllocationFlavor::kPinned, *tracker_, *health_,
+                      *api_);
 }
 
 }  // namespace inferx::cuda

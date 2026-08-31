@@ -23,6 +23,26 @@ inferx::Deadline DeadlineAfter(std::chrono::seconds duration) {
          duration;
 }
 
+int RunInjectedClassification(std::string_view mode) {
+  const cudaError_t error =
+      mode == "--classify-timeout" ? cudaErrorLaunchTimeout : cudaErrorContextIsDestroyed;
+  const inferx::ErrorReason expected = mode == "--classify-timeout"
+                                           ? inferx::ErrorReason::kCudaAsyncFault
+                                           : inferx::ErrorReason::kCudaDeviceLost;
+  inferx::cuda::CudaHealth health;
+  const absl::Status observed =
+      inferx::cuda::CudaErrorStatus(error, "injected-child", inferx::DeviceId(0), &health);
+  const absl::StatusOr<inferx::ErrorReason> reason = inferx::GetErrorReason(observed);
+  if (observed.code() != absl::StatusCode::kUnavailable || !reason.ok() || *reason != expected ||
+      health.state() != inferx::cuda::CudaHealthState::kPoisoned ||
+      health.CheckAcceptingWork().ok()) {
+    std::cerr << "injected CUDA fault classification failed: " << observed << '\n';
+    return 10;
+  }
+  std::cout << "expected isolated CUDA classification poisoned subsequent work\n";
+  return 0;
+}
+
 int RunStickyFault(std::string_view mode) {
   const auto devices = inferx::cuda::DiscoverCudaDevices();
   if (!devices.ok()) {
@@ -84,8 +104,13 @@ int RunStickyFault(std::string_view mode) {
 
 int main(int argc, char** argv) {
   if (argc != 2) {
-    std::cerr << "usage: inferx_cuda_failure_child --illegal-address|--assert\n";
+    std::cerr << "usage: inferx_cuda_failure_child "
+                 "--illegal-address|--assert|--classify-timeout|--classify-device-lost\n";
     return 1;
   }
-  return RunStickyFault(argv[1]);
+  const std::string_view mode(argv[1]);
+  if (mode == "--classify-timeout" || mode == "--classify-device-lost") {
+    return RunInjectedClassification(mode);
+  }
+  return RunStickyFault(mode);
 }

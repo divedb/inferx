@@ -2,6 +2,8 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
+#include <new>
 #include <span>
 #include <thread>
 #include <utility>
@@ -18,6 +20,17 @@
 namespace inferx {
 namespace {
 
+std::atomic<uint64_t> g_heap_allocations{0};
+thread_local bool g_measure_heap_allocations = false;
+
+#if !defined(INFERX_M2_TSAN_BUILD)
+void CountHeapAllocation() noexcept {
+  if (g_measure_heap_allocations) {
+    g_heap_allocations.fetch_add(1, std::memory_order_relaxed);
+  }
+}
+#endif
+
 TEST(M2RuntimeStressTest, OneHundredThousandGenerationCyclesReturnBaseline) {
   CpuAllocator allocator;
   const AllocationRequest request{Device::Host(), MemoryKind::kHost, ByteCount(64), ByteCount(64),
@@ -28,14 +41,19 @@ TEST(M2RuntimeStressTest, OneHundredThousandGenerationCyclesReturnBaseline) {
                               PoolGeometry{1, ByteCount(64), ByteCount(64), PoolGeneration(0)})
           .value();
   testing::FakeFenceDomain fences(1);
+  g_heap_allocations.store(0, std::memory_order_relaxed);
   for (uint32_t cycle = 0; cycle < 100000; ++cycle) {
-    BufferLease lease = pool.Acquire().value();
+    g_measure_heap_allocations = true;
+    absl::StatusOr<BufferLease> acquired = pool.Acquire();
+    const bool released = acquired.ok() && acquired->Release().ok();
+    g_measure_heap_allocations = false;
+    ASSERT_TRUE(released);
     CompletionFence fence = fences.Acquire().value();
     EXPECT_TRUE(fences.Complete(fence.token()).ok());
     EXPECT_EQ(fence.Poll()->state, FenceState::kComplete);
     EXPECT_TRUE(fence.Acknowledge().ok());
-    EXPECT_TRUE(lease.Release().ok());
   }
+  EXPECT_EQ(g_heap_allocations.load(std::memory_order_relaxed), 0);
   EXPECT_EQ(pool.available_slots(), 1);
   EXPECT_TRUE(pool.ValidateInvariants().ok());
   EXPECT_TRUE(pool.Close().ok());
@@ -135,3 +153,86 @@ TEST(M2RuntimeStressTest, MutexAdapterSupportsMpmcLeaseCycles) {
 
 }  // namespace
 }  // namespace inferx
+
+#if !defined(INFERX_M2_TSAN_BUILD)
+void* operator new(std::size_t size) {
+  inferx::CountHeapAllocation();
+  if (void* memory = std::malloc(size)) return memory;
+  throw std::bad_alloc();
+}
+
+void* operator new[](std::size_t size) {
+  inferx::CountHeapAllocation();
+  if (void* memory = std::malloc(size)) return memory;
+  throw std::bad_alloc();
+}
+
+void* operator new(std::size_t size, const std::nothrow_t&) noexcept {
+  try {
+    return ::operator new(size);
+  } catch (...) {
+    return nullptr;
+  }
+}
+
+void* operator new[](std::size_t size, const std::nothrow_t&) noexcept {
+  try {
+    return ::operator new[](size);
+  } catch (...) {
+    return nullptr;
+  }
+}
+
+void* operator new(std::size_t size, std::align_val_t alignment) {
+  inferx::CountHeapAllocation();
+  void* memory = nullptr;
+  if (posix_memalign(&memory, static_cast<std::size_t>(alignment), size == 0 ? 1 : size) == 0) {
+    return memory;
+  }
+  throw std::bad_alloc();
+}
+
+void* operator new[](std::size_t size, std::align_val_t alignment) {
+  return ::operator new(size, alignment);
+}
+
+void* operator new(std::size_t size, std::align_val_t alignment, const std::nothrow_t&) noexcept {
+  try {
+    return ::operator new(size, alignment);
+  } catch (...) {
+    return nullptr;
+  }
+}
+
+void* operator new[](std::size_t size, std::align_val_t alignment, const std::nothrow_t&) noexcept {
+  try {
+    return ::operator new[](size, alignment);
+  } catch (...) {
+    return nullptr;
+  }
+}
+
+// NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDelete) -- matching test allocator override.
+void operator delete(void* memory) noexcept { std::free(memory); }
+void operator delete[](void* memory) noexcept { std::free(memory); }
+void operator delete(void* memory, std::size_t size) noexcept {
+  static_cast<void>(size);
+  std::free(memory);
+}
+void operator delete[](void* memory, std::size_t size) noexcept {
+  static_cast<void>(size);
+  std::free(memory);
+}
+void operator delete(void* memory, const std::nothrow_t&) noexcept { std::free(memory); }
+void operator delete[](void* memory, const std::nothrow_t&) noexcept { std::free(memory); }
+void operator delete(void* memory, std::align_val_t) noexcept { std::free(memory); }
+void operator delete[](void* memory, std::align_val_t) noexcept { std::free(memory); }
+void operator delete(void* memory, std::size_t, std::align_val_t) noexcept { std::free(memory); }
+void operator delete[](void* memory, std::size_t, std::align_val_t) noexcept { std::free(memory); }
+void operator delete(void* memory, std::align_val_t, const std::nothrow_t&) noexcept {
+  std::free(memory);
+}
+void operator delete[](void* memory, std::align_val_t, const std::nothrow_t&) noexcept {
+  std::free(memory);
+}
+#endif

@@ -5,11 +5,9 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
-#include <mutex>
 #include <new>
 #include <span>
 #include <utility>
-#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -33,23 +31,25 @@ absl::Status PendingSubmission(absl::string_view operation) {
 
 }  // namespace
 
-struct CudaTestSubmission::Bundle {
+struct CudaTestSubmission::Bundle final : public CudaDeferredResource {
   CudaDeviceContext* context = nullptr;
   BufferLease input;
   BufferLease output;
   CudaMetadataLease metadata;
   WorkspaceLease workspace;
   CudaEventLease compute_done;
+  CudaEventLease final_event;
   CompletionFence completion;
   bool queued = false;
+  bool uncertain_work = false;
+
+  absl::StatusOr<bool> TryReclaim() override;
 };
 
 struct CudaTestSubmission::State {
   explicit State(CudaDeviceContext& supplied_context) : context(&supplied_context) {}
 
   CudaDeviceContext* context;
-  mutable std::mutex mutex;
-  std::vector<std::unique_ptr<Bundle>> deferred;
   bool closed = false;
 };
 
@@ -74,6 +74,10 @@ absl::Status ReleaseBundle(CudaTestSubmission::Bundle& bundle, bool require_comp
       return released;
     }
   }
+  absl::Status final_event = bundle.final_event.Release();
+  if (!final_event.ok() && final_event.code() != absl::StatusCode::kFailedPrecondition) {
+    return final_event;
+  }
   absl::Status metadata = bundle.metadata.Release();
   if (!metadata.ok()) return metadata;
   absl::Status workspace = bundle.workspace.Release();
@@ -83,31 +87,52 @@ absl::Status ReleaseBundle(CudaTestSubmission::Bundle& bundle, bool require_comp
   return absl::OkStatus();
 }
 
-absl::Status CleanupFailedSubmit(CudaTestSubmission::Bundle& bundle, const absl::Status& failure) {
-  if (bundle.queued) {
-    const CudaApi& api = CudaApi::Production();
+absl::Status CleanupFailedSubmit(std::unique_ptr<CudaTestSubmission::Bundle>& bundle,
+                                 const absl::Status& failure) {
+  if (bundle->queued) {
+    const CudaApi& api = bundle->context->api();
     absl::Status synchronized =
         CudaErrorStatus(api.device_synchronize(), "test-pipeline-failure-synchronize",
-                        bundle.context->info().ordinal, &bundle.context->health());
-    if (!synchronized.ok()) return failure;
-  }
-  if (bundle.completion.active()) {
-    absl::StatusOr<FencePoll> poll = bundle.completion.Poll();
-    if (poll.ok() && poll->state != FenceState::kPending) {
-      static_cast<void>(bundle.completion.Acknowledge());
+                        bundle->context->info().ordinal, &bundle->context->health());
+    if (!synchronized.ok()) {
+      bundle->context->health().Poison(synchronized);
+      bundle->uncertain_work = true;
+      CudaDeviceContext* context = bundle->context;
+      std::unique_ptr<CudaDeferredResource> retained(std::move(bundle));
+      static_cast<void>(context->DeferResource(std::move(retained)));
+      return failure;
     }
   }
-  if (bundle.compute_done.recorded()) {
-    static_cast<void>(bundle.compute_done.Release());
+  if (bundle->completion.active()) {
+    absl::StatusOr<FencePoll> poll = bundle->completion.Poll();
+    if (poll.ok() && poll->state != FenceState::kPending) {
+      static_cast<void>(bundle->completion.Acknowledge());
+    }
   }
-  static_cast<void>(bundle.metadata.Release());
-  static_cast<void>(bundle.workspace.Release());
-  if (bundle.output.active()) static_cast<void>(bundle.output.Release());
-  if (bundle.input.active()) static_cast<void>(bundle.input.Release());
+  if (bundle->compute_done.recorded()) {
+    static_cast<void>(bundle->compute_done.Release());
+  }
+  static_cast<void>(bundle->final_event.Release());
+  static_cast<void>(bundle->metadata.Release());
+  static_cast<void>(bundle->workspace.Release());
+  if (bundle->output.active()) static_cast<void>(bundle->output.Release());
+  if (bundle->input.active()) static_cast<void>(bundle->input.Release());
   return failure;
 }
 
 }  // namespace
+
+absl::StatusOr<bool> CudaTestSubmission::Bundle::TryReclaim() {
+  if (uncertain_work) return false;
+  absl::StatusOr<FencePoll> poll = completion.Poll();
+  if (!poll.ok()) return poll.status();
+  if (poll->state == FenceState::kPending) return false;
+  absl::Status released = ReleaseBundle(*this, true);
+  if (!released.ok()) return released;
+  absl::Status output_status = output.Release();
+  if (!output_status.ok()) return output_status;
+  return true;
+}
 
 CudaTestSubmission::CudaTestSubmission(std::shared_ptr<State> state,
                                        std::unique_ptr<Bundle> bundle) noexcept
@@ -153,26 +178,14 @@ absl::StatusOr<BufferLease> CudaTestSubmission::FinishCompleted() {
 
 void CudaTestSubmission::Defer() noexcept {
   if (bundle_ == nullptr) return;
-  if (state_ == nullptr) {
-    // Construction guarantees a state for active submissions. Retaining a
-    // suspect bundle is safer than releasing resources before GPU completion.
-    static_cast<void>(bundle_.release());
-    return;
-  }
-  std::lock_guard<std::mutex> lock(state_->mutex);
-  try {
-    state_->deferred.push_back(std::move(bundle_));
-  } catch (const std::bad_alloc&) {
-    // The deferred vector reserves its full capacity in pipeline construction;
-    // this is a final safety fallback if an allocator violates that guarantee.
-    static_cast<void>(bundle_.release());
-  }
+  CudaDeviceContext* context = bundle_->context;
+  std::unique_ptr<CudaDeferredResource> deferred(std::move(bundle_));
+  static_cast<void>(context->DeferResource(std::move(deferred)));
   state_.reset();
 }
 
 CudaTestPipeline::CudaTestPipeline(CudaDeviceContext& context) {
   state_ = std::make_shared<CudaTestSubmission::State>(context);
-  state_->deferred.reserve(context.info().multiprocessor_count > 0 ? 64U : 1U);
 }
 
 CudaTestPipeline::~CudaTestPipeline() noexcept {
@@ -206,26 +219,27 @@ absl::StatusOr<CudaTestSubmission> CudaTestPipeline::Submit(
   if (!input_lease.ok()) return input_lease.status();
   bundle->input = std::move(*input_lease);
   absl::StatusOr<BufferLease> output_lease = context.staging_pool().Acquire();
-  if (!output_lease.ok()) return CleanupFailedSubmit(*bundle, output_lease.status());
+  if (!output_lease.ok()) return CleanupFailedSubmit(bundle, output_lease.status());
   bundle->output = std::move(*output_lease);
   const ByteCount bytes(static_cast<uint64_t>(input.size()));
   absl::StatusOr<CudaMetadataLease> metadata = context.metadata_ring().Acquire();
-  if (!metadata.ok()) return CleanupFailedSubmit(*bundle, metadata.status());
+  if (!metadata.ok()) return CleanupFailedSubmit(bundle, metadata.status());
   bundle->metadata = std::move(*metadata);
   absl::StatusOr<WorkspaceLease> workspace = context.workspace_pool().Acquire();
-  if (!workspace.ok()) return CleanupFailedSubmit(*bundle, workspace.status());
+  if (!workspace.ok()) return CleanupFailedSubmit(bundle, workspace.status());
   bundle->workspace = std::move(*workspace);
   absl::StatusOr<MutableBufferView> device_input =
       bundle->workspace.Allocate(bytes, ByteCount(256), WorkspaceTag::kTest);
-  if (!device_input.ok()) return CleanupFailedSubmit(*bundle, device_input.status());
+  if (!device_input.ok()) return CleanupFailedSubmit(bundle, device_input.status());
   absl::StatusOr<MutableBufferView> device_output =
       bundle->workspace.Allocate(bytes, ByteCount(256), WorkspaceTag::kTest);
-  if (!device_output.ok()) return CleanupFailedSubmit(*bundle, device_output.status());
+  if (!device_output.ok()) return CleanupFailedSubmit(bundle, device_output.status());
   absl::StatusOr<CudaEventLease> compute_done = context.event_pool().Acquire();
-  if (!compute_done.ok()) return CleanupFailedSubmit(*bundle, compute_done.status());
+  if (!compute_done.ok()) return CleanupFailedSubmit(bundle, compute_done.status());
   bundle->compute_done = std::move(*compute_done);
   absl::StatusOr<CudaEventLease> final_event = context.event_pool().Acquire();
-  if (!final_event.ok()) return CleanupFailedSubmit(*bundle, final_event.status());
+  if (!final_event.ok()) return CleanupFailedSubmit(bundle, final_event.status());
+  bundle->final_event = std::move(*final_event);
 
   MutableBufferView input_view = bundle->input.mutable_view().value();
   MutableBufferView output_view = bundle->output.mutable_view().value();
@@ -238,66 +252,48 @@ absl::StatusOr<CudaTestSubmission> CudaTestPipeline::Submit(
               std::min(metadata_host.HostBytes()->size(), sizeof(parameters)));
   absl::StatusOr<MutableBufferView> scratch =
       bundle->workspace.Allocate(ByteCount(256), ByteCount(64), WorkspaceTag::kTest);
-  if (!scratch.ok()) return CleanupFailedSubmit(*bundle, scratch.status());
+  if (!scratch.ok()) return CleanupFailedSubmit(bundle, scratch.status());
 
   bundle->queued = true;
-  absl::Status copy =
-      CopyAsync({input_view.AsConst(), *device_input, bytes}, context.transfer_stream(),
-                CudaApi::Production(), &context.health());
-  if (!copy.ok()) return CleanupFailedSubmit(*bundle, copy);
+  absl::Status copy = CopyAsync({input_view.AsConst(), *device_input, bytes},
+                                context.transfer_stream(), context.api(), &context.health());
+  if (!copy.ok()) return CleanupFailedSubmit(bundle, copy);
   absl::StatusOr<BufferView> device_metadata =
       bundle->metadata.SealAndUpload(context.transfer_stream(), context.compute_stream());
   if (!device_metadata.ok()) {
-    return CleanupFailedSubmit(*bundle, device_metadata.status());
+    return CleanupFailedSubmit(bundle, device_metadata.status());
   }
   test::LaunchStridedCopy(BufferAccess::Address(device_input->AsConst()),
                           BufferAccess::Address(*device_output), parameters,
                           context.compute_stream().handle());
-  const cudaError_t launch = CudaApi::Production().peek_at_last_error();
+  const cudaError_t launch = context.api().peek_at_last_error();
   if (launch != cudaSuccess) {
-    return CleanupFailedSubmit(*bundle, CudaErrorStatus(launch, "test-pipeline-launch",
-                                                        context.info().ordinal, &context.health()));
+    return CleanupFailedSubmit(bundle, CudaErrorStatus(launch, "test-pipeline-launch",
+                                                       context.info().ordinal, &context.health()));
   }
   absl::Status recorded = bundle->compute_done.Record(context.compute_stream());
-  if (!recorded.ok()) return CleanupFailedSubmit(*bundle, recorded);
+  if (!recorded.ok()) return CleanupFailedSubmit(bundle, recorded);
   absl::Status waited = bundle->compute_done.WaitOn(context.transfer_stream());
-  if (!waited.ok()) return CleanupFailedSubmit(*bundle, waited);
+  if (!waited.ok()) return CleanupFailedSubmit(bundle, waited);
   copy = CopyAsync({device_output->AsConst(), output_view, bytes}, context.transfer_stream(),
-                   CudaApi::Production(), &context.health());
-  if (!copy.ok()) return CleanupFailedSubmit(*bundle, copy);
-  recorded = final_event->Record(context.transfer_stream());
-  if (!recorded.ok()) return CleanupFailedSubmit(*bundle, recorded);
-  absl::StatusOr<CompletionFence> completion = final_event->IntoFence();
-  if (!completion.ok()) return CleanupFailedSubmit(*bundle, completion.status());
+                   context.api(), &context.health());
+  if (!copy.ok()) return CleanupFailedSubmit(bundle, copy);
+  recorded = bundle->final_event.Record(context.transfer_stream());
+  if (!recorded.ok()) return CleanupFailedSubmit(bundle, recorded);
+  absl::StatusOr<CompletionFence> completion = bundle->final_event.IntoFence();
+  if (!completion.ok()) return CleanupFailedSubmit(bundle, completion.status());
   bundle->completion = std::move(*completion);
   return CudaTestSubmission(state_, std::move(bundle));
 }
 
 absl::Status CudaTestPipeline::ReclaimDeferred() {
   if (state_ == nullptr) return absl::OkStatus();
-  std::lock_guard<std::mutex> lock(state_->mutex);
-  size_t destination = 0;
-  for (size_t index = 0; index < state_->deferred.size(); ++index) {
-    std::unique_ptr<CudaTestSubmission::Bundle>& bundle = state_->deferred[index];
-    absl::StatusOr<FencePoll> poll = bundle->completion.Poll();
-    if (!poll.ok()) return poll.status();
-    if (poll->state == FenceState::kPending) {
-      state_->deferred[destination++] = std::move(bundle);
-      continue;
-    }
-    absl::Status released = ReleaseBundle(*bundle, true);
-    if (!released.ok()) return released;
-    absl::Status output = bundle->output.Release();
-    if (!output.ok()) return output;
-  }
-  state_->deferred.resize(destination);
-  return absl::OkStatus();
+  return state_->context->ReclaimDeferredResources();
 }
 
 uint32_t CudaTestPipeline::deferred_count() const noexcept {
   if (state_ == nullptr) return 0;
-  std::lock_guard<std::mutex> lock(state_->mutex);
-  return static_cast<uint32_t>(state_->deferred.size());
+  return static_cast<uint32_t>(state_->context->deferred_resource_count());
 }
 
 absl::Status CudaTestPipeline::Close() {

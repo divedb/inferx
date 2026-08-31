@@ -57,8 +57,9 @@ outage blocks qualification rather than weakening the gate.
 `.github/workflows/ci-gpu.yml`, `tools/ci/run_compute_sanitizer.sh`,
 `tools/bench/run_m2_cuda.sh`, `inferx-device-info --json --self-test`, and the
 M2-labeled CTest suites define the evidence flow. The current local environment
-has CUDA 12.0 headers/compiler and no accessible GPU, so it provides syntax and
-CPU evidence only; it is not a qualifying run.
+has a CUDA 13.0 compile-only toolchain alongside a system CUDA 12.0 compiler
+below the floor, but no accessible GPU. It provides syntax and CPU evidence
+only; it is not a qualifying run.
 
 ## Supersession
 

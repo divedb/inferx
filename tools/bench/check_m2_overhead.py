@@ -57,13 +57,22 @@ def main() -> int:
         ("BM_CudaPinnedH2DWrapper", "BM_CudaPinnedH2DDirect"),
         ("BM_CudaPinnedD2HWrapper", "BM_CudaPinnedD2HDirect"),
         ("BM_CudaD2DWrapper", "BM_CudaD2DDirect"),
-        ("BM_CudaEventRecordWaitAcknowledge", "BM_CudaEventRecordQueryDirect"),
+        ("BM_CudaEventRecordWaitAcknowledge", "BM_CudaEventRecordWaitQueryDirect"),
         ("BM_CudaNoOpLaunchWrapper", "BM_CudaNoOpLaunchDirect"),
+        ("BM_CudaByteCopyLaunchWrapper", "BM_CudaByteCopyLaunchDirect"),
     ]
     comparisons = []
     failed = False
     for wrapper_prefix, direct_prefix in name_pairs:
-        wrapper_names = [name for name in metrics if name.startswith(wrapper_prefix)]
+        wrapper_names = [
+            name
+            for name in metrics
+            if name == wrapper_prefix or name.startswith(wrapper_prefix + "/")
+        ]
+        if not wrapper_names:
+            print(f"missing wrapper benchmark for {wrapper_prefix}", file=sys.stderr)
+            failed = True
+            continue
         for wrapper_name in wrapper_names:
             suffix = wrapper_name[len(wrapper_prefix) :]
             direct_name = direct_prefix + suffix
@@ -85,10 +94,6 @@ def main() -> int:
                 }
             )
             failed = failed or not passed
-    if len(comparisons) < 5:
-        print("M2 overhead evidence is incomplete", file=sys.stderr)
-        failed = True
-
     result = {
         "schema_version": 1,
         "metrics": metrics,

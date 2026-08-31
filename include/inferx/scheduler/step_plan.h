@@ -81,8 +81,7 @@ class StepPlanLease {
  private:
   friend class BatchPlanner;
   friend class StepPlanPool;
-  StepPlanLease(StepPlanPool& pool, PlanBufferSlot slot,
-                PlanBufferGeneration generation) noexcept;
+  StepPlanLease(StepPlanPool& pool, PlanBufferSlot slot, PlanBufferGeneration generation) noexcept;
   [[nodiscard]] internal::StepPlanBuffer& mutable_buffer();
   void Release() noexcept;
 
@@ -113,9 +112,8 @@ class StepPlanPool {
 
   StepPlanPool() = default;
   [[nodiscard]] internal::StepPlanBuffer& MutableBuffer(PlanBufferSlot slot,
-                                                         PlanBufferGeneration generation);
-  [[nodiscard]] const StepPlan& Plan(PlanBufferSlot slot,
-                                     PlanBufferGeneration generation) const;
+                                                        PlanBufferGeneration generation);
+  [[nodiscard]] const StepPlan& Plan(PlanBufferSlot slot, PlanBufferGeneration generation) const;
   void Release(PlanBufferSlot slot, PlanBufferGeneration generation) noexcept;
 
   std::vector<Slot> slots_;

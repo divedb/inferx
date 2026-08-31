@@ -60,6 +60,11 @@ jobs:
           mapfile -t gpu_indices < <(nvidia-smi --query-gpu=index \
             --format=csv,noheader,nounits)
           test "${#gpu_indices[@]}" -gt 0
+          # Preserve all-device visibility once so the conditional two-context
+          # isolation fixture exercises it whenever the owned runner has 2+ GPUs.
+          ctest --preset cuda-release \
+            -R '^M2CudaIntegrationTest.MultipleVisibleDevicesRemainContextIsolated$' \
+            --output-on-failure
           for gpu_index in "${gpu_indices[@]}"; do
             export CUDA_VISIBLE_DEVICES="$gpu_index"
             out/build/cuda-release/inferx-device-info --self-test

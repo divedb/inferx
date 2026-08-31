@@ -47,6 +47,7 @@ class MetadataRingState {
 
   CudaEventPool* event_pool = nullptr;
   const CudaApi* api = nullptr;
+  CudaHealth* health = nullptr;
   DeviceId device = DeviceId(0);
   ByteCount slot_bytes = ByteCount(0);
   std::vector<MetadataSlot> slots;
@@ -123,8 +124,8 @@ absl::StatusOr<BufferView> CudaMetadataLease::SealAndUpload(CudaStream& transfer
   absl::StatusOr<MutableBufferView> destination =
       (*slot)->device.MutableView(ByteRange{ByteCount(0), state_->slot_bytes});
   if (!destination.ok()) return destination.status();
-  absl::Status copy =
-      CopyAsync(CopyRequest{*source, *destination, state_->slot_bytes}, transfer, *state_->api);
+  absl::Status copy = CopyAsync(CopyRequest{*source, *destination, state_->slot_bytes}, transfer,
+                                *state_->api, state_->health);
   if (!copy.ok()) return copy;
   absl::StatusOr<CudaEventLease> event = state_->event_pool->Acquire();
   if (!event.ok()) return event.status();
@@ -172,11 +173,10 @@ absl::Status CudaMetadataLease::Release() {
   return absl::OkStatus();
 }
 
-absl::StatusOr<CudaMetadataRing> CudaMetadataRing::Create(uint32_t slots, ByteCount slot_bytes,
-                                                          CudaPinnedAllocator& pinned_allocator,
-                                                          CudaDeviceAllocator& device_allocator,
-                                                          CudaEventPool& event_pool,
-                                                          DeviceId device, const CudaApi& api) {
+absl::StatusOr<CudaMetadataRing> CudaMetadataRing::Create(
+    uint32_t slots, ByteCount slot_bytes, CudaPinnedAllocator& pinned_allocator,
+    CudaDeviceAllocator& device_allocator, CudaEventPool& event_pool, DeviceId device,
+    const CudaApi& api, CudaHealth* health, PoolGeneration initial_generation) {
   if (slots < 2 || slot_bytes.value() == 0) {
     return absl::InvalidArgumentError(
         "cuda.metadata.geometry: at least two non-empty slots are required");
@@ -190,6 +190,7 @@ absl::StatusOr<CudaMetadataRing> CudaMetadataRing::Create(uint32_t slots, ByteCo
   }
   state->event_pool = &event_pool;
   state->api = &api;
+  state->health = health;
   state->device = device;
   state->slot_bytes = slot_bytes;
   for (uint32_t index = 0; index < slots; ++index) {
@@ -210,7 +211,7 @@ absl::StatusOr<CudaMetadataRing> CudaMetadataRing::Create(uint32_t slots, ByteCo
       return device_buffer.status();
     }
     state->slots.push_back(MetadataSlot{std::move(*pinned), std::move(*device_buffer),
-                                        PoolGeneration(0), MetadataState::kFree, std::nullopt});
+                                        initial_generation, MetadataState::kFree, std::nullopt});
   }
   return CudaMetadataRing(std::move(state));
 }
@@ -225,6 +226,10 @@ CudaMetadataRing::~CudaMetadataRing() noexcept {
 absl::StatusOr<CudaMetadataLease> CudaMetadataRing::Acquire() {
   if (state_ == nullptr || state_->closed) {
     return absl::FailedPreconditionError("cuda.metadata.acquire: ring is closed");
+  }
+  if (state_->health != nullptr) {
+    absl::Status accepting = state_->health->CheckAcceptingWork();
+    if (!accepting.ok()) return accepting;
   }
   for (size_t index = 0; index < state_->slots.size(); ++index) {
     MetadataSlot& slot = state_->slots[index];

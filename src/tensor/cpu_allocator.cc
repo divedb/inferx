@@ -27,10 +27,11 @@ class CpuAllocationDomain final : public AllocationDomain {
       return absl::FailedPreconditionError(
           "cpu_allocator.release: duplicate or foreign allocation ID");
     }
-    ::operator delete(address, std::align_val_t(alignment.value()));
     absl::Status status = accounting_ == nullptr ? absl::OkStatus() : accounting_->Release();
-    if (status.ok()) released_ = true;
-    return status;
+    if (!status.ok()) return status;
+    ::operator delete(address, std::align_val_t(alignment.value()));
+    released_ = true;
+    return absl::OkStatus();
   }
 
   void Abandon(void* address, ByteCount, ByteCount alignment, AllocationId id) noexcept override {
@@ -50,29 +51,24 @@ class CpuAllocationDomain final : public AllocationDomain {
 
 }  // namespace
 
-class CpuAllocator::Impl {
- public:
-  explicit Impl(AllocationAccounting* supplied_accounting) : accounting(supplied_accounting) {}
-  AllocationAccounting* accounting = nullptr;
-};
-
-CpuAllocator::CpuAllocator() : impl_(new Impl(nullptr)) {}
-CpuAllocator::CpuAllocator(AllocationAccounting& accounting) : impl_(new Impl(&accounting)) {}
-CpuAllocator::~CpuAllocator() { delete impl_; }
+CpuAllocator::CpuAllocator(AllocationAccounting& accounting) noexcept : accounting_(&accounting) {}
 
 CpuAllocator::CpuAllocator(CpuAllocator&& other) noexcept
-    : impl_(std::exchange(other.impl_, nullptr)) {}
+    : accounting_(other.accounting_), active_(std::exchange(other.active_, false)) {
+  other.accounting_ = nullptr;
+}
 
 CpuAllocator& CpuAllocator::operator=(CpuAllocator&& other) noexcept {
   if (this != &other) {
-    delete impl_;
-    impl_ = std::exchange(other.impl_, nullptr);
+    accounting_ = other.accounting_;
+    active_ = std::exchange(other.active_, false);
+    other.accounting_ = nullptr;
   }
   return *this;
 }
 
 absl::StatusOr<Buffer> CpuAllocator::Allocate(const AllocationRequest& request) {
-  if (impl_ == nullptr) {
+  if (!active_) {
     return absl::FailedPreconditionError("cpu_allocator: allocator was moved");
   }
   absl::Status status = ValidateAllocationRequest(request);
@@ -100,10 +96,13 @@ absl::StatusOr<Buffer> CpuAllocator::Allocate(const AllocationRequest& request) 
   absl::StatusOr<AllocationId> id = NextAllocationId();
   if (!id.ok()) return id.status();
   std::unique_ptr<AllocationAccountingReservation> accounting;
-  if (impl_->accounting != nullptr && request.bytes.value() != 0) {
+  if (accounting_ != nullptr && request.bytes.value() != 0) {
     absl::StatusOr<std::unique_ptr<AllocationAccountingReservation>> reserved =
-        impl_->accounting->BeginAllocationReservation(request);
+        accounting_->BeginAllocationReservation(request);
     if (!reserved.ok()) return reserved.status();
+    if (*reserved == nullptr) {
+      return absl::InternalError("cpu_allocator.accounting: reservation handle is null");
+    }
     accounting = std::move(*reserved);
   }
   std::shared_ptr<CpuAllocationDomain> domain;

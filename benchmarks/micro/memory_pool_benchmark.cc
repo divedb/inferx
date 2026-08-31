@@ -1,10 +1,17 @@
+#include <absl/status/status.h>
+#include <absl/status/statusor.h>
 #include <benchmark/benchmark.h>
 
 #include <cstdint>
+#include <memory>
 #include <utility>
 
+#include "inferx/base/id.h"
+#include "inferx/base/token.h"
 #include "inferx/runtime/buffer_pool.h"
 #include "inferx/tensor/allocator.h"
+#include "inferx/tensor/buffer.h"
+#include "inferx/tensor/device.h"
 
 #if defined(INFERX_MEMORY_POOL_BENCHMARK_CUDA)
 #include <cuda_runtime_api.h>
@@ -43,12 +50,18 @@ void BM_FixedPoolAcquireRelease(benchmark::State& state) {
   if (!pool.Close().ok()) state.SkipWithError("pool close failed");
 }
 
-BENCHMARK(BM_FixedPoolAcquireRelease)->Arg(4096)->Arg(1048576)->Repetitions(30);
+BENCHMARK(BM_FixedPoolAcquireRelease)
+    ->Arg(4096)
+    ->Arg(1048576)
+    ->Repetitions(30)
+    ->MinWarmUpTime(0.1)
+    ->UseRealTime();
 
 #if defined(INFERX_MEMORY_POOL_BENCHMARK_CUDA)
 
 void BM_CudaRawAllocationFree(benchmark::State& state) {
   const uint64_t bytes = static_cast<uint64_t>(state.range(0));
+  int64_t completed_iterations = 0;
   for (auto _ : state) {
     static_cast<void>(_);
     void* address = nullptr;
@@ -61,7 +74,11 @@ void BM_CudaRawAllocationFree(benchmark::State& state) {
       state.SkipWithError("cudaFree failed");
       break;
     }
+    ++completed_iterations;
   }
+  state.SetItemsProcessed(completed_iterations);
+  state.counters["cuda_allocation_calls"] = static_cast<double>(completed_iterations);
+  state.counters["cuda_free_calls"] = static_cast<double>(completed_iterations);
 }
 
 void BM_CudaWarmedFixedPoolAcquireRelease(benchmark::State& state) {
@@ -106,18 +123,30 @@ void BM_CudaWarmedFixedPoolAcquireRelease(benchmark::State& state) {
       break;
     }
   }
+  state.counters["cuda_allocation_calls"] = 1.0;
+  state.counters["cuda_free_calls"] = 1.0;
+  state.counters["steady_state_cuda_allocation_calls"] = 0.0;
+  state.counters["steady_state_cuda_free_calls"] = 0.0;
   if (!pool.Close().ok() || !tracker.ValidateBaseline().ok()) {
     state.SkipWithError("device pool cleanup failed");
   }
   if (!guard->Restore().ok()) state.SkipWithError("device restore failed");
 }
 
-BENCHMARK(BM_CudaRawAllocationFree)->Arg(4096)->Arg(1048576)->Arg(67108864)->Repetitions(30);
+BENCHMARK(BM_CudaRawAllocationFree)
+    ->Arg(4096)
+    ->Arg(1048576)
+    ->Arg(67108864)
+    ->Repetitions(30)
+    ->MinWarmUpTime(0.1)
+    ->UseRealTime();
 BENCHMARK(BM_CudaWarmedFixedPoolAcquireRelease)
     ->Arg(4096)
     ->Arg(1048576)
     ->Arg(67108864)
-    ->Repetitions(30);
+    ->Repetitions(30)
+    ->MinWarmUpTime(0.1)
+    ->UseRealTime();
 
 #endif
 

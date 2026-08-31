@@ -1,7 +1,10 @@
 #include "inferx/tensor/strides.h"
 
+#include <absl/status/statusor.h>
+
 #include <algorithm>
 #include <array>
+#include <compare>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -25,6 +28,13 @@ absl::StatusOr<Strides> Strides::CreateElements(std::span<const uint64_t> elemen
 absl::StatusOr<Strides> Strides::Contiguous(const Shape& shape) {
   Strides result;
   result.rank_ = shape.rank();
+  if (std::find(shape.dimensions().begin(), shape.dimensions().end(), uint64_t{0}) !=
+      shape.dimensions().end()) {
+    // No element is reachable, so every empty shape is contiguous. A stable
+    // all-one representation avoids overflowing products of irrelevant axes.
+    std::fill_n(result.element_strides_.begin(), shape.rank(), uint64_t{1});
+    return result;
+  }
   uint64_t stride = 1;
   for (size_t axis = shape.rank(); axis > 0; --axis) {
     const size_t index = axis - 1;
@@ -51,6 +61,20 @@ absl::StatusOr<LayoutAnalysis> AnalyzeLayout(const Shape& shape, const Strides& 
   absl::StatusOr<uint64_t> elements = shape.NumElements();
   if (!elements.ok()) {
     return elements.status();
+  }
+
+  if (*elements == 0) {
+    for (size_t axis = 0; axis < shape.rank(); ++axis) {
+      if (strides.elements(axis) == 0 && shape.dim(axis) > 1) {
+        return absl::InvalidArgumentError(
+            "strides.value: zero stride is allowed only for extent zero or one");
+      }
+    }
+    LayoutAnalysis empty;
+    empty.contiguous = true;
+    empty.dense = true;
+    empty.overlap = OverlapKind::kNonOverlapping;
+    return empty;
   }
 
   LayoutAnalysis result;
@@ -124,13 +148,6 @@ absl::StatusOr<LayoutAnalysis> AnalyzeLayout(const Shape& shape, const Strides& 
     return maximum_bytes.status();
   }
   result.maximum_byte_offset = ByteCount(*maximum_bytes);
-  if (*elements == 0) {
-    result.reachable_bytes = ByteCount(0);
-    result.overlap = OverlapKind::kNonOverlapping;
-    result.dense = true;
-    result.contiguous = true;
-    return result;
-  }
   absl::StatusOr<uint64_t> reachable =
       CheckedAdd(*maximum_bytes, element_size->value(), "strides.reachable_bytes");
   if (!reachable.ok()) {

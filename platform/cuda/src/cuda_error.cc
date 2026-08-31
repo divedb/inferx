@@ -39,9 +39,11 @@ void CudaHealth::Poison(absl::Status cause) noexcept {
     return;
   }
   std::lock_guard<std::mutex> lock(mutex_);
+  if (!poison_cause_.has_value() && state_ != CudaHealthState::kClosed) {
+    poison_cause_ = std::move(cause);
+  }
   if (state_ == CudaHealthState::kHealthy) {
     state_ = CudaHealthState::kPoisoned;
-    poison_cause_ = std::move(cause);
   }
 }
 
