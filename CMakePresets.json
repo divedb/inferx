@@ -1,0 +1,119 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 28,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "cacheVariables": {
+        "INFERX_DEPENDENCY_PROVIDER": "submodule"
+      }
+    },
+    {
+      "name": "dev-gcc",
+      "inherits": "base",
+      "displayName": "GCC debug development lane",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "INFERX_WARNINGS_AS_ERRORS": "ON"
+      }
+    },
+    {
+      "name": "dev-clang",
+      "inherits": "base",
+      "displayName": "Clang debug development lane",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "INFERX_WARNINGS_AS_ERRORS": "ON"
+      }
+    },
+    {
+      "name": "asan-ubsan",
+      "inherits": "base",
+      "displayName": "Clang Debug with ASan+UBSan and frame pointers",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "INFERX_ENABLE_ASAN": "ON",
+        "INFERX_ENABLE_UBSAN": "ON"
+      }
+    },
+    {
+      "name": "tsan",
+      "inherits": "base",
+      "displayName": "Clang Debug with TSan (ASan and CUDA off)",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "INFERX_ENABLE_TSAN": "ON",
+        "INFERX_ENABLE_ASAN": "OFF",
+        "INFERX_ENABLE_CUDA": "OFF"
+      }
+    },
+    {
+      "name": "cpu-release",
+      "inherits": "base",
+      "displayName": "Release lane for install/consumer/metrics",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_BUILD_TYPE": "Release",
+        "INFERX_BUILD_BENCHMARKS": "ON",
+        "INFERX_BUILD_TOOLS": "ON"
+      }
+    },
+    {
+      "name": "analysis",
+      "inherits": "base",
+      "displayName": "Clang Debug with clang-tidy and IWYU",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "INFERX_ENABLE_CLANG_TIDY": "ON",
+        "INFERX_ENABLE_IWYU": "ON"
+      }
+    },
+    {
+      "name": "cuda-release",
+      "inherits": "base",
+      "displayName": "CUDA release lane (explicit architecture list)",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CUDA_COMPILER": "nvcc",
+        "CMAKE_CUDA_ARCHITECTURES": "89",
+        "INFERX_ENABLE_CUDA": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "dev-gcc", "configurePreset": "dev-gcc" },
+    { "name": "dev-clang", "configurePreset": "dev-clang" },
+    { "name": "asan-ubsan", "configurePreset": "asan-ubsan" },
+    { "name": "tsan", "configurePreset": "tsan" },
+    { "name": "cpu-release", "configurePreset": "cpu-release" },
+    { "name": "analysis", "configurePreset": "analysis" },
+    { "name": "cuda-release", "configurePreset": "cuda-release" }
+  ],
+  "testPresets": [
+    {
+      "name": "base-test",
+      "hidden": true,
+      "output": { "outputOnFailure": true, "shortProgress": true }
+    },
+    { "name": "dev-gcc", "inherits": "base-test", "configurePreset": "dev-gcc" },
+    { "name": "dev-clang", "inherits": "base-test", "configurePreset": "dev-clang" },
+    { "name": "asan-ubsan", "inherits": "base-test", "configurePreset": "asan-ubsan" },
+    { "name": "tsan", "inherits": "base-test", "configurePreset": "tsan" },
+    { "name": "cpu-release", "inherits": "base-test", "configurePreset": "cpu-release" },
+    { "name": "analysis", "inherits": "base-test", "configurePreset": "analysis" },
+    { "name": "cuda-release", "inherits": "base-test", "configurePreset": "cuda-release" }
+  ]
+}
