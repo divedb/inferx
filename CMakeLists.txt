@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(InferX VERSION 0.0.0 LANGUAGES CXX)
+project(InferX VERSION 0.0.0 LANGUAGES C CXX)
 
 # ---------------------------------------------------------------------------
 # Language policy: C++23, no extensions, required (never silently falls back).
@@ -28,9 +28,12 @@ include(cmake/InferXInstall.cmake)
 # inspected unless their feature is enabled (see InferXDependencies.cmake).
 # ---------------------------------------------------------------------------
 add_subdirectory(src/base)
+add_subdirectory(src/artifacts)
+add_subdirectory(src/model)
 
 if(INFERX_BUILD_TOOLS)
   add_subdirectory(apps/inferx_info)
+  add_subdirectory(apps/inferx_model_inspect)
 endif()
 
 if(INFERX_ENABLE_CUDA)

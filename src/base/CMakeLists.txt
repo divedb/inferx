@@ -30,9 +30,8 @@ install(TARGETS inferx_base
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../include/inferx"
-        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
-        FILES_MATCHING PATTERN "*.h")
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../../include/inferx/base/version.h"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/inferx/base")
 
 install(EXPORT InferXTargets
         NAMESPACE inferx::

@@ -1264,6 +1264,8 @@ hardware-constrained release job.
 
 **Depends on:** M2 and M3.
 
+**Implementation specification:** [`docs/milestones/m4.md`](milestones/m4.md)
+
 **Deliverables**
 
 - CPU FP32 reference embedding, RMSNorm, RoPE, causal MHA/GQA, SwiGLU, residual, GEMM, and logits.

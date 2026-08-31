@@ -15,7 +15,7 @@ clang-format-18`), CMake ≥ 3.28, Ninja ≥ 1.11, Python 3.12, `include-what-yo
 One-time initialization (the only network step; everything after is offline):
 
 ```bash
-python3 tools/deps/bootstrap.py --profile core   # Abseil, GoogleTest, Google Benchmark
+python3 tools/deps/bootstrap.py --profile core   # Abseil, simdjson, BLAKE3, tests/benchmark
 python3 tools/deps/bootstrap.py --list           # see profiles and statuses
 ```
 

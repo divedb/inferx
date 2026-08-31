@@ -23,6 +23,16 @@ include(GoogleTest)
 gtest_discover_tests(inferx_base_test
   PROPERTIES LABELS "unit" TIMEOUT 60)
 
+# M3 artifact/model contract: rooted path safety, official digest vectors,
+# safetensors layout checks, mapping accounting, and complete Llama coverage.
+add_executable(inferx_m3_artifacts_test
+  unit/artifacts/m3_artifacts_test.cc)
+inferx_apply_project_options(inferx_m3_artifacts_test)
+target_link_libraries(inferx_m3_artifacts_test PRIVATE
+  inferx::artifacts inferx::model GTest::gtest_main)
+gtest_discover_tests(inferx_m3_artifacts_test
+  PROPERTIES LABELS "unit;m3" TIMEOUT 60)
+
 # ---------------------------------------------------------------------------
 # compile: C++23 feature sentinel. Exercises library facilities, not macros.
 # ---------------------------------------------------------------------------
@@ -153,6 +163,11 @@ inferx_add_failure_test(consumer_missing_dependency
   --arg INFERX_ROOT=${CMAKE_SOURCE_DIR}
   --arg CONSUMER_DIR=${CMAKE_CURRENT_SOURCE_DIR}/consumer_absl
   EXPECT "absl")
+
+inferx_add_failure_test(tokenizer_unqualified
+  --fixture ${CMAKE_CURRENT_SOURCE_DIR}/failure/tokenizer_unqualified.cmake
+  --arg INFERX_ROOT=${CMAKE_SOURCE_DIR}
+  EXPECT "INFERX_ENABLE_TOKENIZATION" "candidate-only" "streaming decode ABI")
 
 inferx_add_failure_test(manifest_gitlink_drift
   --script ${CMAKE_CURRENT_SOURCE_DIR}/failure/manifest_drift.py

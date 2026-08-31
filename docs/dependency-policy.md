@@ -13,8 +13,9 @@ authoritative records are [`third_party/manifest.json`](../third_party/manifest.
    (`tools/deps/bootstrap.py`).
 2. **The gitlink is the lock.** The manifest's `revision` field is a mirror; drift
    between the two fails `tools/deps/check_manifest.py`.
-3. **Profiles initialize only what a feature needs.** `core` = Abseil, GoogleTest,
-   Google Benchmark. Optional dependency directories are never inspected unless their
+3. **Profiles initialize only what a feature needs.** From M3, `core` = Abseil, simdjson,
+   BLAKE3, GoogleTest, and Google Benchmark. Optional dependency directories are never inspected
+   unless their
    feature is enabled; a default configure succeeds with optional submodules missing.
 4. **An enabled feature with a missing dependency fails configure immediately**,
    naming the path and the bootstrap profile that initializes it.

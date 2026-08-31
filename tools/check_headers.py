@@ -74,10 +74,15 @@ def main() -> int:
         probe = work_dir / (str(header.relative_to(include_root)).replace("/", "_") + ".cc")
         probe.write_text(f"#include <{header.relative_to(include_root)}>\n\n"
                          "int main() { return 0; }\n", encoding="utf-8")
-        result = subprocess.run(
-            [compiler, "-std=c++23", "-I", str(include_root),
+        command = [compiler, "-std=c++23", "-I", str(include_root)]
+        absl_include = args.source_root / "third_party" / "abseil-cpp"
+        if absl_include.is_dir():
+            command.extend(["-isystem", str(absl_include)])
+        command.extend(
+            [
              "-Wall", "-Wextra", "-Werror", "-c", str(probe), "-o", str(probe) + ".o"],
-            capture_output=True, text=True, timeout=120)
+        )
+        result = subprocess.run(command, capture_output=True, text=True, timeout=120)
         if result.returncode != 0:
             failures.append(header.name)
             print(f"header probe FAILED: {header.relative_to(include_root)}")

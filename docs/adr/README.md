@@ -45,3 +45,9 @@ Every ADR contains, in order:
 | [0005](0005-toolchain-and-cuda-language.md) | Toolchain floor and CUDA language level | Proposed |
 | [0006](0006-ci-and-supported-platforms.md) | CI lanes and supported platforms | Proposed |
 | [0007](0007-project-licensing.md) | Project licensing and distribution terms | Proposed (blocked on repository owner) |
+| [0020](0020-local-artifact-trust-boundary.md) | Local artifact trust boundary | Accepted |
+| [0021](0021-safetensors-reader-contract.md) | Safetensors reader contract | Accepted |
+| [0022](0022-llama-model-and-weight-schema.md) | Llama model and weight schema | Accepted |
+| [0023](0023-model-integrity-and-fingerprint.md) | Model integrity and fingerprint | Accepted |
+| [0024](0024-tokenizer-backend-and-concurrency.md) | Tokenizer backend and concurrency | Proposed (blocked) |
+| [0025](0025-prompt-processing-contract.md) | Prompt processing contract | Accepted |

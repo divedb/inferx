@@ -1,7 +1,7 @@
 # Qualification report: tokenizer (divedb/tokenizer)
 
 - Manifest entry: `tokenizer` — candidate, feature `tokenization` (M3), owner `tokenization`
-- Pin: `f109b7aef148dd4866a3dae7a8e5a6d221f95c75` (uninitialized in the core profile)
+- Pin: `f109b7aef148dd4866a3dae7a8e5a6d221f95c75` (audited 2026-08-31)
 - License: MIT (`LICENSE` at the pin, verified via raw.githubusercontent.com)
 
 ## 1. Which InferX contract would use it?
@@ -11,23 +11,27 @@ detokenization (plan section 8.3).
 
 ## 2. Required now, deferred, experimental, or rejected?
 
-Candidate, deferred to M3. M3 owns the decision.
+Rejected unchanged by M3.0. The gitlink remains as audit evidence and is not configured or linked.
 
 ## 3. Source and transitive dependencies
 
-Small single-purpose C++ repository; closure audit pending (dependencies, build system,
-any vendored copies) as part of the M3 spike.
+The pin force-configures private Abseil and GoogleTest copies, nlohmann/json, minja,
+tokenizers-cpp/SentencePiece, curl, and system OpenSSL. Its default target always compiles Hub/cache
+and HTTP sources. It mutates a nested SentencePiece tree with a symlink at configure time and uses
+`CACHE ... FORCE`, so it cannot be embedded under InferX's dependency policy unchanged.
 
 ## 4. Toolchain/C++23 compatibility
 
-Unverified at the pin; M3 must build it with GCC 13/Clang 18 in C++23 host mode (or
-isolate it at its own standard if unavoidable, per ADR 0005's isolation rule).
+The surface is C++20-compatible, but the unchanged CMake composition collides with InferX's Abseil
+targets before a qualified C++23 integration can be produced.
 
 ## 5. Runtime behavior caveats
 
-Audit pending: thread safety of concurrent `Encode`/`Decode`, whether it throws on
-malformed input (adapter must catch per ADR 0004), global state, and UTF-8 error
-policy (plan section 8.3 requires defined invalid-UTF-8 behavior).
+`PretrainedTokenizer` is explicitly thread-affine and non-thread-safe. Rust encode/decode results
+alias handle-owned scratch. More importantly, the C shim calls Rust `unwrap()` for malformed
+`tokenizer.json` and invalid UTF-8; the C++ layer can pre-screen common cases but cannot guarantee
+that arbitrary malformed tokenizer structures will not abort. The public surface has no upstream
+streaming decode state.
 
 ## 6. API stability and namespaces
 
@@ -47,9 +51,12 @@ Expected small; measure at M3.
 
 ## 9. Upgrade/rollback procedure
 
-M3 qualification: initialize, wrap, run differential/fuzz suites; upgrades re-run them.
+An upgrade is eligible only when it supplies local-only composition, parent-provided Abseil/tests,
+owned error returns across FFI, and upstream streaming decode state. It then runs the 10,000-case
+differential corpus, subprocess malformed-input corpus, TSan pool stress, and license/SBOM audit.
 
 ## 10. Disposition and approvals
 
-**Candidate** (deferred), owner `tokenization`; correctness/thread-safety/license
-approval owned by M3.
+**Rejected unchanged**, owner `tokenization`. `INFERX_ENABLE_TOKENIZATION=ON` fails configuration
+until ADR 0024 names an approved replacement pin. The rejection is a hard M3 completion gate, not a
+runtime fallback.

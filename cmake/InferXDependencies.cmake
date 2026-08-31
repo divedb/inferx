@@ -66,21 +66,14 @@ endfunction()
 # ---------------------------------------------------------------------------
 # Core profile dependencies.
 #
-# Abseil is required when tests are built (the qualification test proves the
-# ADR 0002 pin; M1 makes it unconditionally required). GoogleTest is required
-# for tests; Google Benchmark for benchmarks. Nothing else is inspected in the
-# default CPU configure: optional dependency directories are never touched
-# unless their feature is enabled.
+# Abseil, simdjson, and BLAKE3 are production requirements for the M3 artifact
+# reader. GoogleTest remains test-only and Google Benchmark benchmark-only.
 # ---------------------------------------------------------------------------
-if(BUILD_TESTING OR INFERX_BUILD_BENCHMARKS)
-  set(_INFERX_CORE_PROFILE core)
-else()
-  set(_INFERX_CORE_PROFILE "")
-endif()
+set(_INFERX_CORE_PROFILE core)
 
 if(_INFERX_CORE_PROFILE)
   # --- Abseil ---------------------------------------------------------------
-  if(BUILD_TESTING)
+  if(TRUE)
     if(INFERX_DEPENDENCY_PROVIDER STREQUAL "submodule")
       if(NOT EXISTS "${INFERX_THIRD_PARTY_DIR}/abseil-cpp/CMakeLists.txt")
         inferx_fail_missing_dependency(abseil-cpp abseil-cpp ${_INFERX_CORE_PROFILE})
@@ -109,6 +102,58 @@ if(_INFERX_CORE_PROFILE)
           "docs/dependencies/abseil-cpp.md).")
       endif()
     endif()
+  endif()
+
+  # --- simdjson -------------------------------------------------------------
+  if(INFERX_DEPENDENCY_PROVIDER STREQUAL "submodule")
+    if(NOT EXISTS "${INFERX_THIRD_PARTY_DIR}/simdjson/CMakeLists.txt")
+      inferx_fail_missing_dependency(simdjson simdjson ${_INFERX_CORE_PROFILE})
+    endif()
+    inferx_dependency_scope_push(BUILD_SHARED_LIBS SIMDJSON_INSTALL
+                                 SIMDJSON_ENABLE_THREADS
+                                 SIMDJSON_DISABLE_DEPRECATED_API
+                                 SIMDJSON_DEVELOPER_MODE)
+    set(BUILD_SHARED_LIBS OFF)
+    set(SIMDJSON_INSTALL OFF)
+    set(SIMDJSON_ENABLE_THREADS OFF)
+    set(SIMDJSON_DISABLE_DEPRECATED_API ON)
+    set(SIMDJSON_DEVELOPER_MODE OFF)
+    add_subdirectory("${INFERX_THIRD_PARTY_DIR}/simdjson"
+                     "${CMAKE_BINARY_DIR}/third_party/simdjson"
+                     SYSTEM EXCLUDE_FROM_ALL)
+    inferx_dependency_scope_pop(BUILD_SHARED_LIBS SIMDJSON_INSTALL
+                                SIMDJSON_ENABLE_THREADS
+                                SIMDJSON_DISABLE_DEPRECATED_API
+                                SIMDJSON_DEVELOPER_MODE)
+  else()
+    find_package(simdjson 4.6.5 CONFIG REQUIRED)
+  endif()
+
+  # --- BLAKE3 portable C implementation ------------------------------------
+  if(INFERX_DEPENDENCY_PROVIDER STREQUAL "submodule")
+    if(NOT EXISTS "${INFERX_THIRD_PARTY_DIR}/blake3/c/blake3.c")
+      inferx_fail_missing_dependency(blake3 blake3 ${_INFERX_CORE_PROFILE})
+    endif()
+    add_library(inferx_blake3 STATIC
+      "${INFERX_THIRD_PARTY_DIR}/blake3/c/blake3.c"
+      "${INFERX_THIRD_PARTY_DIR}/blake3/c/blake3_dispatch.c"
+      "${INFERX_THIRD_PARTY_DIR}/blake3/c/blake3_portable.c")
+    target_include_directories(inferx_blake3 SYSTEM PUBLIC
+      "${INFERX_THIRD_PARTY_DIR}/blake3/c")
+    target_compile_definitions(inferx_blake3 PRIVATE
+      BLAKE3_NO_SSE2 BLAKE3_NO_SSE41 BLAKE3_NO_AVX2 BLAKE3_NO_AVX512)
+    set_target_properties(inferx_blake3 PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    add_library(blake3::blake3 ALIAS inferx_blake3)
+  else()
+    find_package(blake3 1.8.7 CONFIG REQUIRED)
+  endif()
+
+  if(INFERX_ENABLE_TOKENIZATION)
+    message(FATAL_ERROR
+      "INFERX_ENABLE_TOKENIZATION is ON, but divedb/tokenizer f109b7a is "
+      "candidate-only and fails the M3.0 qualification gate: local-only "
+      "build, error-returning construction, and streaming decode ABI are "
+      "required. Keep this option OFF until ADR 0024 records an approved pin.")
   endif()
 
   # --- GoogleTest -----------------------------------------------------------

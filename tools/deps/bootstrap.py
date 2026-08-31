@@ -6,7 +6,7 @@ direct dependencies a feature needs; CMake itself never touches the network. Aft
 bootstrap, configure/build/test run fully offline.
 
 Usage:
-  tools/deps/bootstrap.py --profile core        # Abseil, GoogleTest, Google Benchmark
+  tools/deps/bootstrap.py --profile core        # Abseil, simdjson, BLAKE3, tests/benchmark
   tools/deps/bootstrap.py --list
   tools/deps/bootstrap.py --dependency cutlass  # initialize a single deferred dep
 """
