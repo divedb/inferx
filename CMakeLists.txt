@@ -29,6 +29,9 @@ include(cmake/InferXInstall.cmake)
 # ---------------------------------------------------------------------------
 add_subdirectory(src/base)
 add_subdirectory(src/config)
+add_subdirectory(src/api)
+add_subdirectory(src/lifecycle)
+add_subdirectory(src/engine)
 
 if(INFERX_BUILD_TOOLS)
   add_subdirectory(apps/inferx_info)

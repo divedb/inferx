@@ -42,6 +42,13 @@ target_link_libraries(inferx_m1_status_test PRIVATE
 gtest_discover_tests(inferx_m1_status_test
   PROPERTIES LABELS "m1-unit" TIMEOUT 60)
 
+add_executable(inferx_m1_fsm_test unit/engine/m1_fsm_test.cc)
+inferx_apply_project_options(inferx_m1_fsm_test)
+target_link_libraries(inferx_m1_fsm_test PRIVATE
+  inferx::engine GTest::gtest_main absl::status absl::strings)
+gtest_discover_tests(inferx_m1_fsm_test
+  PROPERTIES LABELS "m1-unit" TIMEOUT 60)
+
 add_executable(inferx_m1_config_test unit/config/m1_config_test.cc)
 inferx_apply_project_options(inferx_m1_config_test)
 target_link_libraries(inferx_m1_config_test PRIVATE
