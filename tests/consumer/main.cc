@@ -4,6 +4,9 @@
 #include <iostream>
 #include <string>
 
+#include "inferx/base/id.h"
+#include "inferx/base/status.h"
+#include "inferx/base/token.h"
 #include "inferx/base/version.h"
 
 int main() {
@@ -16,6 +19,17 @@ int main() {
   const std::string actual(inferx::GetVersionString());
   if (actual != expected) {
     std::cerr << "installed version " << actual << " != expected " << expected << "\n";
+    return 1;
+  }
+  const inferx::RequestId request(1);
+  const absl::StatusOr<inferx::ErrorReason> reason = inferx::GetErrorReason(absl::OkStatus());
+  if (!reason.ok() || *reason != inferx::ErrorReason::kNone) {
+    std::cerr << "installed status conventions did not behave\n";
+    return 1;
+  }
+  const inferx::TokenCount tokens = inferx::TokenCount::FromUint64(2, "consumer").value();
+  if (request.value() != 1 || tokens.value() != 2) {
+    std::cerr << "installed value types did not behave\n";
     return 1;
   }
   const inferx::Version version = inferx::GetVersion();

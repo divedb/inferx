@@ -45,3 +45,4 @@ Every ADR contains, in order:
 | [0005](0005-toolchain-and-cuda-language.md) | Toolchain floor and CUDA language level | Proposed |
 | [0006](0006-ci-and-supported-platforms.md) | CI lanes and supported platforms | Proposed |
 | [0007](0007-project-licensing.md) | Project licensing and distribution terms | Proposed (blocked on repository owner) |
+| [0008](0008-core-value-types.md) | Core value types (IDs, units, checked math, clocks) | Proposed |

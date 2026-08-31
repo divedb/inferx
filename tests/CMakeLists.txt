@@ -24,6 +24,25 @@ gtest_discover_tests(inferx_base_test
   PROPERTIES LABELS "unit" TIMEOUT 60)
 
 # ---------------------------------------------------------------------------
+# m1-unit: M1 base contract tests (labels include the general `m1` label).
+# ---------------------------------------------------------------------------
+add_executable(inferx_m1_value_test
+  unit/base/m1_id_test.cc
+  unit/base/m1_value_test.cc)
+inferx_apply_project_options(inferx_m1_value_test)
+target_link_libraries(inferx_m1_value_test PRIVATE
+  inferx::base GTest::gtest_main absl::strings absl::status)
+gtest_discover_tests(inferx_m1_value_test
+  PROPERTIES LABELS "m1-unit" TIMEOUT 60)
+
+add_executable(inferx_m1_status_test unit/base/m1_status_test.cc)
+inferx_apply_project_options(inferx_m1_status_test)
+target_link_libraries(inferx_m1_status_test PRIVATE
+  inferx::base GTest::gtest_main absl::strings absl::status)
+gtest_discover_tests(inferx_m1_status_test
+  PROPERTIES LABELS "m1-unit" TIMEOUT 60)
+
+# ---------------------------------------------------------------------------
 # compile: C++23 feature sentinel. Exercises library facilities, not macros.
 # ---------------------------------------------------------------------------
 add_executable(inferx_cxx23_smoke compile/cxx23_smoke.cc)
