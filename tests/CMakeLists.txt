@@ -42,6 +42,13 @@ target_link_libraries(inferx_m1_status_test PRIVATE
 gtest_discover_tests(inferx_m1_status_test
   PROPERTIES LABELS "m1-unit" TIMEOUT 60)
 
+add_executable(inferx_m1_config_test unit/config/m1_config_test.cc)
+inferx_apply_project_options(inferx_m1_config_test)
+target_link_libraries(inferx_m1_config_test PRIVATE
+  inferx::config GTest::gtest_main absl::status absl::strings)
+gtest_discover_tests(inferx_m1_config_test
+  PROPERTIES LABELS "m1-unit" TIMEOUT 60)
+
 # m1-channel: bounded channel semantics (threaded; TSan lane selects these).
 add_executable(inferx_m1_channel_test unit/base/m1_channel_test.cc)
 inferx_apply_project_options(inferx_m1_channel_test)

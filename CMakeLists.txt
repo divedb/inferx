@@ -28,6 +28,7 @@ include(cmake/InferXInstall.cmake)
 # inspected unless their feature is enabled (see InferXDependencies.cmake).
 # ---------------------------------------------------------------------------
 add_subdirectory(src/base)
+add_subdirectory(src/config)
 
 if(INFERX_BUILD_TOOLS)
   add_subdirectory(apps/inferx_info)

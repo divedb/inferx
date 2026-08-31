@@ -114,6 +114,36 @@ if(_INFERX_CORE_PROFILE)
     endif()
   endif()
 
+  # --- simdjson (unconditional: the config pipeline is core) ----------------
+  if(INFERX_DEPENDENCY_PROVIDER STREQUAL "submodule")
+    if(NOT EXISTS "${INFERX_THIRD_PARTY_DIR}/simdjson/CMakeLists.txt")
+      inferx_fail_missing_dependency(simdjson simdjson ${_INFERX_CORE_PROFILE})
+    endif()
+    inferx_dependency_scope_push(BUILD_SHARED_LIBS SIMDJSON_INSTALL
+                                 SIMDJSON_ENABLE_THREADS
+                                 SIMDJSON_DISABLE_DEPRECATED_API
+                                 SIMDJSON_DEVELOPER_MODE)
+    set(BUILD_SHARED_LIBS OFF)
+    set(SIMDJSON_INSTALL ON)
+    set(SIMDJSON_ENABLE_THREADS OFF)
+    set(SIMDJSON_DISABLE_DEPRECATED_API ON)
+    set(SIMDJSON_DEVELOPER_MODE OFF)
+    add_subdirectory("${INFERX_THIRD_PARTY_DIR}/simdjson"
+                     "${CMAKE_BINARY_DIR}/third_party/simdjson"
+                     SYSTEM EXCLUDE_FROM_ALL)
+    inferx_dependency_scope_pop(BUILD_SHARED_LIBS SIMDJSON_INSTALL
+                                SIMDJSON_ENABLE_THREADS
+                                SIMDJSON_DISABLE_DEPRECATED_API
+                                SIMDJSON_DEVELOPER_MODE)
+  else()
+    find_package(simdjson CONFIG REQUIRED)
+    if(simdjson_VERSION AND simdjson_VERSION VERSION_LESS 3.0.0)
+      message(FATAL_ERROR
+        "System simdjson ${simdjson_VERSION} is older than the accepted "
+        "minimum 3.0.0 (submodule pin: v4.6.5); see docs/dependencies/simdjson.md")
+    endif()
+  endif()
+
   # --- GoogleTest -----------------------------------------------------------
   if(BUILD_TESTING)
     if(INFERX_DEPENDENCY_PROVIDER STREQUAL "submodule")

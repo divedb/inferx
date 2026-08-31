@@ -2,12 +2,30 @@
   "schema_version": 1,
   "profiles": {
     "core": [
+      "simdjson",
       "abseil-cpp",
       "googletest",
       "benchmark"
     ]
   },
   "dependencies": [
+    {
+      "name": "simdjson",
+      "source_kind": "git-submodule",
+      "path": "third_party/simdjson",
+      "url": "https://github.com/simdjson/simdjson.git",
+      "revision": "0a851a64cd984e9e1a6cab93b6e773aa3f4dc30d",
+      "license": "Apache-2.0",
+      "license_file": "third_party/simdjson/LICENSE",
+      "owner": "config",
+      "features": [
+        "core"
+      ],
+      "default_enabled": true,
+      "status": "approved",
+      "qualification": "docs/dependencies/simdjson.md",
+      "notes": "Pinned at release v4.6.5 per m1.md section 3. Private parser adapter only; never appears in installed InferX headers."
+    },
     {
       "name": "abseil-cpp",
       "source_kind": "git-submodule",
