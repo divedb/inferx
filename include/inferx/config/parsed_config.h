@@ -45,6 +45,24 @@ struct SourcedValue {
   X(FakePrefillLatencyPerTokenNs, "fake_prefill_latency_per_token_ns", 100) \
   X(FakeDecodeLatencyPerSequenceNs, "fake_decode_latency_per_sequence_ns", 100)
 
+// M2 CUDA fields use flattened internal names while JSON serialization keeps
+// the documented nested `cuda` object. DeviceBudgetBytes == 0 denotes null.
+#define INFERX_CUDA_CONFIG_FIELDS(X)                                      \
+  X(CudaEnabled, "cuda.enabled", 0)                                       \
+  X(CudaDeviceId, "cuda.device_id", 0)                                    \
+  X(CudaDeviceReserveBytes, "cuda.device_reserve_bytes", 536870912)       \
+  X(CudaDeviceBudgetBytes, "cuda.device_budget_bytes", 0)                 \
+  X(CudaPinnedBudgetBytes, "cuda.pinned_budget_bytes", 268435456)         \
+  X(CudaEventPoolSlots, "cuda.event_pool_slots", 1024)                    \
+  X(CudaTimingEventSlots, "cuda.timing_event_slots", 32)                  \
+  X(CudaMetadataRingSlots, "cuda.metadata_ring_slots", 3)                 \
+  X(CudaMetadataSlotBytes, "cuda.metadata_slot_bytes", 1048576)           \
+  X(CudaStagingPoolSlots, "cuda.staging_pool_slots", 4)                   \
+  X(CudaStagingSlotBytes, "cuda.staging_slot_bytes", 4194304)             \
+  X(CudaWorkspaceSlots, "cuda.workspace_slots", 4)                        \
+  X(CudaWorkspaceBytesPerSlot, "cuda.workspace_bytes_per_slot", 16777216) \
+  X(CudaEnableTransferStream, "cuda.enable_transfer_stream", 1)
+
 #define INFERX_CONFIG_MEMBER(camel, json_name, default_value)                                    \
   SourcedValue camel = SourcedValue{(default_value), ConfigSource::kDefault};                    \
   void Set##camel /* NOLINT(bugprone-macro-parentheses): paste target */ (uint64_t value,        \
@@ -54,6 +72,7 @@ struct SourcedValue {
 
 struct ParsedConfig {
   INFERX_CONFIG_FIELDS(INFERX_CONFIG_MEMBER)
+  INFERX_CUDA_CONFIG_FIELDS(INFERX_CONFIG_MEMBER)
 };
 
 #undef INFERX_CONFIG_MEMBER

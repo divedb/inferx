@@ -7,9 +7,9 @@ Classification (see [ADR 0006](adr/0006-ci-and-supported-platforms.md)):
 - **experimental** — may build; failures do not block a release;
 - **unsupported** — rejected at configure time when detection is reliable.
 
-A lane appears here only with evidence (CI job or recorded owned-runner run), never
-because it configured once. This matrix is the seed from M0 local evidence; entries
-move to `required`/`supported` as the GPU CI lane produces records.
+A lane appears here only with evidence (CI job or recorded owned-runner run),
+never because it configured once. This matrix began with M0 local evidence.
+M2 does not promote a CUDA entry until the exact ADR 0019 artifact exists.
 
 ## Host operating system
 
@@ -55,16 +55,18 @@ Formatting note: clang-format 18's `Standard` accepts at most `c++20`/`Latest`
 
 | Component | Version | Classification | Evidence |
 |---|---|---|---|
-| CUDA toolkit 13.0 + GCC 13 host, arch `89` | local dev lane | supported (owned RTX 4080) | `cuda-release` preset, `gpu` CTest label, compute-sanitizer memcheck |
-| CUDA toolkit 12.0.140 + GCC 13 host, arch `89`, `.cu` at C++20 | fallback lane | experimental (isolation path) | built and ran the smoke locally; NVCC 12.0 cannot spell C++23 and CMake 3.28 lacks `cuda_std_23`, so `.cu` is isolated at C++20 per ADR 0005 |
-| CUDA toolkit 12.8 (candidate) | — | candidate pending qualification | required by `docs/milestones/m0.md` §6.1; accept with owned-runner matrix evidence |
-| Driver ≥ 590 (validated 591.86) | — | supported | owned runner record |
-| GPU compute capability | `89` (RTX 4080) accepted list | supported | `gpu` smoke fails on devices outside the declared list |
+| CUDA toolkit 12.8 + accepted host compiler, arch `89` | M2 minimum | required for M2 qualification; evidence pending | `ci-gpu.yml` must retain all M2 test, sanitizer, and benchmark artifacts; no local qualifying run yet |
+| CUDA toolkit 13.0.88 + GCC 13 host, arch `89` | additional local lane | experimental for M2 | all M2 CUDA targets compile locally; no accessible GPU, sanitizer, correctness, or benchmark qualification artifact |
+| CUDA toolkit 12.0.140 + GCC 13 host, arch `89`, `.cu` at C++20 | fallback lane | experimental, not M2 qualification | M2 host sources and test kernels compile locally; NVCC 12.0 is below the M2 floor and no GPU was accessible |
+| GPU compute capability | `89` (RTX 4080) accepted list | pending M2 qualification | capability validation rejects devices outside the explicit list; real-device M2 evidence still required |
 | No toolkit + `INFERX_ENABLE_CUDA=ON` | — | unsupported | configure failure with toolkit/bootstrap guidance |
 | `CMAKE_CUDA_ARCHITECTURES` unset or outside list | — | rejected | configure failure listing the accepted architectures |
 
 CPU presets never detect, include, link, or require CUDA (`INFERX_ENABLE_CUDA=OFF`
-default). A CPU sanitizer preset combined with CUDA is rejected at configure time.
+default). A CPU sanitizer preset combined with CUDA is rejected at configure
+time. CUDA 12.8 is enforced by `find_package(CUDAToolkit 12.8 REQUIRED)` when
+enabled. Configure/compile evidence from an older local toolkit is diagnostic
+only and cannot close M2.
 
 ## Release channel
 

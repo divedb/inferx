@@ -1,4 +1,4 @@
-# Optional, strict CUDA enablement (m0.md section 10.1; ADR 0005). Included by
+# Optional, strict CUDA enablement (m2.md section 11; ADRs 0005 and 0019). Included by
 # the top-level CMakeLists only when INFERX_ENABLE_CUDA=ON. Order matters:
 #
 #   1. explicit architecture list is required BEFORE toolkit detection, so an
@@ -57,7 +57,21 @@ if(NOT CMAKE_CUDA_COMPILER)
     "CMAKE_CUDA_COMPILER points at it. CUDA is never silently disabled.")
 endif()
 enable_language(CUDA)
-find_package(CUDAToolkit REQUIRED)
+if(CMAKE_CUDA_COMPILER_VERSION VERSION_LESS 12.8)
+  message(FATAL_ERROR
+    "M2 requires NVCC 12.8 or newer; detected "
+    "${CMAKE_CUDA_COMPILER_VERSION} at '${CMAKE_CUDA_COMPILER}'. See ADR 0019 "
+    "and docs/supported-platforms.md. CUDA is never silently downgraded.")
+endif()
+set(CMAKE_CUDA_RUNTIME_LIBRARY Shared)
+find_package(CUDAToolkit 12.8 REQUIRED)
+if(INFERX_BUILD_COMPUTE_SANITIZER_TESTS)
+  find_program(INFERX_COMPUTE_SANITIZER_BIN NAMES compute-sanitizer)
+  if(NOT INFERX_COMPUTE_SANITIZER_BIN)
+    message(FATAL_ERROR
+      "INFERX_BUILD_COMPUTE_SANITIZER_TESTS=ON requires compute-sanitizer")
+  endif()
+endif()
 
 # NVCC language level (ADR 0005): C++23 where both the toolkit and CMake can
 # express it, else the CUDA subset is isolated at C++20. The host project
@@ -78,7 +92,5 @@ set(CMAKE_CUDA_STANDARD ${INFERX_CUDA_CXX_STANDARD})
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_EXTENSIONS OFF)
 
-# Host-compiler pairing: no speculative rejection — local evidence shows the
-# CUDA 12.0.140 + GCC 13 pairing compiles and runs this smoke (recorded in
-# docs/supported-platforms.md as an experimental lane). NVCC's own unsupported-
-# host error is authoritative if a future combination regresses.
+# Host-compiler pairing: no speculative rejection. NVCC's own unsupported-host
+# error is authoritative if a future combination regresses.

@@ -8,6 +8,7 @@
 #ifndef INFERX_BASE_STATUS_H_
 #define INFERX_BASE_STATUS_H_
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -45,6 +46,17 @@ enum class ErrorReason : uint16_t {  // NOLINT(performance-enum-size)
   kIoFailure = 18,
   kEventLimit = 19,
   kDeadlock = 20,
+  kCudaInvalidDevice = 100,
+  kCudaOutOfMemory = 101,
+  kCudaLaunchRejected = 102,
+  kCudaAsyncFault = 103,
+  kCudaDeviceLost = 104,
+  kCudaApiFailure = 105,
+  kStaleFence = 106,
+  kStalePoolLease = 107,
+  kPoolExhausted = 108,
+  kPendingResource = 109,
+  kUnsupportedCapability = 110,
 };
 
 // Payload URL carrying the reason classification on an absl::Status.
@@ -95,13 +107,68 @@ inline constexpr absl::string_view kErrorReasonPayloadUrl = "type.inferx.dev/err
       return "event-limit";
     case ErrorReason::kDeadlock:
       return "deadlock";
+    case ErrorReason::kCudaInvalidDevice:
+      return "cuda-invalid-device";
+    case ErrorReason::kCudaOutOfMemory:
+      return "cuda-out-of-memory";
+    case ErrorReason::kCudaLaunchRejected:
+      return "cuda-launch-rejected";
+    case ErrorReason::kCudaAsyncFault:
+      return "cuda-async-fault";
+    case ErrorReason::kCudaDeviceLost:
+      return "cuda-device-lost";
+    case ErrorReason::kCudaApiFailure:
+      return "cuda-api-failure";
+    case ErrorReason::kStaleFence:
+      return "stale-fence";
+    case ErrorReason::kStalePoolLease:
+      return "stale-pool-lease";
+    case ErrorReason::kPoolExhausted:
+      return "pool-exhausted";
+    case ErrorReason::kPendingResource:
+      return "pending-resource";
+    case ErrorReason::kUnsupportedCapability:
+      return "unsupported-capability";
   }
   return "unknown";
 }
 
 [[nodiscard]] inline std::optional<ErrorReason> ErrorReasonFromName(absl::string_view name) {
-  for (uint32_t value = 0; value <= 20; ++value) {
-    const auto reason = static_cast<ErrorReason>(value);
+  constexpr std::array<ErrorReason, 32> kReasons{
+      ErrorReason::kNone,
+      ErrorReason::kInvalidConfig,
+      ErrorReason::kInvalidWorkload,
+      ErrorReason::kInvalidRequest,
+      ErrorReason::kDuplicateRequest,
+      ErrorReason::kQueueFull,
+      ErrorReason::kCapacityExhausted,
+      ErrorReason::kImpossibleContext,
+      ErrorReason::kInvalidTransition,
+      ErrorReason::kStaleCompletion,
+      ErrorReason::kUnknownResource,
+      ErrorReason::kExecutorRejected,
+      ErrorReason::kExecutorFailure,
+      ErrorReason::kDeadlineExpired,
+      ErrorReason::kExplicitCancellation,
+      ErrorReason::kShutdown,
+      ErrorReason::kReplayMismatch,
+      ErrorReason::kInvariantViolation,
+      ErrorReason::kIoFailure,
+      ErrorReason::kEventLimit,
+      ErrorReason::kDeadlock,
+      ErrorReason::kCudaInvalidDevice,
+      ErrorReason::kCudaOutOfMemory,
+      ErrorReason::kCudaLaunchRejected,
+      ErrorReason::kCudaAsyncFault,
+      ErrorReason::kCudaDeviceLost,
+      ErrorReason::kCudaApiFailure,
+      ErrorReason::kStaleFence,
+      ErrorReason::kStalePoolLease,
+      ErrorReason::kPoolExhausted,
+      ErrorReason::kPendingResource,
+      ErrorReason::kUnsupportedCapability,
+  };
+  for (ErrorReason reason : kReasons) {
     if (ErrorReasonToName(reason) == name) {
       return reason;
     }

@@ -41,6 +41,12 @@ struct BlockIdTag {};
 struct PlanBufferSlotTag {};
 struct TenantScopeTag {};
 struct TokenIdTag {};
+struct AllocationIdTag {};
+struct PoolIdTag {};
+struct PoolSlotIdTag {};
+struct PoolGenerationTag {};
+struct FenceSlotIdTag {};
+struct FenceGenerationTag {};
 
 // StrongId<Tag, Rep>: explicit construction, value access, comparison,
 // hashing, and formatting. No implicit integer conversion and no cross-tag
@@ -95,6 +101,12 @@ using TenantScope = StrongId<TenantScopeTag, uint32_t>;
 // Token IDs may be negative (for example added/special-token ranges); no
 // non-negative assumption is baked into core validation.
 using TokenId = StrongId<TokenIdTag, int32_t>;
+using AllocationId = StrongId<AllocationIdTag, uint64_t>;
+using PoolId = StrongId<PoolIdTag, uint64_t>;
+using PoolSlotId = StrongId<PoolSlotIdTag, uint32_t>;
+using PoolGeneration = StrongId<PoolGenerationTag, uint64_t>;
+using FenceSlotId = StrongId<FenceSlotIdTag, uint32_t>;
+using FenceGeneration = StrongId<FenceGenerationTag, uint64_t>;
 
 // Coordinator-owned sequential generator. Explicit initial value; returns
 // OutOfRange before wraparound instead of reissuing IDs.

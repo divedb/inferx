@@ -86,14 +86,18 @@ A developer without CUDA can complete every CPU task. With a toolkit:
 ```bash
 cmake --preset cuda-release
 cmake --build --preset cuda-release --parallel
-ctest --preset cuda-release -L gpu --output-on-failure
-compute-sanitizer --tool memcheck out/build/cuda-release/platform/cuda/smoke/inferx_cuda_smoke_test
+out/build/cuda-release/inferx-device-info --json
+out/build/cuda-release/inferx-device-info --self-test
+ctest --preset cuda-release -L m2 --output-on-failure
+tools/ci/run_compute_sanitizer.sh --preset cuda-release --suite m2 \
+  --output out/sanitizer/m2
+tools/bench/run_m2_cuda.sh --preset cuda-release --output out/benchmarks/m2
 ```
 
 - Architectures are explicit (default accepted list: `89`); override in
   `CMakeUserPresets.json`, never via `native` in shared presets.
-- No GPU visible? The test exits 77 (CTest skip) with the reason — fine on a
-  dev box, a **failure** on the owned GPU runner.
+- No GPU visible? CUDA executables report a failure locally; the owned runner
+  additionally requires every M2 label to select and pass tests without skips.
 - `INFERX_ENABLE_CUDA=ON` with a missing toolkit is a configure error, never a
   silent CPU fallback (`tests/failure/` covers it).
 

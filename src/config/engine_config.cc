@@ -1,6 +1,9 @@
 #include "inferx/config/engine_config.h"
 
 #include <algorithm>
+#include <bit>
+#include <cstdint>
+#include <limits>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -60,6 +63,7 @@ std::vector<std::string> CanonicalFieldOrder() {
   std::vector<std::string> names;
 #define INFERX_COLLECT(camel, json_name, default_value) names.emplace_back(json_name);
   INFERX_CONFIG_FIELDS(INFERX_COLLECT)
+  INFERX_CUDA_CONFIG_FIELDS(INFERX_COLLECT)
 #undef INFERX_COLLECT
   std::sort(names.begin(), names.end());
   return names;
@@ -85,6 +89,21 @@ absl::StatusOr<EngineConfig> EngineConfig::Validate(const ParsedConfig& parsed,
       {"fake_base_latency_ns", parsed.FakeBaseLatencyNs.value, 1, 0},
       {"fake_prefill_latency_per_token_ns", parsed.FakePrefillLatencyPerTokenNs.value, 0, 0},
       {"fake_decode_latency_per_sequence_ns", parsed.FakeDecodeLatencyPerSequenceNs.value, 0, 0},
+      {"cuda.device_budget_bytes", parsed.CudaDeviceBudgetBytes.value, 0, 0},
+      {"cuda.device_id", parsed.CudaDeviceId.value, 0, std::numeric_limits<uint32_t>::max()},
+      {"cuda.device_reserve_bytes", parsed.CudaDeviceReserveBytes.value, 0, 0},
+      {"cuda.enable_transfer_stream", parsed.CudaEnableTransferStream.value, 0, 1},
+      {"cuda.enabled", parsed.CudaEnabled.value, 0, 1},
+      {"cuda.event_pool_slots", parsed.CudaEventPoolSlots.value, 8, 65536},
+      {"cuda.metadata_ring_slots", parsed.CudaMetadataRingSlots.value, 2, 64},
+      {"cuda.metadata_slot_bytes", parsed.CudaMetadataSlotBytes.value, 4096, 16777216},
+      {"cuda.pinned_budget_bytes", parsed.CudaPinnedBudgetBytes.value, 1048576, 4294967296ULL},
+      {"cuda.staging_pool_slots", parsed.CudaStagingPoolSlots.value, 2, 256},
+      {"cuda.staging_slot_bytes", parsed.CudaStagingSlotBytes.value, 4096, 67108864},
+      {"cuda.timing_event_slots", parsed.CudaTimingEventSlots.value, 2, 256},
+      {"cuda.workspace_bytes_per_slot", parsed.CudaWorkspaceBytesPerSlot.value, 1048576,
+       4294967296ULL},
+      {"cuda.workspace_slots", parsed.CudaWorkspaceSlots.value, 1, 64},
   };
 
   for (const Range& range : ranges) {
@@ -121,15 +140,79 @@ absl::StatusOr<EngineConfig> EngineConfig::Validate(const ParsedConfig& parsed,
     return overflow;
   }
 
+  const bool has_cuda_section =
+#define INFERX_CUDA_PRESENT(camel, json_name, default_value) \
+  parsed.camel.source != ConfigSource::kDefault ||
+      INFERX_CUDA_CONFIG_FIELDS(INFERX_CUDA_PRESENT)
+#undef INFERX_CUDA_PRESENT
+          false;
+  if (parsed.CudaEnabled.value != 0 && !build.cuda) {
+    return FieldError("cuda.enabled", "true requires an INFERX_ENABLE_CUDA build");
+  }
+  if (has_cuda_section) {
+    if (!std::has_single_bit(parsed.CudaMetadataSlotBytes.value)) {
+      return FieldError("cuda.metadata_slot_bytes", "must be a power of two");
+    }
+    if (!std::has_single_bit(parsed.CudaStagingSlotBytes.value)) {
+      return FieldError("cuda.staging_slot_bytes", "must be a power of two");
+    }
+    if ((parsed.CudaStagingPoolSlots.value & 1U) != 0) {
+      return FieldError("cuda.staging_pool_slots", "must be even");
+    }
+    if (parsed.CudaWorkspaceSlots.value < parsed.PlanBufferSlots.value) {
+      return FieldError("cuda.workspace_slots", "must cover configured in-flight plan buffers");
+    }
+    const uint64_t max_test_inflight =
+        std::min({parsed.CudaMetadataRingSlots.value, parsed.CudaWorkspaceSlots.value,
+                  parsed.CudaStagingPoolSlots.value / 2});
+    absl::StatusOr<uint64_t> completion_events =
+        CheckedMul(max_test_inflight, uint64_t{2}, "config.cuda.event_pool_slots");
+    if (!completion_events.ok()) {
+      return completion_events.status();
+    }
+    absl::StatusOr<uint64_t> required_events = CheckedAdd(
+        parsed.CudaMetadataRingSlots.value, *completion_events, "config.cuda.event_pool_slots");
+    if (!required_events.ok()) {
+      return required_events.status();
+    }
+    if (parsed.CudaEventPoolSlots.value < *required_events) {
+      return FieldError("cuda.event_pool_slots",
+                        "must cover metadata uploads plus two pipeline events per in-flight test");
+    }
+    absl::StatusOr<uint64_t> metadata_total =
+        CheckedMul(parsed.CudaMetadataRingSlots.value, parsed.CudaMetadataSlotBytes.value,
+                   "config.cuda.metadata_bytes");
+    if (!metadata_total.ok()) return metadata_total.status();
+    absl::StatusOr<uint64_t> staging_total =
+        CheckedMul(parsed.CudaStagingPoolSlots.value, parsed.CudaStagingSlotBytes.value,
+                   "config.cuda.staging_bytes");
+    if (!staging_total.ok()) return staging_total.status();
+    absl::StatusOr<uint64_t> workspace_total =
+        CheckedMul(parsed.CudaWorkspaceSlots.value, parsed.CudaWorkspaceBytesPerSlot.value,
+                   "config.cuda.workspace_bytes");
+    if (!workspace_total.ok()) return workspace_total.status();
+    if (*staging_total > parsed.CudaPinnedBudgetBytes.value ||
+        *metadata_total > parsed.CudaPinnedBudgetBytes.value - *staging_total) {
+      return FieldError("cuda.pinned_budget_bytes", "must cover staging and pinned metadata pools");
+    }
+    if (parsed.CudaDeviceBudgetBytes.value != 0 &&
+        (*metadata_total > parsed.CudaDeviceBudgetBytes.value ||
+         *workspace_total > parsed.CudaDeviceBudgetBytes.value - *metadata_total)) {
+      return FieldError("cuda.device_budget_bytes",
+                        "must cover device metadata and workspace pools");
+    }
+  }
+
   EngineConfig effective;
   effective.values_ = parsed;
+  effective.has_cuda_section_ = has_cuda_section;
   return effective;
 }
 
 std::string EngineConfig::CanonicalJson() const {
   // Schema version first, then lexicographic field order, decimal integers,
   // no insignificant whitespace (m1.md section 8.3).
-  std::string out = "{\"schema_version\":1";
+  std::string out = has_cuda_section_ ? "{\"schema_version\":2" : "{\"schema_version\":1";
   std::vector<std::pair<std::string, uint64_t>> fields;
 #define INFERX_PAIR(camel, json_name, default_value) \
   fields.emplace_back(json_name, values_.camel.value);
@@ -142,6 +225,30 @@ std::string EngineConfig::CanonicalJson() const {
     out += name;
     out += "\":";
     out += absl::StrCat(value);
+  }
+  if (has_cuda_section_) {
+    out += ",\"cuda\":{";
+    std::vector<std::pair<std::string, uint64_t>> cuda_fields;
+#define INFERX_CUDA_PAIR(camel, json_name, default_value) \
+  cuda_fields.emplace_back(std::string(json_name).substr(5), values_.camel.value);
+    INFERX_CUDA_CONFIG_FIELDS(INFERX_CUDA_PAIR)
+#undef INFERX_CUDA_PAIR
+    std::sort(cuda_fields.begin(), cuda_fields.end(),
+              [](const auto& a, const auto& b) { return a.first < b.first; });
+    bool first = true;
+    for (const auto& [name, value] : cuda_fields) {
+      if (!first) out += ",";
+      first = false;
+      out += "\"" + name + "\":";
+      if (name == "enabled" || name == "enable_transfer_stream") {
+        out += value == 0 ? "false" : "true";
+      } else if (name == "device_budget_bytes" && value == 0) {
+        out += "null";
+      } else {
+        out += absl::StrCat(value);
+      }
+    }
+    out += "}";
   }
   out += "}";
   return out;

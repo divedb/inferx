@@ -54,6 +54,21 @@ option(INFERX_BUILD_TOOLS "Build InferX developer tools such as inferx-info."
        ${_INFERX_TOP_LEVEL_DEFAULT})
 option(INFERX_ENABLE_CUDA "Enable the optional CUDA platform (explicit opt-in; a missing toolkit is fatal when ON)."
        OFF)
+option(INFERX_BUILD_GPU_TESTS "Build M2 GPU tests (requires INFERX_ENABLE_CUDA)."
+       ${_INFERX_TOP_LEVEL_DEFAULT})
+option(INFERX_BUILD_COMPUTE_SANITIZER_TESTS
+       "Register M2 Compute Sanitizer tests (requires CUDA and compute-sanitizer)." OFF)
+option(INFERX_CUDA_ENABLE_LINEINFO
+       "Compile InferX CUDA kernels with device line information." ON)
+if(INFERX_BUILD_GPU_TESTS AND NOT INFERX_ENABLE_CUDA)
+  # GPU tests default with top-level builds but remain dormant in CPU builds.
+  set(INFERX_BUILD_GPU_TESTS OFF CACHE BOOL
+      "Build M2 GPU tests (requires INFERX_ENABLE_CUDA)." FORCE)
+endif()
+if(INFERX_BUILD_COMPUTE_SANITIZER_TESTS AND NOT INFERX_ENABLE_CUDA)
+  message(FATAL_ERROR
+    "INFERX_BUILD_COMPUTE_SANITIZER_TESTS=ON requires INFERX_ENABLE_CUDA=ON")
+endif()
 option(INFERX_WARNINGS_AS_ERRORS "Treat warnings as errors on InferX-owned targets only."
        ${_INFERX_TOP_LEVEL_DEFAULT})
 option(INFERX_ENABLE_CLANG_TIDY "Run clang-tidy on InferX-owned targets (analysis preset)."
