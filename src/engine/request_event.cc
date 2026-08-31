@@ -61,16 +61,6 @@ std::optional<RequestEventKind> RequestEventKindFromName(absl::string_view name)
   return std::nullopt;
 }
 
-absl::string_view ToString(WorkKind kind) {
-  switch (kind) {
-    case WorkKind::kPrefill:
-      return "prefill";
-    case WorkKind::kDecode:
-      return "decode";
-  }
-  return "unknown";
-}
-
 RequestEventKind KindOf(const RequestEvent& event) {
   return std::visit(
       [](const auto& payload) -> RequestEventKind {

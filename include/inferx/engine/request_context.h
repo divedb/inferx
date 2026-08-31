@@ -16,6 +16,7 @@
 #include "inferx/base/token.h"
 #include "inferx/engine/execution_completion.h"
 #include "inferx/lifecycle/request_state.h"
+#include "inferx/scheduler/work_kind.h"
 
 namespace inferx {
 
@@ -54,10 +55,16 @@ struct RequestContext {
   uint32_t num_scheduled_tokens = 0;  // outstanding work; zero on every exit
   uint32_t num_committed_output_tokens = 0;
 
+  // Conservative admission cost may exceed an internal synthetic finish
+  // guard; normally equal to request.generation.max_output_tokens.
+  TokenCount reservation_output_tokens{0};
+
   std::optional<ReservationId> reservation;
   std::optional<StepId> in_flight_step;
   std::optional<ExecutionTicketId> in_flight_ticket;
   std::optional<ExecutionTicket> submitted_ticket;
+  std::optional<WorkKind> in_flight_work;
+  std::optional<TokenRange> in_flight_range;
 
   std::optional<TerminalResponse> terminal;
   bool terminal_emitted = false;

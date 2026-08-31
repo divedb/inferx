@@ -5,10 +5,12 @@
 #ifndef INFERX_ENGINE_REQUEST_CONTROLLER_H_
 #define INFERX_ENGINE_REQUEST_CONTROLLER_H_
 
+#include <memory>
+
 #include "absl/status/statusor.h"
+#include "inferx/base/clock.h"
 #include "inferx/engine/request_context.h"
 #include "inferx/engine/request_event.h"
-#include "inferx/engine/request_state_machine.h"
 
 namespace inferx {
 
@@ -34,6 +36,10 @@ class RequestController {
   // record. The context is unchanged on any failure.
   absl::StatusOr<PreparedTransition> Prepare(const RequestContext& request,
                                              const RequestEvent& event) const;
+
+  // Stamps a prepared terminal/pending-terminal record before the no-fail
+  // commit. Keeping this operation here preserves controller-only mutation.
+  void StampTerminalTime(PreparedTransition& transition, MonotonicTime now) const noexcept;
 
   // Applies the prepared transition: state, counters, epochs, in-flight
   // bookkeeping, terminal marker. Resource acquisition/release around the

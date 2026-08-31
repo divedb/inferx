@@ -14,6 +14,7 @@
 #include "absl/status/statusor.h"
 #include "inferx/base/id.h"
 #include "inferx/engine/request_context.h"
+#include "inferx/scheduler/scheduling_snapshot.h"
 
 namespace inferx {
 
@@ -42,6 +43,10 @@ class RequestRegistry {
   // Deterministic arrival-order view of live requests (scheduling consumes
   // this order; hash iteration is never observable).
   void AppendArrivalOrder(std::vector<const RequestContext*>& output) const;
+
+  // Builds value-only scheduling facts in deterministic arrival order. The
+  // scheduler never observes a RequestContext pointer or request-owned span.
+  void AppendSchedulingViews(std::vector<scheduler::RequestSchedulingView>& output) const;
 
  private:
   std::unordered_map<RequestId, std::unique_ptr<RequestContext>, RequestIdHash> by_id_;

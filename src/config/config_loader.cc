@@ -77,6 +77,15 @@ absl::StatusOr<FieldValues> ParseConfigJson(absl::string_view json_text) {
   if (!parsed.ok()) {
     return parsed;
   }
+  // User config objects may omit the schema marker; canonical effective
+  // config embedded in replay always includes it. Accept exactly v1 and keep
+  // the marker out of the overlay field set.
+  if (auto version = parsed->find("schema_version"); version != parsed->end()) {
+    if (version->second != 1) {
+      return FieldError("config", "schema_version", "unsupported version");
+    }
+    parsed->erase(version);
+  }
   // Unknown JSON keys are errors at the config boundary (ADR 0011), not
   // only when a layer is applied.
   for (const auto& [name, value] : *parsed) {
@@ -113,13 +122,15 @@ absl::StatusOr<FieldValues> ReadConfigFile(const std::string& path) {
   return ParseConfigJson(text);
 }
 
-FieldValues ReadConfigEnvironment() {
+absl::StatusOr<FieldValues> ReadConfigEnvironment() {
   FieldValues values;
-#define INFERX_CONFIG_ENV(camel, json_name, default_value)                                     \
-  if (const char* raw = std::getenv(EnvironmentName((json_name)).c_str())) {                   \
-    if (absl::StatusOr<uint64_t> parsed = ParseConfigInteger(raw, (json_name)); parsed.ok()) { \
-      values.emplace((json_name), *parsed);                                                    \
-    }                                                                                          \
+#define INFERX_CONFIG_ENV(camel, json_name, default_value)                   \
+  if (const char* raw = std::getenv(EnvironmentName((json_name)).c_str())) { \
+    absl::StatusOr<uint64_t> parsed = ParseConfigInteger(raw, (json_name));  \
+    if (!parsed.ok()) {                                                      \
+      return parsed.status();                                                \
+    }                                                                        \
+    values.emplace((json_name), *parsed);                                    \
   }
   INFERX_CONFIG_FIELDS(INFERX_CONFIG_ENV)
 #undef INFERX_CONFIG_ENV

@@ -4,34 +4,40 @@
 #ifndef INFERX_ENGINE_EXECUTION_COMPLETION_H_
 #define INFERX_ENGINE_EXECUTION_COMPLETION_H_
 
+#include <cstdint>
 #include <optional>
 
 #include "absl/status/status.h"
 #include "inferx/base/id.h"
+#include "inferx/base/status.h"
 #include "inferx/base/token.h"
+#include "inferx/scheduler/work_kind.h"
 
 namespace inferx {
 
-// Identifies submitted work across plan, ticket, and completion.
+// Hardware-neutral ticket returned for one accepted plan. Request identity is
+// carried per completion item because one ticket may own a batch.
 struct ExecutionTicket {
+  ExecutionTicketId id{0};
+  StepId step{0};
+  uint32_t item_count = 0;
+};
+
+// One completion item echoes every identity/range needed to reject stale or
+// wrong-request work without touching newer state (m1.md section 13.3).
+struct ExecutionCompletion {
+  ExecutionTicketId ticket{0};
+  StepId step{0};
+  uint32_t item_ordinal = 0;
+  uint32_t item_count = 0;
   RequestId request{0};
   SequenceId sequence{0};
   RequestEpoch epoch{0};
-  StepId step{0};
-  ExecutionTicketId ticket{0};
-  TokenCount scheduled_tokens{0};
-};
-
-// Fake-executor completion value (M1 shape; M2 replaces the backend, not the
-// value contract).
-struct ExecutionCompletion {
-  ExecutionTicket ticket;
-  bool success = false;
-  std::optional<absl::Status> failure;  // set when !success
-  // Prompt/decode work marked computed (m1.md section 10.1)...
-  TokenCount computed_tokens{0};
-  // ...and synthetic output tokens committed by this completion.
-  TokenCount committed_tokens{0};
+  WorkKind kind = WorkKind::kPrefill;
+  TokenRange scheduled_tokens{TokenOffset(0), TokenOffset(0)};
+  absl::Status status;
+  ErrorReason error_reason = ErrorReason::kNone;
+  std::optional<TokenId> output_token;
 };
 
 }  // namespace inferx

@@ -3,6 +3,7 @@
 # (M1.6) which fixes its concrete shape; the controller/registry/FSM here
 # are the authoritative decision and ownership machinery.
 add_library(inferx_engine STATIC
+  lifecycle_coordinator.cc
   request_event.cc
   request_state_machine.cc
   request_controller.cc
@@ -12,7 +13,7 @@ set_target_properties(inferx_engine PROPERTIES EXPORT_NAME engine)
 
 inferx_apply_project_options(inferx_engine)
 target_link_libraries(inferx_engine
-  PUBLIC inferx::base inferx::api inferx::lifecycle
+  PUBLIC inferx::base inferx::api inferx::lifecycle inferx::scheduler
   PRIVATE $<BUILD_INTERFACE:absl::status> $<BUILD_INTERFACE:absl::strings>
         $<BUILD_INTERFACE:absl::flat_hash_map> $<BUILD_INTERFACE:absl::btree>)
 
