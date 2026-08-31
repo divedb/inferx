@@ -46,3 +46,4 @@ Every ADR contains, in order:
 | [0006](0006-ci-and-supported-platforms.md) | CI lanes and supported platforms | Proposed |
 | [0007](0007-project-licensing.md) | Project licensing and distribution terms | Proposed (blocked on repository owner) |
 | [0008](0008-core-value-types.md) | Core value types (IDs, units, checked math, clocks) | Proposed |
+| [0013](0013-bounded-channel.md) | Bounded channel semantics | Proposed |

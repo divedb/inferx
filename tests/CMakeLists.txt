@@ -42,6 +42,14 @@ target_link_libraries(inferx_m1_status_test PRIVATE
 gtest_discover_tests(inferx_m1_status_test
   PROPERTIES LABELS "m1-unit" TIMEOUT 60)
 
+# m1-channel: bounded channel semantics (threaded; TSan lane selects these).
+add_executable(inferx_m1_channel_test unit/base/m1_channel_test.cc)
+inferx_apply_project_options(inferx_m1_channel_test)
+target_link_libraries(inferx_m1_channel_test PRIVATE
+  inferx::base GTest::gtest_main absl::strings)
+gtest_discover_tests(inferx_m1_channel_test
+  PROPERTIES LABELS "m1-channel" TIMEOUT 120)
+
 # ---------------------------------------------------------------------------
 # compile: C++23 feature sentinel. Exercises library facilities, not macros.
 # ---------------------------------------------------------------------------
