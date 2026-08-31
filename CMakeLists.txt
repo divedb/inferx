@@ -1,0 +1,64 @@
+cmake_minimum_required(VERSION 3.28)
+
+project(InferX VERSION 0.0.0 LANGUAGES CXX)
+
+# ---------------------------------------------------------------------------
+# Language policy: C++23, no extensions, required (never silently falls back).
+# CUDA is enabled only by the CUDA module; this file never touches it.
+# ---------------------------------------------------------------------------
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# ---------------------------------------------------------------------------
+# Project policy: options, warnings, sanitizers, dependencies, install rules.
+# Order matters: options before include(CTest) so BUILD_TESTING's default is
+# ours (top-level ON, subproject OFF).
+# ---------------------------------------------------------------------------
+include(cmake/InferXProjectOptions.cmake)
+include(cmake/InferXSanitizers.cmake)
+include(GNUInstallDirs)
+include(CTest)
+include(cmake/InferXDependencies.cmake)
+include(cmake/InferXInstall.cmake)
+
+# ---------------------------------------------------------------------------
+# M0-owned subdirectories only. Optional dependency directories are never
+# inspected unless their feature is enabled (see InferXDependencies.cmake).
+# ---------------------------------------------------------------------------
+add_subdirectory(src/base)
+
+if(INFERX_BUILD_TOOLS)
+  add_subdirectory(apps/inferx_info)
+endif()
+
+if(INFERX_ENABLE_CUDA)
+  include(cmake/InferXCuda.cmake)
+  add_subdirectory(platform/cuda/smoke)
+endif()
+
+if(BUILD_TESTING)
+  add_subdirectory(tests)
+endif()
+
+if(INFERX_BUILD_BENCHMARKS)
+  add_subdirectory(benchmarks)
+endif()
+
+# ---------------------------------------------------------------------------
+# Format targets (m0.md section 9.1): 'format' mutates tracked InferX
+# sources; 'format-check' never mutates and is what CI runs.
+# ---------------------------------------------------------------------------
+add_custom_target(format
+  COMMAND ${CMAKE_COMMAND} -E env INFERX_CLANG_FORMAT=${INFERX_CLANG_FORMAT_ENV}
+          ${CMAKE_SOURCE_DIR}/tools/check_format.sh --fix
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  USES_TERMINAL
+  COMMENT "InferX format: rewrite tracked sources (clang-format major 18)")
+
+add_custom_target(format-check
+  COMMAND ${CMAKE_SOURCE_DIR}/tools/check_format.sh
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  USES_TERMINAL
+  COMMENT "InferX format-check: verify formatting without mutating")

@@ -4,9 +4,6 @@
 [submodule "third_party/tokenizer"]
 	path = third_party/tokenizer
 	url = https://github.com/divedb/tokenizer.git
-[submodule "third_party/folly"]
-	path = third_party/folly
-	url = https://github.com/facebook/folly.git
 [submodule "third_party/beast"]
 	path = third_party/beast
 	url = https://github.com/boostorg/beast.git
@@ -19,3 +16,9 @@
 [submodule "third_party/cutlass"]
 	path = third_party/cutlass
 	url = https://github.com/NVIDIA/cutlass.git
+[submodule "third_party/googletest"]
+	path = third_party/googletest
+	url = https://github.com/google/googletest.git
+[submodule "third_party/benchmark"]
+	path = third_party/benchmark
+	url = https://github.com/google/benchmark.git

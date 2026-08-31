@@ -1,1 +1,29 @@
+# Build trees (see CMakePresets.json: everything generated lives under out/).
+out/
+build*/
+cmake-build-*/
+
+# Local CMake presets and compile databases are developer-machine specific.
+CMakeUserPresets.json
+compile_commands.json
+compile_flags.txt
+
+# Profiler and sanitizer outputs.
+*.prof
+*.profraw
+callgrind.out.*
+perf.data*
+core
+
+# Python developer tooling caches.
+__pycache__/
+*.py[cod]
 .venv/
+.mypy_cache/
+.pytest_cache/
+
+# Editor and OS noise.
+.idea/
+.vscode/
+*.swp
+.DS_Store

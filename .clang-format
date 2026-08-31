@@ -1,7 +1,15 @@
+# Formatting is a merge gate; run `tools/check_format.sh` or the CMake
+# `format-check` target, not a bare `clang-format`, so the pinned major
+# version (see docs/development.md) is enforced.
+#
+# Standard: the pinned clang-format 18 cannot spell C++23 (the `c++23` and
+# `c++2b` tokens require clang-format 19+); `Latest` is the newest it accepts
+# (= C++20 in 18) and is deterministic for a pinned major. Switch to
+# `c++23` when the pinned clang-format major reaches 19 — tracked in
+# docs/supported-platforms.md.
 BasedOnStyle: Google
-Standard: c++20
+Standard: Latest
 ColumnLimit: 100
 DerivePointerAlignment: false
 PointerAlignment: Left
 SortIncludes: CaseSensitive
-

@@ -12,6 +12,7 @@ Checks: >
   performance-*,
   portability-*
 WarningsAsErrors: '*'
-HeaderFilterRegex: '^(include|src|apps|tests|benchmarks)/'
+# CMake passes absolute paths, so anchor on the project-relative directory
+# names rather than the start of the string.
+HeaderFilterRegex: '(^|/)(include|src|apps|tests|benchmarks|platform)/'
 FormatStyle: file
-

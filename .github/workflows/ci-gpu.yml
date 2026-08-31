@@ -1,0 +1,69 @@
+# GPU lane (m0.md section 11.2; ADR 0006). Runs on an explicitly managed,
+# owned GPU runner: manual dispatch and protected main changes initially; it
+# becomes a REQUIRED presubmit before M2 merges. A skipped gpu test, an
+# unsupported compute capability, or "no visible device" is a JOB FAILURE
+# here — developer machines may skip with CTest code 77, this lane may not.
+
+name: ci-gpu
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-gpu-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cuda-smoke:
+    name: CUDA smoke (owned GPU runner)
+    runs-on: [self-hosted, gpu]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Record device and toolchain evidence
+        run: |
+          set -e
+          nvidia-smi --query-gpu=name,compute_cap,memory.total,driver_version \
+            --format=csv,noheader | tee gpu-evidence.txt
+          # UUID-redacted topology summary: counts and links only.
+          nvidia-smi topo -m | sed -E 's/[0-9A-Fa-f]{8}-[0-9A-Fa-f-]{27,}/<uuid-redacted>/g' \
+            >> gpu-evidence.txt || true
+          nvcc --version | tail -2 >> gpu-evidence.txt
+          g++ --version | head -1 >> gpu-evidence.txt
+          cmake --version | head -1 >> gpu-evidence.txt
+          ninja --version >> gpu-evidence.txt
+          cat gpu-evidence.txt
+      - name: Bootstrap core profile
+        run: python3 tools/deps/bootstrap.py --profile core
+      - name: Configure (explicit architecture list), build, run gpu label
+        run: |
+          set -e
+          cmake --preset cuda-release
+          echo "configured architectures:"
+          grep CMAKE_CUDA_ARCHITECTURES out/build/cuda-release/CMakeCache.txt
+          cmake --build --preset cuda-release --parallel
+          ctest --preset cuda-release -L gpu --output-on-failure
+      - name: Compute-sanitizer memcheck smoke
+        run: |
+          compute-sanitizer --tool memcheck \
+            out/build/cuda-release/platform/cuda/smoke/inferx_cuda_smoke_test
+      - name: Non-skipped test assertion
+        run: |
+          # Belt-and-braces: a passing-but-skipped run (exit 77) must never
+          # satisfy this lane (m0.md section 10.2).
+          set +e
+          out/build/cuda-release/platform/cuda/smoke/inferx_cuda_smoke_test
+          code=$?
+          set -e
+          test "$code" -eq 0
+      - name: Upload GPU evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gpu-evidence
+          path: gpu-evidence.txt

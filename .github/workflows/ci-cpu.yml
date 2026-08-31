@@ -1,0 +1,211 @@
+# CPU presubmit lanes (m0.md section 11.1; ADR 0006). Every job below is
+# required before merge. Checkout never uses `submodules: recursive`; the job
+# runs the core bootstrap profile so optional dependencies cannot slow or
+# break CPU CI. Third-party actions are pinned to commit SHAs with the
+# release noted in a comment.
+
+name: ci-cpu
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-cpu-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  policy:
+    name: policy (manifest, format, docs hygiene)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Toolchain floor
+        run: |
+          set -e
+          cmake_version="$(cmake --version | head -1 | sed -E 's/[^0-9]*([0-9]+\.[0-9]+).*/\1/')"
+          printf 'cmake=%s gcc=%s clang=%s\n' "$cmake_version" \
+            "$(g++ --version | head -1)" "$(clang++ --version | head -1)"
+          test "$(printf '%s\n3.28\n' "$cmake_version" | sort -V | head -1)" = "3.28"
+      - name: Dependency manifest drift check
+        run: python3 tools/deps/check_manifest.py
+      - name: Manifest checker self-test fixtures
+        run: python3 tools/deps/check_manifest.py --self-test
+      - name: Format check (pinned clang-format 18)
+        run: cmake -S . -B out/build/policy -G Ninja -DINFERX_BUILD_TOOLS=OFF -DBUILD_TESTING=OFF && cmake --build out/build/policy --target format-check
+      - name: No generated or tracked build outputs
+        run: |
+          # Generated content must stay out of the source tree (m0.md 16).
+          if git ls-files -- 'out/*' 'build*/*' | grep -q .; then
+            echo "error: build outputs are tracked in git" >&2; exit 1
+          fi
+          if git ls-files -- '*.o' '*.a' '*.so' 'compile_commands.json' | grep -q .; then
+            echo "error: build artifacts are tracked in git" >&2; exit 1
+          fi
+      - name: Documentation and report links resolve
+        run: |
+          python3 - <<'EOF'
+          import re, sys
+          from pathlib import Path
+          docs = list(Path("docs").rglob("*.md")) + [Path("README.md")]
+          missing = []
+          for doc in docs:
+              if not doc.is_file():
+                  continue
+              for target in re.findall(r"\]\((\.\./[^)#]+|\./[^)#]+)", doc.read_text()):
+                  resolved = (doc.parent / target).resolve()
+                  if not resolved.exists():
+                      missing.append(f"{doc}: {target}")
+          if missing:
+              print("broken relative links:", *missing, sep="\n- ", file=sys.stderr)
+              sys.exit(1)
+          print(f"docs: relative links resolve across {len(docs)} files")
+          EOF
+
+  gcc:
+    name: gcc (dev-gcc)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Bootstrap core profile
+        run: python3 tools/deps/bootstrap.py --profile core
+      - name: Configure, build, test
+        run: |
+          cmake --preset dev-gcc
+          cmake --build --preset dev-gcc --parallel
+          ctest --preset dev-gcc
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: cpu-gcc-logs
+          path: |
+            out/build/dev-gcc/Testing/**/*.log
+          if-no-files-found: ignore
+
+  clang:
+    name: clang (dev-clang)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Bootstrap core profile
+        run: python3 tools/deps/bootstrap.py --profile core
+      - name: Configure, build, test
+        run: |
+          cmake --preset dev-clang
+          cmake --build --preset dev-clang --parallel
+          ctest --preset dev-clang
+
+  asan-ubsan:
+    name: sanitizers (asan-ubsan)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Bootstrap core profile
+        run: python3 tools/deps/bootstrap.py --profile core
+      - name: Zero sanitizer findings required
+        run: |
+          cmake --preset asan-ubsan
+          cmake --build --preset asan-ubsan --parallel
+          ctest --preset asan-ubsan
+
+  tsan:
+    name: sanitizers (tsan)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Bootstrap core profile
+        run: python3 tools/deps/bootstrap.py --profile core
+      - name: Zero race findings required
+        run: |
+          cmake --preset tsan
+          cmake --build --preset tsan --parallel
+          ctest --preset tsan
+
+  analysis:
+    name: analysis (clang-tidy, IWYU, headers)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Install analysis tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang-tidy-18 include-what-you-use
+      - name: Bootstrap core profile
+        run: python3 tools/deps/bootstrap.py --profile core
+      - name: Zero tidy/IWYU/header failures required
+        run: |
+          cmake --preset analysis
+          cmake --build --preset analysis --parallel
+          ctest --preset analysis
+          tools/run_clang_tidy.sh out/build/analysis
+          python3 tools/run_iwyu.py --build-dir out/build/analysis
+          python3 tools/check_headers.py --source-root . --build-dir out/build/analysis
+
+  install-consumer:
+    name: install + independent consumer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Bootstrap core profile
+        run: python3 tools/deps/bootstrap.py --profile core
+      - name: Build, install, consume via CMAKE_PREFIX_PATH only
+        run: |
+          cmake --preset cpu-release
+          cmake --build --preset cpu-release --parallel
+          ctest --test-dir out/build/cpu-release -L integration --output-on-failure
+
+  build-metrics:
+    name: build metrics (cpu-release)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Bootstrap core profile
+        run: python3 tools/deps/bootstrap.py --profile core
+      - name: Repeated fresh builds (stress)
+        run: python3 tools/ci/repeat_build.py --jobs "$(nproc)"
+      - name: Capture metrics JSON
+        run: python3 tools/ci/measure_build.py --preset cpu-release --output out/metrics/m0.json
+      - name: Benchmark JSON artifact
+        run: |
+          out/build/cpu-release/inferx_base_benchmark --benchmark_format=json \
+            --benchmark_out=out/metrics/base_startup_benchmark.json \
+            --benchmark_repetitions=3 || true
+          python3 -c "import json;json.load(open('out/metrics/base_startup_benchmark.json'))"
+      - name: Upload metrics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: build-metrics
+          path: out/metrics/
+
+  sbom:
+    name: SBOM smoke (installed CPU prefix)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Bootstrap core profile
+        run: python3 tools/deps/bootstrap.py --profile core
+      - name: Install and generate SPDX JSON
+        run: |
+          cmake --preset cpu-release
+          cmake --build --preset cpu-release --parallel
+          cmake --install out/build/cpu-release --prefix out/install/cpu-release
+          tools/deps/generate_sbom.sh out/install/cpu-release out/sbom/inferx-m0.spdx.json
+      - name: Upload SBOM
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sbom-spdx
+          path: out/sbom/
