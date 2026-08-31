@@ -12,10 +12,15 @@ namespace inferx {
                                  const ExecutionTicket& completion);
 
 inline bool TicketMatches(const ExecutionTicket& submitted, const ExecutionTicket& completion) {
-  return submitted.request == completion.request && submitted.sequence == completion.sequence &&
-         submitted.epoch == completion.epoch && submitted.step == completion.step &&
-         submitted.ticket == completion.ticket &&
-         submitted.scheduled_tokens == completion.scheduled_tokens;
+  return submitted.id == completion.id && submitted.step == completion.step &&
+         submitted.item_count == completion.item_count;
+}
+
+[[nodiscard]] inline bool TicketMatches(const ExecutionTicket& submitted,
+                                        const ExecutionCompletion& completion) {
+  return submitted.id == completion.ticket && submitted.step == completion.step &&
+         submitted.item_count == completion.item_count &&
+         completion.item_ordinal < completion.item_count;
 }
 
 }  // namespace inferx

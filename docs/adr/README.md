@@ -49,6 +49,8 @@ Every ADR contains, in order:
 | [0013](0013-bounded-channel.md) | Bounded channel semantics | Proposed |
 | [0011](0011-configuration-schema.md) | Configuration schema and pipeline | Proposed |
 | [0009](0009-request-state-machine.md) | Request state machine | Proposed |
+| [0010](0010-scheduler-resource-transactions.md) | Deterministic scheduler and resource transactions | Proposed |
+| [0012](0012-deterministic-simulator-replay.md) | Deterministic simulator and canonical replay | Proposed |
 | [0014](0014-tensor-buffer-contract.md) | Tensor and buffer contract | Accepted |
 | [0015](0015-memory-accounting-and-pools.md) | Memory accounting and fixed pools | Accepted |
 | [0016](0016-cuda-context-and-error-scope.md) | CUDA context ownership and error scope | Accepted |

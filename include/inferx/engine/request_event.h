@@ -17,6 +17,8 @@
 #include "inferx/base/token.h"
 #include "inferx/engine/execution_completion.h"
 #include "inferx/lifecycle/request_state.h"
+#include "inferx/scheduler/resource_accountant.h"
+#include "inferx/scheduler/work_kind.h"
 
 namespace inferx {
 
@@ -61,16 +63,10 @@ struct TokenizationFailedPayload {
 
 struct ReservationGrantedPayload {
   ReservationId reservation;
+  scheduler::ResourceCost cost;
 };
 
 struct ReservationDeferredPayload {};
-
-enum class WorkKind : uint8_t {
-  kPrefill,
-  kDecode,
-};
-
-[[nodiscard]] absl::string_view ToString(WorkKind kind);
 
 struct SubmitPayload {
   StepId step;
@@ -78,6 +74,7 @@ struct SubmitPayload {
   RequestEpoch epoch;
   WorkKind work = WorkKind::kPrefill;
   TokenRange scheduled_range{TokenOffset(0), TokenOffset(0)};
+  uint32_t item_count = 1;
 };
 
 // Distinct types per completion-bearing event so variant access is never
@@ -106,7 +103,9 @@ struct StartTokenizationPayload {};
 struct BeginReservationPayload {};
 struct PreemptPayload {};
 struct RequeuePayload {};
-struct InFlightDrainedPayload {};
+struct InFlightDrainedPayload {
+  ExecutionCompletion completion;
+};
 // The successful outcome was selected when the request entered Finishing;
 // this event carries the chosen success reason for the terminal record.
 struct TerminalEmittedPayload {

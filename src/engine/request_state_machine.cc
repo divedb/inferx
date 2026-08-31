@@ -26,9 +26,9 @@ RequestState ResolveAfterReservation(const RequestContext& context, const Reques
 RequestState ResolveAfterCompletion(const RequestContext& context, const RequestEvent& event) {
   uint32_t committed = context.num_committed_output_tokens;
   if (const auto* prefill = std::get_if<PrefillCompletedPayload>(&event.payload)) {
-    committed += prefill->completion.committed_tokens.value();
+    committed += prefill->completion.status.ok() ? 1U : 0U;
   } else if (const auto* decode = std::get_if<DecodeCompletedPayload>(&event.payload)) {
-    committed += decode->completion.committed_tokens.value();
+    committed += decode->completion.status.ok() ? 1U : 0U;
   }
   return committed < context.request->generation.max_output_tokens.value()
              ? RequestState::kDecodeReady
@@ -110,9 +110,9 @@ constexpr std::array<TransitionRule, kRuleCount> kRules = {{
      TransitionEffect::kClearInFlight | TransitionEffect::kReleaseReservation, true},
     // Execution failure completes in-flight states terminally.
     {RequestState::kPrefilling, RequestEventKind::kExecutionFailed, nullptr, RequestState::kFailed,
-     TransitionEffect::kClearInFlight, true},
+     TransitionEffect::kClearInFlight | TransitionEffect::kReleaseReservation, true},
     {RequestState::kDecoding, RequestEventKind::kExecutionFailed, nullptr, RequestState::kFailed,
-     TransitionEffect::kClearInFlight, true},
+     TransitionEffect::kClearInFlight | TransitionEffect::kReleaseReservation, true},
     // Fatal events from any nonterminal non-in-flight state.
     {RequestState::kReceived, RequestEventKind::kFatalError, nullptr, RequestState::kFailed,
      TransitionEffect::kNone, true},
@@ -143,8 +143,14 @@ absl::Status InvalidTransition(const RequestContext& request, RequestEventKind k
 }
 
 bool MatchesSubmittedWork(const RequestContext& context, const ExecutionCompletion& completion) {
-  return context.submitted_ticket.has_value() &&
-         TicketMatches(*context.submitted_ticket, completion.ticket) && !context.terminal_emitted;
+  return context.submitted_ticket.has_value() && context.in_flight_work.has_value() &&
+         context.in_flight_range.has_value() &&
+         TicketMatches(*context.submitted_ticket, completion) &&
+         context.request->id == completion.request && context.sequence == completion.sequence &&
+         context.epoch == completion.epoch && *context.in_flight_work == completion.kind &&
+         context.in_flight_range->begin == completion.scheduled_tokens.begin &&
+         context.in_flight_range->end == completion.scheduled_tokens.end &&
+         !context.terminal_emitted;
 }
 
 }  // namespace
@@ -185,8 +191,21 @@ absl::StatusOr<TransitionDecision> DecideTransition(const RequestContext& reques
     case RequestEventKind::kSubmitPrefill:
     case RequestEventKind::kSubmitDecode: {
       const SubmitPayload* submit = std::get_if<SubmitPayload>(&event.payload);
-      if (submit == nullptr || submit->epoch != request.epoch ||
-          request.in_flight_step.has_value()) {
+      const bool expected_kind = event.kind == RequestEventKind::kSubmitPrefill
+                                     ? submit != nullptr && submit->work == WorkKind::kPrefill
+                                     : submit != nullptr && submit->work == WorkKind::kDecode;
+      if (submit == nullptr || !expected_kind || submit->epoch != request.epoch ||
+          request.in_flight_step.has_value() || !request.reservation.has_value() ||
+          submit->item_count == 0 || !submit->scheduled_range.Validate().ok() ||
+          submit->scheduled_range.begin == submit->scheduled_range.end) {
+        return InvalidTransition(request, event.kind);
+      }
+      break;
+    }
+    case RequestEventKind::kReservationGranted: {
+      const auto* granted = std::get_if<ReservationGrantedPayload>(&event.payload);
+      if (granted == nullptr || request.reservation.has_value() ||
+          granted->cost.sequences.value() == 0 || granted->cost.kv_tokens.value() == 0) {
         return InvalidTransition(request, event.kind);
       }
       break;
@@ -202,6 +221,8 @@ absl::StatusOr<TransitionDecision> DecideTransition(const RequestContext& reques
         completion = &decode->completion;
       } else if (const auto* failed = std::get_if<ExecutionFailedPayload>(&event.payload)) {
         completion = &failed->completion;
+      } else if (const auto* drained = std::get_if<InFlightDrainedPayload>(&event.payload)) {
+        completion = &drained->completion;
       }
       if (completion == nullptr || !MatchesSubmittedWork(request, *completion)) {
         return WithErrorReason(
@@ -209,6 +230,14 @@ absl::StatusOr<TransitionDecision> DecideTransition(const RequestContext& reques
                          absl::StrCat("lifecycle.request.", ToString(request.state),
                                       ": stale or mismatched completion")),
             ErrorReason::kStaleCompletion);
+      }
+      if ((event.kind == RequestEventKind::kPrefillCompleted ||
+           event.kind == RequestEventKind::kDecodeCompleted) &&
+          (!completion->status.ok() || !completion->output_token.has_value())) {
+        return InvalidTransition(request, event.kind);
+      }
+      if (event.kind == RequestEventKind::kExecutionFailed && completion->status.ok()) {
+        return InvalidTransition(request, event.kind);
       }
       break;
     }
@@ -235,9 +264,13 @@ absl::StatusOr<TransitionDecision> DecideTransition(const RequestContext& reques
     } else if (event.kind == RequestEventKind::kExecutionFailed) {
       const auto& failed = std::get<ExecutionFailedPayload>(event.payload);
       outcome.reason = FinishReason::kExecutorError;
-      outcome.status = failed.completion.failure.has_value() ? failed.completion.failure->code()
-                                                             : absl::StatusCode::kInternal;
-      outcome.error_reason = ErrorReason::kExecutorFailure;
+      outcome.status = failed.completion.status.code();
+      outcome.error_reason = failed.completion.error_reason;
+    } else if (event.kind == RequestEventKind::kInFlightDrained &&
+               request.pending_terminal_reason.has_value()) {
+      outcome.reason = request.pending_terminal_reason->reason;
+      outcome.status = request.pending_terminal_reason->status;
+      outcome.error_reason = request.pending_terminal_reason->error_reason;
     } else if (event.kind == RequestEventKind::kDeadlineExpired) {
       outcome.reason = FinishReason::kDeadline;
       outcome.status = absl::StatusCode::kDeadlineExceeded;

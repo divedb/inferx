@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -60,8 +61,6 @@ RequestEvent Marker(RequestEventKind kind) {
       return {kind, inferx::PreemptPayload{}};
     case RequestEventKind::kRequeue:
       return {kind, inferx::RequeuePayload{}};
-    case RequestEventKind::kInFlightDrained:
-      return {kind, inferx::InFlightDrainedPayload{}};
     default:
       return {kind, inferx::TerminalEmittedPayload{}};
   }
@@ -74,14 +73,34 @@ RequestEvent CancelEvent(absl::StatusCode code = absl::StatusCode::kCancelled) {
                                          FinishReason::kCancelled}};
 }
 
-ExecutionTicket TicketFor(const RequestContext& context, uint32_t scheduled) {
-  // Callers set the in-flight pair before submitting; misuse surfaces as a
-  // zero-id mismatch in the stale-completion guard.
+ExecutionTicket TicketFor(const RequestContext& context) {
   const inferx::StepId step = context.in_flight_step.value_or(inferx::StepId(0));
   const inferx::ExecutionTicketId ticket =
       context.in_flight_ticket.value_or(inferx::ExecutionTicketId(0));
-  return ExecutionTicket{context.request->id,  context.sequence, context.epoch, step, ticket,
-                         TokenCount(scheduled)};
+  return ExecutionTicket{ticket, step, 1};
+}
+
+ExecutionCompletion CompletionFor(const RequestContext& context,
+                                  std::optional<inferx::RequestEpoch> epoch = std::nullopt,
+                                  const absl::Status& status = absl::OkStatus()) {
+  const TokenRange range =
+      context.in_flight_range.value_or(TokenRange{TokenOffset(0), TokenOffset(1)});
+  return ExecutionCompletion{
+      .ticket = context.in_flight_ticket.value_or(inferx::ExecutionTicketId(0)),
+      .step = context.in_flight_step.value_or(inferx::StepId(0)),
+      .item_ordinal = 0,
+      .item_count = 1,
+      .request = context.request->id,
+      .sequence = context.sequence,
+      .epoch = epoch.value_or(context.epoch),
+      .kind = context.in_flight_work.value_or(inferx::WorkKind::kDecode),
+      .scheduled_tokens = range,
+      .status = status,
+      .error_reason =
+          status.ok() ? inferx::ErrorReason::kNone : inferx::ErrorReason::kExecutorFailure,
+      .output_token =
+          status.ok() ? std::optional<inferx::TokenId>(inferx::TokenId(42)) : std::nullopt,
+  };
 }
 
 class Controlled {
@@ -106,39 +125,43 @@ TEST(FsmTest, HappyPathPrefillThenDecodesThenLength) {
   context->reservation = inferx::ReservationId(1);
 
   // Submit + complete prefill: commits first synthetic token.
-  ASSERT_TRUE(fsm.Apply(*context,
-                        RequestEvent{RequestEventKind::kSubmitPrefill,
-                                     SubmitPayload{inferx::StepId(1), inferx::ExecutionTicketId(1),
-                                                   context->epoch, inferx::WorkKind::kPrefill,
-                                                   TokenRange{TokenOffset(0), TokenOffset(3)}}})
-                  .ok());
+  ASSERT_TRUE(
+      fsm.Apply(*context, RequestEvent{RequestEventKind::kSubmitPrefill,
+                                       SubmitPayload{.step = inferx::StepId(1),
+                                                     .ticket = inferx::ExecutionTicketId(1),
+                                                     .epoch = context->epoch,
+                                                     .work = inferx::WorkKind::kPrefill,
+                                                     .scheduled_range =
+                                                         TokenRange{TokenOffset(0), TokenOffset(3)},
+                                                     .item_count = 1}})
+          .ok());
   EXPECT_EQ(context->state, RequestState::kPrefilling);
   EXPECT_EQ(context->num_scheduled_tokens, 3u);
 
-  ExecutionTicket ticket = TicketFor(*context, 3);
-  ASSERT_TRUE(fsm.Apply(*context, RequestEvent{RequestEventKind::kPrefillCompleted,
-                                               inferx::PrefillCompletedPayload{ExecutionCompletion{
-                                                   ticket, true, std::nullopt, TokenCount(3),
-                                                   TokenCount(1)}}})
-                  .ok());
+  ASSERT_TRUE(
+      fsm.Apply(*context, RequestEvent{RequestEventKind::kPrefillCompleted,
+                                       inferx::PrefillCompletedPayload{CompletionFor(*context)}})
+          .ok());
   EXPECT_EQ(context->state, RequestState::kDecodeReady);
   EXPECT_EQ(context->num_computed_tokens, 3u);
   EXPECT_EQ(context->num_committed_output_tokens, 1u);
   EXPECT_EQ(context->num_scheduled_tokens, 0u);
 
   // Decode one token; output budget of 2 is then exhausted.
-  ASSERT_TRUE(fsm.Apply(*context,
-                        RequestEvent{RequestEventKind::kSubmitDecode,
-                                     SubmitPayload{inferx::StepId(2), inferx::ExecutionTicketId(2),
-                                                   context->epoch, inferx::WorkKind::kDecode,
-                                                   TokenRange{TokenOffset(0), TokenOffset(1)}}})
-                  .ok());
-  ticket = TicketFor(*context, 1);
-  ASSERT_TRUE(fsm.Apply(*context, RequestEvent{RequestEventKind::kDecodeCompleted,
-                                               inferx::DecodeCompletedPayload{ExecutionCompletion{
-                                                   ticket, true, std::nullopt, TokenCount(3),
-                                                   TokenCount(1)}}})
-                  .ok());
+  ASSERT_TRUE(
+      fsm.Apply(*context, RequestEvent{RequestEventKind::kSubmitDecode,
+                                       SubmitPayload{.step = inferx::StepId(2),
+                                                     .ticket = inferx::ExecutionTicketId(2),
+                                                     .epoch = context->epoch,
+                                                     .work = inferx::WorkKind::kDecode,
+                                                     .scheduled_range =
+                                                         TokenRange{TokenOffset(3), TokenOffset(4)},
+                                                     .item_count = 1}})
+          .ok());
+  ASSERT_TRUE(
+      fsm.Apply(*context, RequestEvent{RequestEventKind::kDecodeCompleted,
+                                       inferx::DecodeCompletedPayload{CompletionFor(*context)}})
+          .ok());
   EXPECT_EQ(context->state, RequestState::kFinishing);
 
   ASSERT_TRUE(fsm.Apply(*context, Marker(RequestEventKind::kTerminalEmitted)).ok());
@@ -188,8 +211,11 @@ TEST(FsmTest, CancelInFlightDrainsThroughCancelling) {
   context->state = RequestState::kDecoding;
   context->in_flight_step = inferx::StepId(7);
   context->in_flight_ticket = inferx::ExecutionTicketId(7);
-  context->submitted_ticket = TicketFor(*context, 1);
+  context->submitted_ticket = TicketFor(*context);
+  context->in_flight_work = inferx::WorkKind::kDecode;
+  context->in_flight_range = TokenRange{TokenOffset(3), TokenOffset(4)};
   context->num_scheduled_tokens = 1;
+  context->reservation = inferx::ReservationId(1);
 
   ASSERT_TRUE(fsm.Apply(*context, CancelEvent()).ok());
   EXPECT_EQ(context->state, RequestState::kCancelling);
@@ -197,23 +223,17 @@ TEST(FsmTest, CancelInFlightDrainsThroughCancelling) {
   // Double cancel while cancelling is illegal (already draining).
   EXPECT_FALSE(fsm.Apply(*context, CancelEvent()).ok());
 
-  const absl::Status drained = fsm.Apply(
-      *context, RequestEvent{RequestEventKind::kInFlightDrained, inferx::InFlightDrainedPayload{}});
-  // Drain needs a matching completion payload.
-  if (drained.ok()) {
-    ADD_FAILURE() << "drain accepted without completion";
-  }
-  ASSERT_TRUE(fsm.Apply(*context, RequestEvent{RequestEventKind::kInFlightDrained,
-                                               inferx::PrefillCompletedPayload{ExecutionCompletion{
-                                                   TicketFor(*context, 1), true, std::nullopt,
-                                                   TokenCount(0)}}})
-                  .ok() ||
-              !drained.ok());
-  // With completion-bearing drain payload the state machine has no such
-  // variant; the canonical drain path is completion + no-commit — covered in
-  // the simulator integration (m1.md 17.2). Here assert the marker drain is
-  // rejected because payload compatibility fails.
-  SUCCEED();
+  ASSERT_TRUE(
+      fsm.Apply(*context, RequestEvent{RequestEventKind::kInFlightDrained,
+                                       inferx::InFlightDrainedPayload{CompletionFor(*context)}})
+          .ok());
+  EXPECT_EQ(context->state, RequestState::kCancelled);
+  EXPECT_EQ(context->num_committed_output_tokens, 0U);
+  EXPECT_FALSE(context->in_flight_ticket.has_value());
+  const std::optional<inferx::TerminalResponse> terminal = context->terminal;
+  ASSERT_TRUE(terminal.has_value());
+  const inferx::TerminalResponse terminal_response = terminal.value_or(inferx::TerminalResponse{});
+  EXPECT_EQ(terminal_response.reason, FinishReason::kCancelled);
 }
 
 TEST(FsmTest, StaleCompletionRejectedWithoutSideEffects) {
@@ -222,16 +242,16 @@ TEST(FsmTest, StaleCompletionRejectedWithoutSideEffects) {
   context->state = RequestState::kDecoding;
   context->in_flight_step = inferx::StepId(7);
   context->in_flight_ticket = inferx::ExecutionTicketId(7);
-  context->submitted_ticket = TicketFor(*context, 1);
+  context->submitted_ticket = TicketFor(*context);
+  context->in_flight_work = inferx::WorkKind::kDecode;
+  context->in_flight_range = TokenRange{TokenOffset(3), TokenOffset(4)};
   context->num_scheduled_tokens = 1;
 
   // Wrong epoch (stale after preemption).
-  ExecutionTicket stale = TicketFor(*context, 1);
-  stale.epoch = inferx::RequestEpoch(99);
   const absl::Status rejected =
       fsm.Apply(*context, RequestEvent{RequestEventKind::kDecodeCompleted,
-                                       inferx::DecodeCompletedPayload{ExecutionCompletion{
-                                           stale, true, std::nullopt, TokenCount(1)}}});
+                                       inferx::DecodeCompletedPayload{
+                                           CompletionFor(*context, inferx::RequestEpoch(99))}});
   ASSERT_FALSE(rejected.ok());
   EXPECT_EQ(rejected.code(), absl::StatusCode::kFailedPrecondition);
   EXPECT_EQ(context->state, RequestState::kDecoding);
@@ -258,19 +278,23 @@ TEST(FsmTest, ReservationGrantedResolvesByComputedTokens) {
   Controlled fsm;
   auto fresh = AdmittedContext(RequestId(1));
   fresh->state = RequestState::kReserving;
-  ASSERT_TRUE(
-      fsm.Apply(*fresh, RequestEvent{RequestEventKind::kReservationGranted,
-                                     inferx::ReservationGrantedPayload{inferx::ReservationId(9)}})
-          .ok());
+  ASSERT_TRUE(fsm.Apply(*fresh, RequestEvent{RequestEventKind::kReservationGranted,
+                                             inferx::ReservationGrantedPayload{
+                                                 inferx::ReservationId(9),
+                                                 inferx::scheduler::ResourceCost{
+                                                     inferx::SequenceCount(1), TokenCount(8)}}})
+                  .ok());
   EXPECT_EQ(fresh->state, RequestState::kPrefillReady);
 
   auto resumed = AdmittedContext(RequestId(2));
   resumed->state = RequestState::kReserving;
   resumed->num_computed_tokens = 3;
-  ASSERT_TRUE(
-      fsm.Apply(*resumed, RequestEvent{RequestEventKind::kReservationGranted,
-                                       inferx::ReservationGrantedPayload{inferx::ReservationId(9)}})
-          .ok());
+  ASSERT_TRUE(fsm.Apply(*resumed, RequestEvent{RequestEventKind::kReservationGranted,
+                                               inferx::ReservationGrantedPayload{
+                                                   inferx::ReservationId(9),
+                                                   inferx::scheduler::ResourceCost{
+                                                       inferx::SequenceCount(1), TokenCount(8)}}})
+                  .ok());
   EXPECT_EQ(resumed->state, RequestState::kDecodeReady);
 }
 

@@ -31,7 +31,7 @@ absl::StatusOr<FieldValues> ReadConfigFile(const std::string& path);
 
 // Collects documented INFERX_* variables from the process environment.
 // Only documented names are read; unrelated environment entries are ignored.
-FieldValues ReadConfigEnvironment();
+absl::StatusOr<FieldValues> ReadConfigEnvironment();
 
 // Strict unsigned decimal parsing used for environment/CLI values.
 absl::StatusOr<uint64_t> ParseConfigInteger(absl::string_view text, absl::string_view source_name);

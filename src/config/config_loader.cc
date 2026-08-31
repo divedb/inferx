@@ -121,13 +121,15 @@ absl::StatusOr<FieldValues> ReadConfigFile(const std::string& path) {
   return ParseConfigJson(text);
 }
 
-FieldValues ReadConfigEnvironment() {
+absl::StatusOr<FieldValues> ReadConfigEnvironment() {
   FieldValues values;
-#define INFERX_CONFIG_ENV(camel, json_name, default_value)                                     \
-  if (const char* raw = std::getenv(EnvironmentName((json_name)).c_str())) {                   \
-    if (absl::StatusOr<uint64_t> parsed = ParseConfigInteger(raw, (json_name)); parsed.ok()) { \
-      values.emplace((json_name), *parsed);                                                    \
-    }                                                                                          \
+#define INFERX_CONFIG_ENV(camel, json_name, default_value)                   \
+  if (const char* raw = std::getenv(EnvironmentName((json_name)).c_str())) { \
+    absl::StatusOr<uint64_t> parsed = ParseConfigInteger(raw, (json_name));  \
+    if (!parsed.ok()) {                                                      \
+      return parsed.status();                                                \
+    }                                                                        \
+    values.emplace((json_name), *parsed);                                    \
   }
   INFERX_CONFIG_FIELDS(INFERX_CONFIG_ENV)
   INFERX_CUDA_CONFIG_FIELDS(INFERX_CONFIG_ENV)

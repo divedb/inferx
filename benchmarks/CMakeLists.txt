@@ -33,3 +33,22 @@ if(INFERX_ENABLE_CUDA)
     inferx_cuda_copy_benchmark inferx_cuda_event_benchmark
     inferx_cuda_launch_benchmark inferx_memory_pool_benchmark)
 endif()
+
+# The allocation gate interposes the global allocation operators. TSan supplies
+# its own strong definitions for those symbols, so this benchmark is intentionally
+# absent from TSan builds; the channel tests remain fully instrumented.
+if(NOT INFERX_ENABLE_TSAN)
+  add_executable(inferx_scheduler_benchmark scheduler/scheduler_benchmark.cc)
+  inferx_apply_project_options(inferx_scheduler_benchmark)
+  target_link_libraries(inferx_scheduler_benchmark PRIVATE
+    inferx::scheduler benchmark::benchmark absl::status absl::strings)
+  set_target_properties(inferx_scheduler_benchmark PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+endif()
+
+add_executable(inferx_simulator_benchmark scheduler/simulator_benchmark.cc)
+inferx_apply_project_options(inferx_simulator_benchmark)
+target_link_libraries(inferx_simulator_benchmark PRIVATE
+  inferx::simulator benchmark::benchmark absl::status absl::strings)
+set_target_properties(inferx_simulator_benchmark PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")

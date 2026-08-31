@@ -108,11 +108,29 @@ out/build/dev-clang/apps/inferx_info/inferx-info --version   # stable single lin
 out/build/dev-clang/apps/inferx_info/inferx-info --build     # compiler/std/features/architectures
 ```
 
+M1 simulator/replay checks:
+
+```bash
+out/build/dev-clang/inferx-sim validate-config --config tests/integration/simulator/data/basic_config.json
+out/build/dev-clang/inferx-sim run --config tests/integration/simulator/data/basic_config.json \
+  --workload tests/integration/simulator/data/basic_workload.json --trace out/traces/basic.jsonl
+out/build/dev-clang/inferx-sim replay --trace out/traces/basic.jsonl \
+  --output out/traces/basic.replayed.jsonl
+ctest --preset dev-clang -L 'm1-unit|m1-integration|m1-correctness|m1-failure|m1-stress'
+```
+
+See [scheduler.md](scheduler.md), [simulator.md](simulator.md), and
+[replay-schema.md](replay-schema.md) for the contracts and stable CLI exits.
+
 ## Metrics, stress, and SBOM evidence
 
 ```bash
 python3 tools/ci/measure_build.py --preset cpu-release --output out/metrics/m0.json
 python3 tools/ci/repeat_build.py --jobs "$(nproc)"           # 3 fresh flows under out/stress/
+out/build/asan-ubsan/inferx_simulator_stress --seed=0x4d31535452455353 \
+  --operations=1000000 --failure_output=out/failures/m1
+out/build/cpu-release/inferx_scheduler_benchmark --benchmark_format=json \
+  --benchmark_out=out/metrics/m1-scheduler.json
 tools/deps/generate_sbom.sh out/install/cpu-release out/sbom/inferx-m0.spdx.json
 ```
 

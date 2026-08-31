@@ -9,7 +9,10 @@
 #include "inferx/base/status.h"
 #include "inferx/base/token.h"
 #include "inferx/base/version.h"
+#include "inferx/config/parsed_config.h"
+#include "inferx/engine/execution_ticket.h"
 #include "inferx/runtime/buffer_pool.h"
+#include "inferx/scheduler/work_kind.h"
 #include "inferx/tensor/allocator.h"
 #include "inferx/tensor/buffer.h"
 #include "inferx/tensor/shape.h"
@@ -35,6 +38,13 @@ int main() {
   const inferx::TokenCount tokens = inferx::TokenCount::FromUint64(2, "consumer").value();
   if (request.value() != 1 || tokens.value() != 2) {
     std::cerr << "installed value types did not behave\n";
+    return 1;
+  }
+  const inferx::config::ParsedConfig config;
+  const inferx::ExecutionTicket ticket{inferx::ExecutionTicketId(1), inferx::StepId(1), 1};
+  if (config.MaxActiveSequences.value != 256 || ticket.item_count != 1 ||
+      inferx::ToString(inferx::WorkKind::kPrefill) != "prefill") {
+    std::cerr << "installed M1 module contracts did not behave\n";
     return 1;
   }
   const inferx::Version version = inferx::GetVersion();

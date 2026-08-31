@@ -10,6 +10,8 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: '17 3 * * *'
 
 permissions:
   contents: read
@@ -79,6 +81,7 @@ jobs:
         run: |
           cmake --preset dev-gcc
           cmake --build --preset dev-gcc --parallel
+          python3 tools/ci/check_m1_labels.py --build-dir out/build/dev-gcc
           ctest --preset dev-gcc
       - name: Upload test results
         if: always()
@@ -101,6 +104,7 @@ jobs:
         run: |
           cmake --preset dev-clang
           cmake --build --preset dev-clang --parallel
+          python3 tools/ci/check_m1_labels.py --build-dir out/build/dev-clang
           ctest --preset dev-clang
 
   asan-ubsan:
@@ -115,7 +119,22 @@ jobs:
         run: |
           cmake --preset asan-ubsan
           cmake --build --preset asan-ubsan --parallel
-          ctest --preset asan-ubsan
+          python3 tools/ci/check_m1_labels.py --build-dir out/build/asan-ubsan
+          ctest --preset asan-ubsan -L m1 --output-on-failure
+      - name: Nightly 1,000,000-operation deterministic stress
+        if: github.event_name == 'schedule'
+        run: |
+          out/build/asan-ubsan/inferx_simulator_stress \
+            --seed=0x4d31535452455353 \
+            --operations=1000000 \
+            --failure_output=out/failures/m1
+      - name: Upload minimized stress failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: m1-stress-failures
+          path: out/failures/m1/
+          if-no-files-found: ignore
 
   tsan:
     name: sanitizers (tsan)
@@ -129,7 +148,7 @@ jobs:
         run: |
           cmake --preset tsan
           cmake --build --preset tsan --parallel
-          ctest --preset tsan
+          ctest --preset tsan -L m1-channel --output-on-failure
 
   analysis:
     name: analysis (clang-tidy, IWYU, headers)
@@ -181,7 +200,13 @@ jobs:
           out/build/cpu-release/inferx_base_benchmark --benchmark_format=json \
             --benchmark_out=out/metrics/base_startup_benchmark.json \
             --benchmark_repetitions=3 || true
+          out/build/cpu-release/inferx_scheduler_benchmark --benchmark_format=json \
+            --benchmark_out=out/metrics/m1-scheduler.json
+          python3 tools/ci/check_m1_benchmark.py --input out/metrics/m1-scheduler.json
+          out/build/cpu-release/inferx_simulator_benchmark --benchmark_format=json \
+            --benchmark_out=out/metrics/m1-simulator.json
           python3 -c "import json;json.load(open('out/metrics/base_startup_benchmark.json'))"
+          python3 -c "import json;json.load(open('out/metrics/m1-simulator.json'))"
       - name: Upload metrics
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
