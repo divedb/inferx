@@ -5,7 +5,7 @@
 # fixtures that intentionally reuse the checks).
 
 # ---------------------------------------------------------------------------
-# Compiler floor (ADR 0005). Fail at configure time, before project sources
+# Compiler floor (ADR 0020). Fail at configure time, before project sources
 # compile, with the minimum accepted version.
 # ---------------------------------------------------------------------------
 set(INFERX_MIN_GCC_VERSION 13)
@@ -60,6 +60,44 @@ option(INFERX_M3_ENABLE_OPENAT2
        ON)
 option(INFERX_ENABLE_CUDA "Enable the optional CUDA platform (explicit opt-in; a missing toolkit is fatal when ON)."
        OFF)
+option(INFERX_ENABLE_FLASHINFER
+       "Enable the qualified native-only FlashInfer M4 adapter (recorded pin is rejected)." OFF)
+option(INFERX_ENABLE_CUTLASS
+       "Enable an evidence-qualified CUTLASS M4 backend (no backend is registered)." OFF)
+option(INFERX_BUILD_M4_REFERENCE_TESTS "Build M4 CPU contract/reference tests."
+       ${_INFERX_TOP_LEVEL_DEFAULT})
+option(INFERX_BUILD_M4_GPU_TESTS "Build M4 GPU tests (requires INFERX_ENABLE_CUDA)."
+       ${_INFERX_TOP_LEVEL_DEFAULT})
+option(INFERX_BUILD_M4_BENCHMARKS "Build M4 operator/dispatch benchmarks."
+       ${_INFERX_TOP_LEVEL_DEFAULT})
+if(INFERX_ENABLE_FLASHINFER)
+  message(FATAL_ERROR
+    "INFERX_ENABLE_FLASHINFER is ON, but ADR 0029 rejects the recorded pin; use the owned "
+    "inferx_cuda attention fallback until a new native-only pin is qualified.")
+endif()
+if(INFERX_ENABLE_CUTLASS)
+  message(FATAL_ERROR
+    "INFERX_ENABLE_CUTLASS is ON, but M4 records CUTLASS as qualified-deferred with no measured gap.")
+endif()
+option(INFERX_BUILD_GPU_TESTS "Build M2 GPU tests (requires INFERX_ENABLE_CUDA)."
+       ${_INFERX_TOP_LEVEL_DEFAULT})
+option(INFERX_BUILD_COMPUTE_SANITIZER_TESTS
+       "Register M2 Compute Sanitizer tests (requires CUDA and compute-sanitizer)." OFF)
+option(INFERX_CUDA_ENABLE_LINEINFO
+       "Compile InferX CUDA kernels with device line information." ON)
+if(INFERX_BUILD_GPU_TESTS AND NOT INFERX_ENABLE_CUDA)
+  # GPU tests default with top-level builds but remain dormant in CPU builds.
+  set(INFERX_BUILD_GPU_TESTS OFF CACHE BOOL
+      "Build M2 GPU tests (requires INFERX_ENABLE_CUDA)." FORCE)
+endif()
+if(INFERX_BUILD_M4_GPU_TESTS AND NOT INFERX_ENABLE_CUDA)
+  set(INFERX_BUILD_M4_GPU_TESTS OFF CACHE BOOL
+      "Build M4 GPU tests (requires INFERX_ENABLE_CUDA)." FORCE)
+endif()
+if(INFERX_BUILD_COMPUTE_SANITIZER_TESTS AND NOT INFERX_ENABLE_CUDA)
+  message(FATAL_ERROR
+    "INFERX_BUILD_COMPUTE_SANITIZER_TESTS=ON requires INFERX_ENABLE_CUDA=ON")
+endif()
 option(INFERX_WARNINGS_AS_ERRORS "Treat warnings as errors on InferX-owned targets only."
        ${_INFERX_TOP_LEVEL_DEFAULT})
 option(INFERX_ENABLE_CLANG_TIDY "Run clang-tidy on InferX-owned targets (analysis preset)."

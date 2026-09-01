@@ -69,10 +69,13 @@ endfunction()
 # Abseil, simdjson, and BLAKE3 are production requirements for the M3 artifact
 # reader. GoogleTest remains test-only and Google Benchmark benchmark-only.
 # ---------------------------------------------------------------------------
+# M1 exposes Abseil through inferx::base public headers (ADR 0008), so the
+# core profile is an unconditional prerequisite; GoogleTest/Benchmark remain
+# gated by their options below.
 set(_INFERX_CORE_PROFILE core)
 
 if(_INFERX_CORE_PROFILE)
-  # --- Abseil ---------------------------------------------------------------
+  # --- Abseil (unconditional: public dependency of inferx::base) ------------
   if(TRUE)
     if(INFERX_DEPENDENCY_PROVIDER STREQUAL "submodule")
       if(NOT EXISTS "${INFERX_THIRD_PARTY_DIR}/abseil-cpp/CMakeLists.txt")
@@ -81,8 +84,12 @@ if(_INFERX_CORE_PROFILE)
       inferx_dependency_scope_push(ABSL_PROPAGATE_CXX_STD ABSL_ENABLE_INSTALL
                                    ABSL_RUN_TESTS ABSL_BUILD_TESTING_HELPERS)
       set(ABSL_PROPAGATE_CXX_STD ON)
-      # Dependency tests stay off for ordinary builds; upstream's install rules
-      # are enabled only inside the dedicated installed-dependency fixture.
+      # Dependency tests stay off; upstream's install rules stay off for the
+      # ordinary build (install mode renames Abseil targets to unprefixed
+      # names, e.g. a `check` library that collides with our aggregate
+      # target). The installed package instead resolves Abseil by name via
+      # find_dependency(absl CONFIG) against the standalone-installed pinned
+      # Abseil in the same prefix (tests/integration/install_consumer.py).
       set(ABSL_ENABLE_INSTALL OFF)
       set(ABSL_RUN_TESTS OFF)
       set(ABSL_BUILD_TESTING_HELPERS OFF)
@@ -104,7 +111,7 @@ if(_INFERX_CORE_PROFILE)
     endif()
   endif()
 
-  # --- simdjson -------------------------------------------------------------
+  # --- simdjson (unconditional: config and artifact readers are core) -------
   if(INFERX_DEPENDENCY_PROVIDER STREQUAL "submodule")
     if(NOT EXISTS "${INFERX_THIRD_PARTY_DIR}/simdjson/CMakeLists.txt")
       inferx_fail_missing_dependency(simdjson simdjson ${_INFERX_CORE_PROFILE})

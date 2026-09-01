@@ -16,33 +16,33 @@
   static_assert(feature_macro,                                                             \
                 "InferX requires the C++23 " facility                                      \
                 " support in the supported standard library (feature test " #feature_macro \
-                "). Raise the toolchain floor per ADR 0005 / "                             \
+                "). Raise the toolchain floor per ADR 0020 / "                             \
                 "docs/supported-platforms.md; do not silently compile "                    \
                 "this lane as C++20.")
 
 #if !defined(__cpp_lib_optional)
 #error \
-    "std::optional monadic operations: InferX requires C++23 std::optional monadic support in the supported standard library (__cpp_lib_optional is undefined). Raise the toolchain floor per ADR 0005 / docs/supported-platforms.md"
+    "std::optional monadic operations: InferX requires C++23 std::optional monadic support in the supported standard library (__cpp_lib_optional is undefined). Raise the toolchain floor per ADR 0020 / docs/supported-platforms.md"
 #endif
 #if !defined(__cpp_lib_unreachable)
 #error \
-    "std::unreachable: InferX requires the C++23 std::unreachable support in the supported standard library (__cpp_lib_unreachable is undefined). Raise the toolchain floor per ADR 0005 / docs/supported-platforms.md"
+    "std::unreachable: InferX requires the C++23 std::unreachable support in the supported standard library (__cpp_lib_unreachable is undefined). Raise the toolchain floor per ADR 0020 / docs/supported-platforms.md"
 #endif
 #if !defined(__cpp_lib_string_contains)
 #error \
-    "std::string::contains: InferX requires the C++23 std::string/std::string_view contains support in the supported standard library (__cpp_lib_string_contains is undefined). Raise the toolchain floor per ADR 0005 / docs/supported-platforms.md"
+    "std::string::contains: InferX requires the C++23 std::string/std::string_view contains support in the supported standard library (__cpp_lib_string_contains is undefined). Raise the toolchain floor per ADR 0020 / docs/supported-platforms.md"
 #endif
 #if !defined(__cpp_lib_span)
 #error \
-    "std::span: InferX requires the C++23 std::span support in the supported standard library (__cpp_lib_span is undefined). Raise the toolchain floor per ADR 0005 / docs/supported-platforms.md"
+    "std::span: InferX requires the C++23 std::span support in the supported standard library (__cpp_lib_span is undefined). Raise the toolchain floor per ADR 0020 / docs/supported-platforms.md"
 #endif
 #if !defined(__cpp_lib_jthread)
 #error \
-    "std::jthread: InferX requires the C++23 std::jthread and std::stop_token support in the supported standard library (__cpp_lib_jthread is undefined). Raise the toolchain floor per ADR 0005 / docs/supported-platforms.md"
+    "std::jthread: InferX requires the C++23 std::jthread and std::stop_token support in the supported standard library (__cpp_lib_jthread is undefined). Raise the toolchain floor per ADR 0020 / docs/supported-platforms.md"
 #endif
 #if !defined(__cpp_concepts)
 #error \
-    "concepts: InferX requires the C++23 concepts support in the compiler (__cpp_concepts is undefined). Raise the toolchain floor per ADR 0005 / docs/supported-platforms.md"
+    "concepts: InferX requires the C++23 concepts support in the compiler (__cpp_concepts is undefined). Raise the toolchain floor per ADR 0020 / docs/supported-platforms.md"
 #endif
 
 INFERX_REQUIRE_FEATURE(__cpp_lib_optional, "std::optional monadic operations");
@@ -55,7 +55,7 @@ INFERX_REQUIRE_FEATURE(__cpp_concepts, "concepts");
 // std::expected: exercised on every lane that exposes it. The Clang 18 +
 // libstdc++ 13 pairing cannot: libstdc++ gates <expected> on
 // __cpp_concepts >= 202002L while Clang reports 201907L. This is a documented
-// facility gap (ADR 0005, docs/supported-platforms.md), not a silent C++20
+// facility gap (ADR 0020, docs/supported-platforms.md), not a silent C++20
 // fallback; the accepted-alternative C++23 facilities above cover every lane.
 #if defined(__cpp_lib_expected)
 #define INFERX_HAVE_STD_EXPECTED 1

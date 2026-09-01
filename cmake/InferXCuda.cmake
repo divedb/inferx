@@ -1,4 +1,4 @@
-# Optional, strict CUDA enablement (m0.md section 10.1; ADR 0005). Included by
+# Optional, strict CUDA enablement (m2.md section 11; ADR 0020). Included by
 # the top-level CMakeLists only when INFERX_ENABLE_CUDA=ON. Order matters:
 #
 #   1. explicit architecture list is required BEFORE toolkit detection, so an
@@ -6,7 +6,7 @@
 #   2. check_language(CUDA) — absent toolkit is fatal (never silently off);
 #   3. enable_language + find_package(CUDAToolkit REQUIRED);
 #   4. language level: C++23 when the qualified NVCC supports it, otherwise
-#      the CUDA subset is isolated at C++20 (ADR 0005 section 4);
+#      the CUDA subset is isolated at C++20 (ADR 0020);
 #   5. host-compiler/toolkit pairing validated where known-incompatible.
 
 # Accepted architecture list for the owned GPU lane (m0.md section 6.6: never
@@ -29,7 +29,7 @@ foreach(_arch IN ITEMS ${_INFERX_REQUESTED_ARCHS})
     message(FATAL_ERROR
       "CUDA architecture '${_arch}' is outside the accepted list "
       "'${INFERX_CUDA_ACCEPTED_ARCHITECTURES}'. Update the support matrix via "
-      "ADR 0005 or choose an accepted value; see docs/supported-platforms.md.")
+      "ADR 0020 or choose an accepted value; see docs/supported-platforms.md.")
   endif()
 endforeach()
 
@@ -42,7 +42,7 @@ if(DEFINED CMAKE_CUDA_COMPILER)
     message(FATAL_ERROR
       "INFERX_ENABLE_CUDA=ON but the requested CUDA compiler "
       "'${CMAKE_CUDA_COMPILER}' does not exist. Install the accepted CUDA "
-      "toolkit (ADR 0005; see docker/cuda-dev.Dockerfile and "
+      "toolkit (ADR 0020; see docker/cuda-dev.Dockerfile and "
       "docs/supported-platforms.md) and ensure nvcc is on PATH or "
       "CMAKE_CUDA_COMPILER points at it. CUDA is never silently disabled.")
   endif()
@@ -52,14 +52,28 @@ check_language(CUDA)
 if(NOT CMAKE_CUDA_COMPILER)
   message(FATAL_ERROR
     "INFERX_ENABLE_CUDA=ON but no usable CUDA compiler/toolkit was found. "
-    "Install the accepted toolkit (ADR 0005; see docker/cuda-dev.Dockerfile "
+    "Install the accepted toolkit (ADR 0020; see docker/cuda-dev.Dockerfile "
     "and docs/supported-platforms.md) and ensure nvcc is on PATH or "
     "CMAKE_CUDA_COMPILER points at it. CUDA is never silently disabled.")
 endif()
 enable_language(CUDA)
-find_package(CUDAToolkit REQUIRED)
+if(CMAKE_CUDA_COMPILER_VERSION VERSION_LESS 13.0)
+  message(FATAL_ERROR
+    "M2 requires NVCC 13.0 or newer; detected "
+    "${CMAKE_CUDA_COMPILER_VERSION} at '${CMAKE_CUDA_COMPILER}'. See ADR 0020 "
+    "and docs/supported-platforms.md. CUDA is never silently downgraded.")
+endif()
+set(CMAKE_CUDA_RUNTIME_LIBRARY Shared)
+find_package(CUDAToolkit 13.0 REQUIRED)
+if(INFERX_BUILD_COMPUTE_SANITIZER_TESTS)
+  find_program(INFERX_COMPUTE_SANITIZER_BIN NAMES compute-sanitizer)
+  if(NOT INFERX_COMPUTE_SANITIZER_BIN)
+    message(FATAL_ERROR
+      "INFERX_BUILD_COMPUTE_SANITIZER_TESTS=ON requires compute-sanitizer")
+  endif()
+endif()
 
-# NVCC language level (ADR 0005): C++23 where both the toolkit and CMake can
+# NVCC language level (ADR 0020): C++23 where both the toolkit and CMake can
 # express it, else the CUDA subset is isolated at C++20. The host project
 # stays C++23 regardless. (CMake gained the cuda_std_23 feature after 3.28,
 # so a 3.28 floor isolates at C++20 even on newer NVCC.)
@@ -71,14 +85,12 @@ else()
   set(INFERX_CUDA_CXX_STANDARD 20)
   message(STATUS
     "InferX CUDA: isolating .cu translation units at C++20 (NVCC "
-    "${CMAKE_CUDA_COMPILER_VERSION}, CMake ${CMAKE_VERSION}); ADR 0005.")
+    "${CMAKE_CUDA_COMPILER_VERSION}, CMake ${CMAKE_VERSION}); ADR 0020.")
 endif()
 unset(_INFERX_CUDA23_FEATURE_INDEX)
 set(CMAKE_CUDA_STANDARD ${INFERX_CUDA_CXX_STANDARD})
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_EXTENSIONS OFF)
 
-# Host-compiler pairing: no speculative rejection — local evidence shows the
-# CUDA 12.0.140 + GCC 13 pairing compiles and runs this smoke (recorded in
-# docs/supported-platforms.md as an experimental lane). NVCC's own unsupported-
-# host error is authoritative if a future combination regresses.
+# Host-compiler pairing: no speculative rejection. NVCC's own unsupported-host
+# error is authoritative if a future combination regresses.

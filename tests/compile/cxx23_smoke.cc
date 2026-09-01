@@ -1,7 +1,8 @@
 // C++23 sentinel main (m0.md section 7.2): runs the feature probes so the
 // supported standard library is verified at runtime, not just the front end.
 #include <cstdio>
-#include <cstdlib>
+#include <optional>
+#include <span>
 
 #include "cxx23_features.h"
 
@@ -10,7 +11,7 @@ namespace {
 int Fail(const char* facility) {
   std::fprintf(stderr,
                "cxx23 sentinel failed: %s is not usable at runtime; the "
-               "standard library does not meet the C++23 floor (ADR 0005)\n",
+               "standard library does not meet the C++23 floor (ADR 0020)\n",
                facility);
   return 1;
 }
@@ -63,7 +64,7 @@ int main() {
   std::puts(
       "cxx23 sentinel ok: optional-monadic, unreachable, string-contains, "
       "to_underlying, span, string_view, concepts, jthread "
-      "(std::expected unavailable on this lane; see ADR 0005)");
+      "(std::expected unavailable on this lane; see ADR 0020)");
 #endif
   return 0;
 }

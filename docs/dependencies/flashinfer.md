@@ -24,7 +24,7 @@ requires and pin that subset; no Python/PyTorch runtime may enter InferX.
 ## 4. Toolchain/C++23 compatibility
 
 Unverified at the pin. The M4 spike must prove a native C++ build against the accepted
-CUDA toolkit/SM list with the host language rules of ADR 0005.
+CUDA toolkit/SM list with the host language rules of ADR 0020.
 
 ## 5. Runtime behavior caveats
 

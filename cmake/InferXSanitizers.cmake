@@ -1,4 +1,4 @@
-# InferX sanitizer configuration (ADR 0005/0006: CPU-only lanes in M0).
+# InferX sanitizer configuration (ADR 0020/0006: CPU-only sanitizer lanes).
 #
 # Builds the target-scoped `inferx_sanitizers` INTERFACE library when any
 # sanitizer is enabled, after rejecting invalid combinations at configure time.

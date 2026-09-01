@@ -42,12 +42,30 @@ Every ADR contains, in order:
 | [0002](0002-error-contract.md) | Cross-module error contract | Proposed |
 | [0003](0003-dependency-management.md) | Dependency management and offline builds | Proposed |
 | [0004](0004-exception-and-abi-boundaries.md) | Exception, RTTI, visibility, and ABI boundaries | Proposed |
-| [0005](0005-toolchain-and-cuda-language.md) | Toolchain floor and CUDA language level | Proposed |
+| [0005](0005-toolchain-and-cuda-language.md) | Toolchain floor and CUDA language level | Superseded by ADR 0020 |
 | [0006](0006-ci-and-supported-platforms.md) | CI lanes and supported platforms | Proposed |
 | [0007](0007-project-licensing.md) | Project licensing and distribution terms | Proposed (blocked on repository owner) |
+| [0008](0008-core-value-types.md) | Core value types (IDs, units, checked math, clocks) | Proposed |
+| [0009](0009-request-state-machine.md) | Request state machine | Proposed |
+| [0010](0010-scheduler-resource-transactions.md) | Deterministic scheduler and resource transactions | Proposed |
+| [0011](0011-configuration-schema.md) | Configuration schema and pipeline | Proposed |
+| [0012](0012-deterministic-simulator-replay.md) | Deterministic simulator and canonical replay | Proposed |
+| [0013](0013-bounded-channel.md) | Bounded channel semantics | Proposed |
+| [0014](0014-tensor-buffer-contract.md) | Tensor and buffer contract | Accepted |
+| [0015](0015-memory-accounting-and-pools.md) | Memory accounting and fixed pools | Accepted |
+| [0016](0016-cuda-context-and-error-scope.md) | CUDA context ownership and error scope | Accepted |
+| [0017](0017-stream-event-fence-contract.md) | Stream, event, and fence contract | Accepted |
+| [0018](0018-metadata-and-workspace-lifetime.md) | Metadata and workspace lifetime | Accepted |
+| [0019](0019-m2-gpu-qualification.md) | M2 GPU qualification | Superseded by ADR 0020 |
+| [0020](0020-cuda-13-toolchain-and-m2-qualification.md) | CUDA 13.0 toolchain and M2 GPU qualification | Accepted |
 | [0020](0020-local-artifact-trust-boundary.md) | Local artifact trust boundary | Accepted |
 | [0021](0021-safetensors-reader-contract.md) | Safetensors reader contract | Accepted |
 | [0022](0022-llama-model-and-weight-schema.md) | Llama model and weight schema | Accepted |
 | [0023](0023-model-integrity-and-fingerprint.md) | Model integrity and fingerprint | Accepted |
 | [0024](0024-tokenizer-backend-and-concurrency.md) | Tokenizer backend and concurrency | Proposed (blocked) |
 | [0025](0025-prompt-processing-contract.md) | Prompt processing contract | Accepted |
+| [0026](0026-operator-contracts-and-numeric-policy.md) | Operator contracts and numeric policy | Accepted |
+| [0027](0027-kernel-registry-and-warmup.md) | Kernel registry and warm-up | Accepted |
+| [0028](0028-cublaslt-algorithm-and-workspace.md) | cuBLASLt algorithm and workspace policy | Accepted |
+| [0029](0029-attention-backend-and-flashinfer.md) | Recorded FlashInfer attention candidate | Rejected |
+| [0030](0030-cuda-glue-kernel-policy.md) | Owned CUDA glue kernel policy | Accepted |

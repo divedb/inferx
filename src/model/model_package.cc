@@ -243,9 +243,8 @@ absl::StatusOr<InspectedModelArtifacts> ModelArtifactLoader::Inspect(
     auto exists = session->ExistsRegular(*optional_path);
     if (!exists.ok()) return exists.status();
     if (*exists) {
-      const std::optional<uint64_t> json_size_limit =
-          optional_name.ends_with(".json") ? std::optional<uint64_t>(limits.max_json_bytes)
-                                           : std::nullopt;
+      std::optional<uint64_t> json_size_limit;
+      if (optional_name.ends_with(".json")) json_size_limit = limits.max_json_bytes;
       auto file = ConsumeFile(*session, *optional_path, manifest, json_size_limit);
       if (!file.ok()) return file.status();
       consumed.push_back(std::move(*file));

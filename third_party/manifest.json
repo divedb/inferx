@@ -2,6 +2,7 @@
   "schema_version": 1,
   "profiles": {
     "core": [
+      "simdjson",
       "abseil-cpp",
       "simdjson",
       "blake3",
