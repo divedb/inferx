@@ -52,27 +52,26 @@ def main() -> int:
     work = args.output_root / f"{kind}-{stamp}"
     work.mkdir(parents=True, exist_ok=True)
 
+    # The pinned Abseil is installed into the prefix for both fixtures: the
+    # absl-only one proves the installed-dependency strategy, and since M1
+    # (ADR 0008) inferx::base exposes Abseil in public headers so the InferX
+    # consumer needs the package in the same prefix too.
+    prefix = work / ("absl-prefix" if kind == "absl" else "prefix")
+    print(f"[install-consumer] install prefix: {prefix}")
+    absl_build = work / "absl-build"
+    run(["cmake", "-S", str(args.source_dir / "third_party" / "abseil-cpp"),
+         "-B", str(absl_build), "-G", "Ninja",
+         "-DCMAKE_BUILD_TYPE=Release",
+         "-DCMAKE_CXX_COMPILER=" + args.cxx_compiler,
+         "-DCMAKE_INSTALL_PREFIX=" + str(prefix),
+         "-DABSL_PROPAGATE_CXX_STD=ON",
+         "-DABSL_ENABLE_INSTALL=ON",
+         "-DBUILD_TESTING=OFF"])
+    run(["cmake", "--build", str(absl_build), "--parallel"])
+    run(["cmake", "--install", str(absl_build)])
+
     if kind == "inferx":
-        prefix = work / "prefix"
-        print(f"[install-consumer] install prefix: {prefix}")
         run(["cmake", "--install", str(args.build_dir), "--prefix", str(prefix)])
-    else:
-        # Installed-dependency fixture: build+install the pinned Abseil from
-        # the submodule with its install rules enabled for exactly this
-        # fixture (they stay off for ordinary InferX builds).
-        prefix = work / "absl-prefix"
-        print(f"[install-consumer] pinned Abseil install prefix: {prefix}")
-        absl_build = work / "absl-build"
-        run(["cmake", "-S", str(args.source_dir / "third_party" / "abseil-cpp"),
-             "-B", str(absl_build), "-G", "Ninja",
-             "-DCMAKE_BUILD_TYPE=Release",
-             "-DCMAKE_CXX_COMPILER=" + args.cxx_compiler,
-             "-DCMAKE_INSTALL_PREFIX=" + str(prefix),
-             "-DABSL_PROPAGATE_CXX_STD=ON",
-             "-DABSL_ENABLE_INSTALL=ON",
-             "-DBUILD_TESTING=OFF"])
-        run(["cmake", "--build", str(absl_build), "--parallel"])
-        run(["cmake", "--install", str(absl_build)])
 
     consumer_build = work / "consumer-build"
     configure_cmd = [

@@ -24,6 +24,129 @@ gtest_discover_tests(inferx_base_test
   PROPERTIES LABELS "unit" TIMEOUT 60)
 
 # ---------------------------------------------------------------------------
+# m1-unit: M1 base contract tests (labels include the general `m1` label).
+# ---------------------------------------------------------------------------
+add_executable(inferx_m1_value_test
+  unit/base/m1_id_test.cc
+  unit/base/m1_value_test.cc)
+inferx_apply_project_options(inferx_m1_value_test)
+target_link_libraries(inferx_m1_value_test PRIVATE
+  inferx::base GTest::gtest_main absl::strings absl::status)
+gtest_discover_tests(inferx_m1_value_test
+  PROPERTIES TIMEOUT 60)
+
+add_executable(inferx_m1_status_test unit/base/m1_status_test.cc)
+inferx_apply_project_options(inferx_m1_status_test)
+target_link_libraries(inferx_m1_status_test PRIVATE
+  inferx::base GTest::gtest_main absl::strings absl::status)
+gtest_discover_tests(inferx_m1_status_test
+  PROPERTIES TIMEOUT 60)
+
+add_executable(inferx_m1_fsm_test unit/engine/m1_fsm_test.cc)
+inferx_apply_project_options(inferx_m1_fsm_test)
+target_link_libraries(inferx_m1_fsm_test PRIVATE
+  inferx::engine GTest::gtest_main absl::status absl::strings)
+gtest_discover_tests(inferx_m1_fsm_test
+  PROPERTIES TIMEOUT 60)
+
+add_executable(inferx_m1_config_test unit/config/m1_config_test.cc)
+inferx_apply_project_options(inferx_m1_config_test)
+target_link_libraries(inferx_m1_config_test PRIVATE
+  inferx::config GTest::gtest_main absl::status absl::strings)
+gtest_discover_tests(inferx_m1_config_test
+  PROPERTIES TIMEOUT 60)
+
+# m1-channel: bounded channel semantics (threaded; TSan lane selects these).
+add_executable(inferx_m1_channel_test unit/base/m1_channel_test.cc)
+inferx_apply_project_options(inferx_m1_channel_test)
+target_link_libraries(inferx_m1_channel_test PRIVATE
+  inferx::base GTest::gtest_main absl::strings)
+gtest_discover_tests(inferx_m1_channel_test
+  PROPERTIES TIMEOUT 120)
+
+add_executable(inferx_m1_scheduler_test unit/scheduler/m1_scheduler_test.cc)
+inferx_apply_project_options(inferx_m1_scheduler_test)
+target_link_libraries(inferx_m1_scheduler_test PRIVATE
+  inferx::scheduler GTest::gtest_main absl::status absl::strings)
+gtest_discover_tests(inferx_m1_scheduler_test
+  PROPERTIES TIMEOUT 60)
+
+add_executable(inferx_m1_simulator_components_test
+  unit/simulator/m1_simulator_components_test.cc)
+inferx_apply_project_options(inferx_m1_simulator_components_test)
+target_link_libraries(inferx_m1_simulator_components_test PRIVATE
+  inferx::simulator GTest::gtest_main absl::status absl::strings)
+gtest_discover_tests(inferx_m1_simulator_components_test
+  PROPERTIES TIMEOUT 60)
+
+add_executable(inferx_m1_simulator_integration_test
+  integration/simulator/m1_simulator_integration_test.cc)
+inferx_apply_project_options(inferx_m1_simulator_integration_test)
+target_link_libraries(inferx_m1_simulator_integration_test PRIVATE
+  inferx::simulator GTest::gtest_main absl::status absl::strings)
+gtest_discover_tests(inferx_m1_simulator_integration_test
+  PROPERTIES TIMEOUT 120)
+
+add_executable(inferx_m1_replay_correctness_test
+  correctness/replay/m1_replay_correctness_test.cc)
+inferx_apply_project_options(inferx_m1_replay_correctness_test)
+target_link_libraries(inferx_m1_replay_correctness_test PRIVATE
+  inferx::simulator GTest::gtest_main absl::status absl::strings)
+target_compile_definitions(inferx_m1_replay_correctness_test PRIVATE
+  INFERX_M1_REPLAY_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/correctness/replay/data")
+gtest_discover_tests(inferx_m1_replay_correctness_test
+  PROPERTIES TIMEOUT 120)
+
+add_executable(inferx_m1_simulator_failure_test
+  failure/simulator/m1_simulator_failure_test.cc)
+inferx_apply_project_options(inferx_m1_simulator_failure_test)
+target_link_libraries(inferx_m1_simulator_failure_test PRIVATE
+  inferx::simulator GTest::gtest_main absl::status absl::strings)
+gtest_discover_tests(inferx_m1_simulator_failure_test
+  PROPERTIES TIMEOUT 120)
+
+add_executable(inferx_simulator_stress
+  stress/simulator/m1_simulator_stress.cc)
+inferx_apply_project_options(inferx_simulator_stress)
+target_link_libraries(inferx_simulator_stress PRIVATE
+  inferx::simulator absl::status absl::strings)
+set_target_properties(inferx_simulator_stress PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+add_test(NAME m1_simulator_stress_50000
+  COMMAND $<TARGET_FILE:inferx_simulator_stress>
+          --seed=0x4d31535452455353
+          --operations=50000
+          --failure_output=${CMAKE_SOURCE_DIR}/out/failures/m1)
+set_tests_properties(m1_simulator_stress_50000 PROPERTIES
+  LABELS "m1;m1-stress" TIMEOUT 300)
+
+if(TARGET inferx-sim)
+  add_test(NAME m1_sim_cli
+    COMMAND Python3::Interpreter ${CMAKE_CURRENT_SOURCE_DIR}/integration/m1_sim_cli_test.py
+            --binary $<TARGET_FILE:inferx-sim>
+            --config ${CMAKE_CURRENT_SOURCE_DIR}/integration/simulator/data/basic_config.json
+            --workload ${CMAKE_CURRENT_SOURCE_DIR}/integration/simulator/data/basic_workload.json)
+  set_tests_properties(m1_sim_cli PROPERTIES
+    LABELS "m1;m1-integration" TIMEOUT 120)
+endif()
+
+if(TARGET inferx_fsm_schema)
+  add_test(NAME m1_fsm_docs_current
+    COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/docs/render_request_fsm.py
+            --binary $<TARGET_FILE:inferx_fsm_schema>
+            --output ${CMAKE_SOURCE_DIR}/docs/request-lifecycle.md
+            --check)
+  set_tests_properties(m1_fsm_docs_current PROPERTIES
+    LABELS "m1;m1-correctness" TIMEOUT 60)
+endif()
+
+# GoogleTest discovers individual cases after build. This CTest-time include
+# runs after those discovery includes and assigns both the general M1 label
+# and the required roadmap category without lossy list escaping.
+set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/m1_test_labels.cmake")
+
+# ---------------------------------------------------------------------------
 # compile: C++23 feature sentinel. Exercises library facilities, not macros.
 # ---------------------------------------------------------------------------
 add_executable(inferx_cxx23_smoke compile/cxx23_smoke.cc)

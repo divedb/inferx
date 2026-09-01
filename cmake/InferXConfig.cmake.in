@@ -2,12 +2,21 @@
 
 include(CMakeFindDependencyMacro)
 
-# Dependencies of installed InferX targets. M0's `inferx::base` is
-# self-contained; when M1 exposes absl::Status through public headers, add
-#   find_dependency(absl CONFIG)
-# here and require the pinned Abseil package in the same prefix (proven by
-# tests/consumer_absl).
+# Dependencies of installed InferX targets. Since M1 (ADR 0008), inferx::base
+# exposes absl::Status/hash/format in public headers; the prefix must contain
+# the pinned Abseil package (proven by tests/consumer_absl in M0).
+find_dependency(absl CONFIG)
 
-include("${CMAKE_CURRENT_LIST_DIR}/InferXTargets.cmake")
+# Attach the pinned Abseil link interface to the installed static library.
+# The standalone-installed Abseil in this prefix provides both the headers
+# (same include directory) and these imported targets (ADR 0008).
+if(NOT TARGET inferx::base)
+  include("${CMAKE_CURRENT_LIST_DIR}/InferXTargets.cmake")
+endif()
+set_property(TARGET inferx::base APPEND PROPERTY INTERFACE_LINK_LIBRARIES
+  absl::status
+  absl::statusor
+  absl::strings
+  absl::hash)
 
 check_required_components(InferX)

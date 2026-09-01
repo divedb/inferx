@@ -45,3 +45,9 @@ Every ADR contains, in order:
 | [0005](0005-toolchain-and-cuda-language.md) | Toolchain floor and CUDA language level | Proposed |
 | [0006](0006-ci-and-supported-platforms.md) | CI lanes and supported platforms | Proposed |
 | [0007](0007-project-licensing.md) | Project licensing and distribution terms | Proposed (blocked on repository owner) |
+| [0008](0008-core-value-types.md) | Core value types (IDs, units, checked math, clocks) | Proposed |
+| [0013](0013-bounded-channel.md) | Bounded channel semantics | Proposed |
+| [0011](0011-configuration-schema.md) | Configuration schema and pipeline | Proposed |
+| [0009](0009-request-state-machine.md) | Request state machine | Proposed |
+| [0010](0010-scheduler-resource-transactions.md) | Deterministic scheduler and resource transactions | Proposed |
+| [0012](0012-deterministic-simulator-replay.md) | Deterministic simulator and canonical replay | Proposed |

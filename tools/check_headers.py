@@ -70,12 +70,20 @@ def main() -> int:
                      f"temp directory, not {resolved}")
 
     failures: list[str] = []
+    # Since M1 (ADR 0008), public headers include Abseil headers. A consumer
+    # sees them beside inferx/ in the installed prefix's include directory;
+    # for the in-tree probe the pinned Abseil source provides the same
+    # absl/... layout.
+    extra_includes = []
+    absl_root = args.source_root / "third_party" / "abseil-cpp"
+    if absl_root.is_dir():
+        extra_includes = ["-I", str(absl_root)]
     for header in headers:
         probe = work_dir / (str(header.relative_to(include_root)).replace("/", "_") + ".cc")
         probe.write_text(f"#include <{header.relative_to(include_root)}>\n\n"
                          "int main() { return 0; }\n", encoding="utf-8")
         result = subprocess.run(
-            [compiler, "-std=c++23", "-I", str(include_root),
+            [compiler, "-std=c++23", "-I", str(include_root), *extra_includes,
              "-Wall", "-Wextra", "-Werror", "-c", str(probe), "-o", str(probe) + ".o"],
             capture_output=True, text=True, timeout=120)
         if result.returncode != 0:

@@ -9,6 +9,18 @@ set_target_properties(inferx_base PROPERTIES
 
 target_compile_features(inferx_base PUBLIC cxx_std_23)
 
+# ADR 0002/0008: absl::Status and hash/format support appear in installed
+# public headers. Abseil links PRIVATE (build-only) so the static-library
+# export carries no unresolvable build targets; InferXConfig.cmake attaches
+# the pinned Abseil link interface to the installed target after
+# find_dependency(absl CONFIG), and the standalone-installed Abseil headers
+# land in the same prefix include directory.
+target_link_libraries(inferx_base PRIVATE
+  $<BUILD_INTERFACE:absl::status>
+  $<BUILD_INTERFACE:absl::statusor>
+  $<BUILD_INTERFACE:absl::strings>
+  $<BUILD_INTERFACE:absl::hash>)
+
 target_include_directories(inferx_base
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../include>
