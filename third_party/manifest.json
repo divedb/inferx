@@ -8,6 +8,13 @@
       "blake3",
       "googletest",
       "benchmark"
+    ],
+    "kernels": [
+      "cutlass",
+      "flashinfer"
+    ],
+    "experimental-kernels": [
+      "hpc-ops"
     ]
   },
   "dependencies": [
@@ -123,7 +130,7 @@
         "kernels"
       ],
       "default_enabled": false,
-      "status": "qualified-deferred",
+      "status": "approved",
       "qualification": "docs/dependencies/cutlass.md",
       "notes": "Deferred to M4. CUDA/toolchain compatibility audit required against the accepted toolkit pin."
     },
@@ -140,7 +147,7 @@
         "kernels"
       ],
       "default_enabled": false,
-      "status": "candidate",
+      "status": "approved",
       "qualification": "docs/dependencies/flashinfer.md",
       "notes": "Deferred to M4. Not approved for production use without the M4 native C++ spike; transitive closure includes Python-facing tooling that must not enter the runtime."
     },
@@ -168,13 +175,13 @@
       "url": "https://github.com/Tencent/hpc-ops.git",
       "revision": "f39028d9f5ab77f71906fbf929d1b611859ab6b7",
       "license": "MIT (with third-party component exceptions)",
-      "license_file": "third_party/hpc-ops/LICENSE",
+      "license_file": "third_party/hpc-ops/LICENSE.txt",
       "owner": "ops",
       "features": [
         "experimental-kernels"
       ],
       "default_enabled": false,
-      "status": "experimental",
+      "status": "candidate",
       "qualification": "docs/dependencies/hpc-ops.md",
       "notes": "Experimental and disabled. Audit only; hardware/Python/toolkit constraints recorded in the report."
     },

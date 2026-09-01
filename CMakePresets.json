@@ -91,29 +91,100 @@
         "CMAKE_CUDA_ARCHITECTURES": "89",
         "INFERX_ENABLE_CUDA": "ON"
       }
+    },
+    {
+      "name": "cuda-kernels",
+      "inherits": "cuda-release",
+      "displayName": "CUDA kernels architecture with all external providers enabled (ADR 0031/0032)",
+      "cacheVariables": {
+        "INFERX_ENABLE_FLASHINFER": "ON",
+        "INFERX_ENABLE_CUTLASS": "ON",
+        "INFERX_ENABLE_HPC_OPS": "ON"
+      }
     }
   ],
   "buildPresets": [
-    { "name": "dev-gcc", "configurePreset": "dev-gcc" },
-    { "name": "dev-clang", "configurePreset": "dev-clang" },
-    { "name": "asan-ubsan", "configurePreset": "asan-ubsan" },
-    { "name": "tsan", "configurePreset": "tsan" },
-    { "name": "cpu-release", "configurePreset": "cpu-release" },
-    { "name": "analysis", "configurePreset": "analysis" },
-    { "name": "cuda-release", "configurePreset": "cuda-release" }
+    {
+      "name": "dev-gcc",
+      "configurePreset": "dev-gcc"
+    },
+    {
+      "name": "dev-clang",
+      "configurePreset": "dev-clang"
+    },
+    {
+      "name": "asan-ubsan",
+      "configurePreset": "asan-ubsan"
+    },
+    {
+      "name": "tsan",
+      "configurePreset": "tsan"
+    },
+    {
+      "name": "cpu-release",
+      "configurePreset": "cpu-release"
+    },
+    {
+      "name": "analysis",
+      "configurePreset": "analysis"
+    },
+    {
+      "name": "cuda-release",
+      "configurePreset": "cuda-release"
+    },
+    {
+      "name": "cuda-kernels",
+      "configurePreset": "cuda-kernels"
+    }
   ],
   "testPresets": [
     {
       "name": "base-test",
       "hidden": true,
-      "output": { "outputOnFailure": true, "shortProgress": true }
+      "output": {
+        "outputOnFailure": true,
+        "shortProgress": true
+      }
     },
-    { "name": "dev-gcc", "inherits": "base-test", "configurePreset": "dev-gcc" },
-    { "name": "dev-clang", "inherits": "base-test", "configurePreset": "dev-clang" },
-    { "name": "asan-ubsan", "inherits": "base-test", "configurePreset": "asan-ubsan" },
-    { "name": "tsan", "inherits": "base-test", "configurePreset": "tsan" },
-    { "name": "cpu-release", "inherits": "base-test", "configurePreset": "cpu-release" },
-    { "name": "analysis", "inherits": "base-test", "configurePreset": "analysis" },
-    { "name": "cuda-release", "inherits": "base-test", "configurePreset": "cuda-release" }
+    {
+      "name": "dev-gcc",
+      "inherits": "base-test",
+      "configurePreset": "dev-gcc"
+    },
+    {
+      "name": "dev-clang",
+      "inherits": "base-test",
+      "configurePreset": "dev-clang"
+    },
+    {
+      "name": "asan-ubsan",
+      "inherits": "base-test",
+      "configurePreset": "asan-ubsan"
+    },
+    {
+      "name": "tsan",
+      "inherits": "base-test",
+      "configurePreset": "tsan"
+    },
+    {
+      "name": "cpu-release",
+      "inherits": "base-test",
+      "configurePreset": "cpu-release"
+    },
+    {
+      "name": "analysis",
+      "inherits": "base-test",
+      "configurePreset": "analysis"
+    },
+    {
+      "name": "cuda-release",
+      "inherits": "base-test",
+      "configurePreset": "cuda-release"
+    },
+    {
+      "name": "cuda-kernels",
+      "inherits": "base-test",
+      "configurePreset": "cuda-kernels"
+    }
   ]
 }
