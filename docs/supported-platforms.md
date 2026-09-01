@@ -9,14 +9,14 @@ Classification (see [ADR 0006](adr/0006-ci-and-supported-platforms.md)):
 
 A lane appears here only with evidence (CI job or recorded owned-runner run),
 never because it configured once. This matrix began with M0 local evidence.
-M2 does not promote a CUDA entry until the exact ADR 0019 artifact exists.
+M2 does not promote a CUDA entry until the exact ADR 0020 artifact exists.
 
 ## Host operating system
 
 | Platform | Classification | Evidence |
 |---|---|---|
 | Ubuntu 24.04 x86-64 | required | `ci-cpu.yml` all jobs; local M0 validation |
-| Ubuntu 24.04 x86-64 on WSL2 | experimental CUDA host | 2026-09-01 real-device CUDA 13.0/SM 89 M2 run through the host WSL launcher |
+| Ubuntu 24.04 x86-64 on WSL2 | supported CUDA qualification host | 2026-09-01 real-device CUDA 13.0/SM 89 M2 run through the host WSL launcher |
 
 ## Compilers (host, C++23, `-std=c++23`, no extensions)
 
@@ -24,11 +24,11 @@ M2 does not promote a CUDA entry until the exact ADR 0019 artifact exists.
 |---|---|---|---|
 | GCC 13 (validated 13.3.0) | 13 | required | `dev-gcc`, `cpu-release` presets; configure-time floor check rejects older |
 | Clang 18 (validated 18.1.3, libstdc++ 13) | 18 | required | `dev-clang`, `asan-ubsan`, `tsan`, `analysis` presets |
-| GCC 12 (NVCC host only) | 12 | supported (CUDA lane only) | NVCC 12.0 toolchain pairing |
+| GCC 12 (legacy NVCC host only) | 12 | experimental | CUDA 12.0 compile-only history; below the M2 toolkit floor |
 | Clang 17 / GCC 14+ | — | experimental | not covered by M0 lanes |
 | Anything older than the floor | — | unsupported | `cmake/InferXProjectOptions.cmake` configure failure |
 
-C++23 library facility note (ADR 0005): `std::expected` is available on the
+C++23 library facility note (ADR 0020): `std::expected` is available on the
 GCC 13 lane but **not** on Clang 18 + libstdc++ 13 — libstdc++ gates
 `<expected>` on `__cpp_concepts >= 202002L` while Clang reports `201907L`.
 Both lanes remain C++23; the sentinel covers `std::expected` where exposed and
@@ -56,21 +56,20 @@ Formatting note: clang-format 18's `Standard` accepts at most `c++20`/`Latest`
 
 | Component | Version | Classification | Evidence |
 |---|---|---|---|
-| CUDA toolkit 12.8 + accepted host compiler, arch `89` | M2 minimum | required for M2 qualification; evidence pending | `ci-gpu.yml` must retain all M2 test, sanitizer, and benchmark artifacts; no local qualifying run yet |
-| CUDA toolkit 13.0.88 + GCC 13.3 host, arch `89` | additional real-device lane | experimental for M2; not a replacement for 12.8 | 2026-09-01 WSL2 run: device self-test; 45 unit, 10 integration, 2 correctness, 5 failure, and 4 stress tests; four clean Compute Sanitizer tools; paired benchmark medians within 3% |
-| CUDA toolkit 12.0.140 + GCC 13 host, arch `89`, `.cu` at C++20 | fallback lane | experimental, not M2 qualification | M2 host sources and test kernels compile locally; NVCC 12.0 is below the M2 floor and no M2 runtime evidence was collected with it |
-| GPU compute capability | `89` (validated RTX 4080 SUPER) accepted list | additional real-device evidence; required M2 qualification pending 12.8 | CUDA 13.0 runtime 13000, driver API 13010, Windows driver 591.86, 17,170,956,288 device bytes; capability validation rejects devices outside the explicit list |
+| CUDA toolkit 13.0.88 + GCC 13.3 host, arch `89` | M2 minimum | required and qualified by ADR 0020 | 2026-09-01 WSL2 run: device self-test; 45 unit, 10 integration, 2 correctness, 5 failure, and 4 stress tests; four clean Compute Sanitizer tools; seven paired benchmark medians within 3% |
+| CUDA toolkit 12.x | below M2 minimum | unsupported | CMake rejects NVCC/toolkit below 13.0; runtime capability validation rejects versions below 13000 |
+| GPU compute capability | `89` (validated RTX 4080 SUPER) accepted list | required M2 qualification device | CUDA 13.0 runtime 13000, driver API 13010, Windows driver 591.86, 17,170,956,288 device bytes; capability validation rejects devices outside the explicit list |
 | No toolkit + `INFERX_ENABLE_CUDA=ON` | — | unsupported | configure failure with toolkit/bootstrap guidance |
 | `CMAKE_CUDA_ARCHITECTURES` unset or outside list | — | rejected | configure failure listing the accepted architectures |
 
 CPU presets never detect, include, link, or require CUDA (`INFERX_ENABLE_CUDA=OFF`
 default). A CPU sanitizer preset combined with CUDA is rejected at configure
-time. CUDA 12.8 is enforced by `find_package(CUDAToolkit 12.8 REQUIRED)` when
+time. CUDA 13.0 is enforced by `find_package(CUDAToolkit 13.0 REQUIRED)` when
 enabled. Configure/compile evidence from an older local toolkit is diagnostic
-only and cannot close M2. The retained CUDA 13.0 WSL2 artifacts are under
+only and cannot close M2. The qualifying CUDA 13.0 WSL2 artifacts are under
 `out/benchmarks/m2-cuda13-wsl-final` and
-`out/sanitizer/m2-cuda13-wsl-final`; they close the prior real-device evidence
-gap for the additional lane but do not qualify the required CUDA 12.8 lane.
+`out/sanitizer/m2-cuda13-wsl-final`, with the clean cross-artifact manifest at
+`out/evidence/m2-cuda13-wsl-final/manifest.json`.
 
 ## Release channel
 

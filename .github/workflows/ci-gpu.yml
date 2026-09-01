@@ -62,15 +62,16 @@ jobs:
           test "${#gpu_indices[@]}" -gt 0
           # Preserve all-device visibility once so the conditional two-context
           # isolation fixture exercises it whenever the owned runner has 2+ GPUs.
-          ctest --preset cuda-release \
+          ctest --test-dir out/build/cuda-release \
             -R '^M2CudaIntegrationTest.MultipleVisibleDevicesRemainContextIsolated$' \
             --output-on-failure
           for gpu_index in "${gpu_indices[@]}"; do
             export CUDA_VISIBLE_DEVICES="$gpu_index"
             out/build/cuda-release/inferx-device-info --self-test
             for label in m2-unit m2-integration m2-correctness m2-failure m2-stress; do
-              test "$(ctest --preset cuda-release -N -L "$label" | sed -n 's/Total Tests: //p')" -gt 0
-              ctest --preset cuda-release -L "$label" --output-on-failure
+              test "$(ctest --test-dir out/build/cuda-release -N -L "$label" | \
+                sed -n 's/Total Tests: //p')" -gt 0
+              ctest --test-dir out/build/cuda-release -L "$label" --output-on-failure
             done
           done
       - name: All four Compute Sanitizer tools

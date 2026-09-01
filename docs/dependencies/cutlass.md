@@ -21,9 +21,9 @@ never in the runtime). No required nested submodules for the header path used la
 ## 4. Toolchain/C++23 compatibility
 
 Unverified at the pin — this is the deferral reason. CUTLASS is sensitive to NVCC
-versions; the M4 qualification must record, for the accepted toolkit (ADR 0005):
+versions; the M4 qualification must record, for the accepted toolkit (ADR 0020):
 compilable example set, supported SM list vs. our matrix, host compiler pairing, and the
-`.cu` language level actually usable (C++20 isolation may apply per ADR 0005 §4).
+`.cu` language level actually usable (C++20 isolation may apply per ADR 0020).
 
 ## 5. Runtime behavior caveats
 

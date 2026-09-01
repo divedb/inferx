@@ -5,7 +5,7 @@
 # fixtures that intentionally reuse the checks).
 
 # ---------------------------------------------------------------------------
-# Compiler floor (ADR 0005). Fail at configure time, before project sources
+# Compiler floor (ADR 0020). Fail at configure time, before project sources
 # compile, with the minimum accepted version.
 # ---------------------------------------------------------------------------
 set(INFERX_MIN_GCC_VERSION 13)

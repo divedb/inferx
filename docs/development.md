@@ -143,7 +143,7 @@ job; M0 has no time gates.
 
 ```bash
 docker build -f docker/cpu-dev.Dockerfile  -t inferx-cpu-dev  .   # pinned ubuntu:24.04 digest
-docker build -f docker/cuda-dev.Dockerfile -t inferx-cuda-dev .   # pinned cuda 12.8 devel digest
+docker build -f docker/cuda-dev.Dockerfile -t inferx-cuda-dev .   # pinned CUDA 13.0 devel digest
 
 docker run --rm -it -v "$PWD:/workspace" -w /workspace inferx-cpu-dev \
   bash -lc 'python3 tools/deps/bootstrap.py --profile core && \
@@ -160,8 +160,10 @@ paths are baked in; project dependencies are never downloaded into images.
 - **Manifest drift**: `python3 tools/deps/check_manifest.py` names the path and
   both revisions; fix gitlink + manifest together.
 - **CUDA host-compiler/toolkit mismatch**: see the pairing table in
-  [supported-platforms.md](supported-platforms.md); the 12.0 fallback lane
-  isolates `.cu` at C++20 (ADR 0005).
+  [supported-platforms.md](supported-platforms.md). M2 rejects CUDA 12.x; use
+  the pinned CUDA 13.0 image or an equivalent newer toolkit. CMake isolates
+  `.cu` at C++20 when the qualified combination does not expose `cuda_std_23`
+  (ADR 0020).
 - **clang-tidy/IWYU not found in analysis preset**: install `clang-tidy-18` /
   `include-what-you-use` or point `INFERX_CLANG_TIDY_BIN` / `INFERX_IWYU_BIN`.
 - **Clean rebuild**: remove `out/build/<preset>` (build-directory-specific —

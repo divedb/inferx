@@ -21,7 +21,7 @@ any vendored copies) as part of the M3 spike.
 ## 4. Toolchain/C++23 compatibility
 
 Unverified at the pin; M3 must build it with GCC 13/Clang 18 in C++23 host mode (or
-isolate it at its own standard if unavoidable, per ADR 0005's isolation rule).
+isolate it at its own standard if unavoidable, per ADR 0020's isolation rule).
 
 ## 5. Runtime behavior caveats
 

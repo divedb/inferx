@@ -42,7 +42,7 @@ Every ADR contains, in order:
 | [0002](0002-error-contract.md) | Cross-module error contract | Proposed |
 | [0003](0003-dependency-management.md) | Dependency management and offline builds | Proposed |
 | [0004](0004-exception-and-abi-boundaries.md) | Exception, RTTI, visibility, and ABI boundaries | Proposed |
-| [0005](0005-toolchain-and-cuda-language.md) | Toolchain floor and CUDA language level | Proposed |
+| [0005](0005-toolchain-and-cuda-language.md) | Toolchain floor and CUDA language level | Superseded by ADR 0020 |
 | [0006](0006-ci-and-supported-platforms.md) | CI lanes and supported platforms | Proposed |
 | [0007](0007-project-licensing.md) | Project licensing and distribution terms | Proposed (blocked on repository owner) |
 | [0008](0008-core-value-types.md) | Core value types (IDs, units, checked math, clocks) | Proposed |
@@ -56,4 +56,5 @@ Every ADR contains, in order:
 | [0016](0016-cuda-context-and-error-scope.md) | CUDA context ownership and error scope | Accepted |
 | [0017](0017-stream-event-fence-contract.md) | Stream, event, and fence contract | Accepted |
 | [0018](0018-metadata-and-workspace-lifetime.md) | Metadata and workspace lifetime | Accepted |
-| [0019](0019-m2-gpu-qualification.md) | M2 GPU qualification | Accepted |
+| [0019](0019-m2-gpu-qualification.md) | M2 GPU qualification | Superseded by ADR 0020 |
+| [0020](0020-cuda-13-toolchain-and-m2-qualification.md) | CUDA 13.0 toolchain and M2 GPU qualification | Accepted |

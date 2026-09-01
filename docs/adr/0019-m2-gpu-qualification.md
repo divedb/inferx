@@ -1,6 +1,6 @@
 # ADR 0019: M2 GPU qualification
 
-- Status: Accepted
+- Status: Superseded by [ADR 0020](0020-cuda-13-toolchain-and-m2-qualification.md)
 - Date: 2026-08-31
 - Deciding authority: `docs/milestones/m2.md` sections 3, 17, and 19
 

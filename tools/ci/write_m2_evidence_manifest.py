@@ -68,7 +68,7 @@ def main() -> int:
             ),
         },
         "commands": [
-            "ctest --preset cuda-release -L <m2-label> --output-on-failure",
+            "ctest --test-dir out/build/cuda-release -L <m2-label> --output-on-failure",
             "tools/ci/run_compute_sanitizer.sh --preset cuda-release --suite m2 --output out/sanitizer/m2",
             "tools/bench/run_m2_cuda.sh --preset cuda-release --output out/benchmarks/m2",
         ],

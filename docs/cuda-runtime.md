@@ -1,8 +1,8 @@
 # CUDA runtime contract
 
 CUDA is optional and build-only in M2. CPU presets neither discover nor link
-it. Enabling it requires CUDA toolkit 12.8 or newer, shared cudart, and an
-explicit accepted `CMAKE_CUDA_ARCHITECTURES` value. ADRs 0016–0019 are
+it. Enabling it requires CUDA toolkit 13.0 or newer, shared cudart, and an
+explicit accepted `CMAKE_CUDA_ARCHITECTURES` value. ADRs 0016–0018 and 0020 are
 normative; real-GPU qualification is mandatory before declaring M2 accepted.
 
 ## Device context and health

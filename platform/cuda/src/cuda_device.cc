@@ -75,9 +75,9 @@ absl::StatusOr<std::vector<CudaDeviceInfo>> DiscoverCudaDevices(const CudaApi& a
 
 absl::Status ValidateCudaCapabilities(const CudaDeviceInfo& info, std::span<const int> accepted_sms,
                                       ByteCount device_reserve, ByteCount device_budget) {
-  if (info.runtime_version < 12080) {
+  if (info.runtime_version < 13000) {
     return WithErrorReason(
-        absl::UnimplementedError("cuda.capability: CUDA runtime 12.8 or newer is required"),
+        absl::UnimplementedError("cuda.capability: CUDA runtime 13.0 or newer is required"),
         ErrorReason::kUnsupportedCapability);
   }
   const int sm = info.compute_major * 10 + info.compute_minor;

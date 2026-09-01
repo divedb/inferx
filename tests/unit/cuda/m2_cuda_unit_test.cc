@@ -87,11 +87,11 @@ cudaError_t FakeGetDeviceProperties(cudaDeviceProp* properties, int) {
   return cudaSuccess;
 }
 cudaError_t FakeDriverVersion(int* version) {
-  *version = 12080;
+  *version = 13010;
   return cudaSuccess;
 }
 cudaError_t FakeRuntimeVersion(int* version) {
-  *version = 12080;
+  *version = 13000;
   return cudaSuccess;
 }
 cudaError_t FakePriorityRange(int* least, int* greatest) {
@@ -255,7 +255,7 @@ TEST(M2CudaUnitTest, DiscoveryCapabilityAndNestedGuardRestore) {
       ValidateCudaCapabilities(devices->front(), kRejected, ByteCount(0), ByteCount(0)).code(),
       absl::StatusCode::kUnimplemented);
   CudaDeviceInfo old_runtime = devices->front();
-  old_runtime.runtime_version = 12070;
+  old_runtime.runtime_version = 12090;
   EXPECT_EQ(ValidateCudaCapabilities(old_runtime, kAccepted, ByteCount(0), ByteCount(0)).code(),
             absl::StatusCode::kUnimplemented);
 

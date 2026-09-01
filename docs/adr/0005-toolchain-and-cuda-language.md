@@ -1,6 +1,6 @@
 # ADR 0005: Toolchain floor and CUDA language level
 
-- Status: Proposed
+- Status: Superseded by [ADR 0020](0020-cuda-13-toolchain-and-m2-qualification.md)
 - Date: 2026-08-30
 - Deciding owner: repository owner (implementation proceeds provisionally)
 - Seed: `docs/milestones/m0.md` sections 6.1, 10
