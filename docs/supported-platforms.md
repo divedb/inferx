@@ -16,6 +16,7 @@ M2 does not promote a CUDA entry until the exact ADR 0019 artifact exists.
 | Platform | Classification | Evidence |
 |---|---|---|
 | Ubuntu 24.04 x86-64 | required | `ci-cpu.yml` all jobs; local M0 validation |
+| Ubuntu 24.04 x86-64 on WSL2 | experimental CUDA host | 2026-09-01 real-device CUDA 13.0/SM 89 M2 run through the host WSL launcher |
 
 ## Compilers (host, C++23, `-std=c++23`, no extensions)
 
@@ -56,9 +57,9 @@ Formatting note: clang-format 18's `Standard` accepts at most `c++20`/`Latest`
 | Component | Version | Classification | Evidence |
 |---|---|---|---|
 | CUDA toolkit 12.8 + accepted host compiler, arch `89` | M2 minimum | required for M2 qualification; evidence pending | `ci-gpu.yml` must retain all M2 test, sanitizer, and benchmark artifacts; no local qualifying run yet |
-| CUDA toolkit 13.0.88 + GCC 13 host, arch `89` | additional local lane | experimental for M2 | all M2 CUDA targets compile locally; no accessible GPU, sanitizer, correctness, or benchmark qualification artifact |
-| CUDA toolkit 12.0.140 + GCC 13 host, arch `89`, `.cu` at C++20 | fallback lane | experimental, not M2 qualification | M2 host sources and test kernels compile locally; NVCC 12.0 is below the M2 floor and no GPU was accessible |
-| GPU compute capability | `89` (RTX 4080) accepted list | pending M2 qualification | capability validation rejects devices outside the explicit list; real-device M2 evidence still required |
+| CUDA toolkit 13.0.88 + GCC 13.3 host, arch `89` | additional real-device lane | experimental for M2; not a replacement for 12.8 | 2026-09-01 WSL2 run: device self-test; 45 unit, 10 integration, 2 correctness, 5 failure, and 4 stress tests; four clean Compute Sanitizer tools; paired benchmark medians within 3% |
+| CUDA toolkit 12.0.140 + GCC 13 host, arch `89`, `.cu` at C++20 | fallback lane | experimental, not M2 qualification | M2 host sources and test kernels compile locally; NVCC 12.0 is below the M2 floor and no M2 runtime evidence was collected with it |
+| GPU compute capability | `89` (validated RTX 4080 SUPER) accepted list | additional real-device evidence; required M2 qualification pending 12.8 | CUDA 13.0 runtime 13000, driver API 13010, Windows driver 591.86, 17,170,956,288 device bytes; capability validation rejects devices outside the explicit list |
 | No toolkit + `INFERX_ENABLE_CUDA=ON` | — | unsupported | configure failure with toolkit/bootstrap guidance |
 | `CMAKE_CUDA_ARCHITECTURES` unset or outside list | — | rejected | configure failure listing the accepted architectures |
 
@@ -66,7 +67,10 @@ CPU presets never detect, include, link, or require CUDA (`INFERX_ENABLE_CUDA=OF
 default). A CPU sanitizer preset combined with CUDA is rejected at configure
 time. CUDA 12.8 is enforced by `find_package(CUDAToolkit 12.8 REQUIRED)` when
 enabled. Configure/compile evidence from an older local toolkit is diagnostic
-only and cannot close M2.
+only and cannot close M2. The retained CUDA 13.0 WSL2 artifacts are under
+`out/benchmarks/m2-cuda13-wsl-final` and
+`out/sanitizer/m2-cuda13-wsl-final`; they close the prior real-device evidence
+gap for the additional lane but do not qualify the required CUDA 12.8 lane.
 
 ## Release channel
 

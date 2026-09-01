@@ -15,13 +15,15 @@
 namespace inferx::cuda {
 
 CudaHealthState CudaHealth::state() const noexcept {
-  std::lock_guard<std::mutex> lock(mutex_);
-  return state_;
+  return state_.load(std::memory_order_acquire);
 }
 
 absl::Status CudaHealth::CheckAcceptingWork() const {
+  CudaHealthState state = state_.load(std::memory_order_acquire);
+  if (state == CudaHealthState::kHealthy) return absl::OkStatus();
   std::lock_guard<std::mutex> lock(mutex_);
-  switch (state_) {
+  state = state_.load(std::memory_order_relaxed);
+  switch (state) {
     case CudaHealthState::kHealthy:
       return absl::OkStatus();
     case CudaHealthState::kPoisoned:
@@ -39,29 +41,31 @@ void CudaHealth::Poison(absl::Status cause) noexcept {
     return;
   }
   std::lock_guard<std::mutex> lock(mutex_);
-  if (!poison_cause_.has_value() && state_ != CudaHealthState::kClosed) {
+  CudaHealthState state = state_.load(std::memory_order_relaxed);
+  if (!poison_cause_.has_value() && state != CudaHealthState::kClosed) {
     poison_cause_ = std::move(cause);
   }
-  if (state_ == CudaHealthState::kHealthy) {
-    state_ = CudaHealthState::kPoisoned;
+  if (state == CudaHealthState::kHealthy) {
+    state_.store(CudaHealthState::kPoisoned, std::memory_order_release);
   }
 }
 
 absl::Status CudaHealth::BeginShutdown() {
   std::lock_guard<std::mutex> lock(mutex_);
-  if (state_ == CudaHealthState::kClosed) {
+  const CudaHealthState state = state_.load(std::memory_order_relaxed);
+  if (state == CudaHealthState::kClosed) {
     return absl::OkStatus();
   }
-  if (state_ == CudaHealthState::kShuttingDown) {
+  if (state == CudaHealthState::kShuttingDown) {
     return absl::OkStatus();
   }
-  state_ = CudaHealthState::kShuttingDown;
+  state_.store(CudaHealthState::kShuttingDown, std::memory_order_release);
   return absl::OkStatus();
 }
 
 absl::Status CudaHealth::Close() {
   std::lock_guard<std::mutex> lock(mutex_);
-  state_ = CudaHealthState::kClosed;
+  state_.store(CudaHealthState::kClosed, std::memory_order_release);
   return absl::OkStatus();
 }
 

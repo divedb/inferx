@@ -4,6 +4,7 @@
 
 #include <cuda_runtime_api.h>
 
+#include <atomic>
 #include <cstdint>
 #include <mutex>
 #include <optional>
@@ -33,7 +34,7 @@ class CudaHealth {
 
  private:
   mutable std::mutex mutex_;
-  CudaHealthState state_ = CudaHealthState::kHealthy;
+  std::atomic<CudaHealthState> state_{CudaHealthState::kHealthy};
   std::optional<absl::Status> poison_cause_;
 };
 

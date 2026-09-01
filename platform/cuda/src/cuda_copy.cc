@@ -20,7 +20,7 @@ absl::Status ValidatePointer(const CudaApi& api, const BufferView& view, DeviceI
                              CudaHealth* health) {
 #if !defined(NDEBUG) || defined(INFERX_CUDA_DEBUG_POINTERS)
   cudaPointerAttributes attributes{};
-  const cudaError_t error = api.pointer_get_attributes(&attributes, BufferAccess::Address(view));
+  const cudaError_t error = api.PointerGetAttributes(&attributes, BufferAccess::Address(view));
   if (error != cudaSuccess) {
     return CudaErrorStatus(error, "pointer-attributes", device, health);
   }
@@ -96,8 +96,8 @@ absl::Status CopyAsync(const CopyRequest& request, CudaStream& stream, const Cud
   absl::StatusOr<size_t> bytes = CheckedNarrow<size_t>(request.bytes.value(), "cuda.copy.bytes");
   if (!bytes.ok()) return bytes.status();
   return CudaErrorStatus(
-      api.memcpy_async(BufferAccess::Address(request.destination),
-                       BufferAccess::Address(request.source), *bytes, direction, stream.handle()),
+      api.MemcpyAsync(BufferAccess::Address(request.destination),
+                      BufferAccess::Address(request.source), *bytes, direction, stream.handle()),
       "memcpy-async", stream.device(), health);
 }
 

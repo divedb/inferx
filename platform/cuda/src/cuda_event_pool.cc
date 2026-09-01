@@ -55,6 +55,8 @@ struct CudaEventPool::Impl {
   const CudaApi* api = nullptr;
   CudaHealth* health = nullptr;
   DeviceId device = DeviceId(0);
+  uint32_t slot_count = 0;
+  bool direct_event_calls = false;
   std::vector<EventSlot> slots;
   absl::Status close_status = absl::OkStatus();
   bool closed = false;
@@ -156,6 +158,10 @@ absl::StatusOr<std::unique_ptr<CudaEventPool>> CudaEventPool::Create(
     impl->api = &api;
     impl->health = health;
     impl->device = device;
+    impl->slot_count = slots;
+    impl->direct_event_calls = api.event_record == &cudaEventRecord &&
+                               api.event_query == &cudaEventQuery &&
+                               api.stream_wait_event == &cudaStreamWaitEvent;
     impl->slots.resize(slots);
     for (EventSlot& slot : impl->slots) {
       slot.generation = initial_generation;
@@ -188,7 +194,7 @@ absl::StatusOr<CudaEventLease> CudaEventPool::Acquire() {
     absl::Status status = impl_->health->CheckAcceptingWork();
     if (!status.ok()) return status;
   }
-  for (size_t index = 0; index < impl_->slots.size(); ++index) {
+  for (uint32_t index = 0; index < impl_->slot_count; ++index) {
     EventSlot& slot = impl_->slots[index];
     if (slot.state != EventState::kFree) continue;
     if (slot.generation.value() == std::numeric_limits<uint64_t>::max()) {
@@ -208,7 +214,7 @@ absl::StatusOr<CudaEventLease> CudaEventPool::Acquire() {
 
 absl::StatusOr<cudaEvent_t> CudaEventPool::Resolve(FenceToken token, bool require_recorded) {
   if (impl_ == nullptr || token.device != Device::Cuda(impl_->device) ||
-      token.slot.value() >= impl_->slots.size()) {
+      token.slot.value() >= impl_->slot_count) {
     return StaleEvent("event.resolve");
   }
   EventSlot& slot = impl_->slots[token.slot.value()];
@@ -237,8 +243,13 @@ absl::Status CudaEventPool::Record(FenceToken token, CudaStream& stream) {
   if (slot.state != EventState::kLeased) {
     return absl::FailedPreconditionError("cuda.event.record: event may be recorded only once");
   }
-  absl::Status status = CudaErrorStatus(impl_->api->event_record(*event, stream.handle()),
-                                        "event-record", impl_->device, impl_->health);
+  cudaError_t error;
+  if (impl_->direct_event_calls) [[likely]] {
+    error = cudaEventRecord(*event, stream.handle());
+  } else {
+    error = impl_->api->event_record(*event, stream.handle());
+  }
+  absl::Status status = CudaErrorStatus(error, "event-record", impl_->device, impl_->health);
   if (status.ok()) slot.state = EventState::kRecorded;
   return status;
 }
@@ -253,14 +264,24 @@ absl::Status CudaEventPool::WaitOn(FenceToken token, CudaStream& stream) {
   if (stream.device() != impl_->device) {
     return absl::InvalidArgumentError("cuda.event.wait: stream and event devices differ");
   }
-  return CudaErrorStatus(impl_->api->stream_wait_event(stream.handle(), *event, 0),
-                         "stream-wait-event", impl_->device, impl_->health);
+  cudaError_t error;
+  if (impl_->direct_event_calls) [[likely]] {
+    error = cudaStreamWaitEvent(stream.handle(), *event, 0);
+  } else {
+    error = impl_->api->stream_wait_event(stream.handle(), *event, 0);
+  }
+  return CudaErrorStatus(error, "stream-wait-event", impl_->device, impl_->health);
 }
 
 absl::StatusOr<FencePoll> CudaEventPool::Poll(FenceToken token) {
   absl::StatusOr<cudaEvent_t> event = Resolve(token, true);
   if (!event.ok()) return event.status();
-  const cudaError_t error = impl_->api->event_query(*event);
+  cudaError_t error;
+  if (impl_->direct_event_calls) [[likely]] {
+    error = cudaEventQuery(*event);
+  } else {
+    error = impl_->api->event_query(*event);
+  }
   if (error == cudaSuccess) {
     impl_->slots[token.slot.value()].terminal_observed = true;
     return FencePoll{FenceState::kComplete, absl::OkStatus()};
@@ -337,7 +358,7 @@ absl::Status CudaEventPool::ReleaseUnrecorded(FenceToken token) {
 
 void CudaEventPool::Abandon(FenceToken token) noexcept {
   if (impl_ == nullptr || token.device != Device::Cuda(impl_->device) ||
-      token.slot.value() >= impl_->slots.size()) {
+      token.slot.value() >= impl_->slot_count) {
     return;
   }
   EventSlot& slot = impl_->slots[token.slot.value()];
@@ -347,7 +368,7 @@ void CudaEventPool::Abandon(FenceToken token) noexcept {
 }
 
 absl::Status CudaEventPool::ReclaimAbandoned() {
-  for (size_t index = 0; index < impl_->slots.size(); ++index) {
+  for (uint32_t index = 0; index < impl_->slot_count; ++index) {
     EventSlot& slot = impl_->slots[index];
     if (slot.state != EventState::kDeferred) continue;
     const FenceToken token{Device::Cuda(impl_->device), FenceSlotId(static_cast<uint32_t>(index)),

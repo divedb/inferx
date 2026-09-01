@@ -40,6 +40,23 @@ struct CudaApi {
   cudaError_t (*device_synchronize)();
 
   [[nodiscard]] static const CudaApi& Production() noexcept;
+
+  [[nodiscard]] cudaError_t MemcpyAsync(void* destination, const void* source, size_t bytes,
+                                        cudaMemcpyKind direction,
+                                        cudaStream_t stream) const noexcept {
+    if (memcpy_async == &cudaMemcpyAsync) [[likely]] {
+      return cudaMemcpyAsync(destination, source, bytes, direction, stream);
+    }
+    return memcpy_async(destination, source, bytes, direction, stream);
+  }
+
+  [[nodiscard]] cudaError_t PointerGetAttributes(cudaPointerAttributes* attributes,
+                                                 const void* address) const noexcept {
+    if (pointer_get_attributes == &cudaPointerGetAttributes) [[likely]] {
+      return cudaPointerGetAttributes(attributes, address);
+    }
+    return pointer_get_attributes(attributes, address);
+  }
 };
 
 }  // namespace inferx::cuda

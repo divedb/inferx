@@ -51,8 +51,13 @@ for benchmark in inferx_memory_pool_benchmark inferx_cuda_copy_benchmark \
     echo "missing M2 benchmark: $binary" >&2
     exit 1
   fi
-  "${runner[@]}" "$binary" --benchmark_format=json --benchmark_repetitions=30 \
-    --benchmark_out="$output/$benchmark.json"
+  echo "running $benchmark"
+  if ! "${runner[@]}" "$binary" --benchmark_repetitions=30 \
+    --benchmark_out="$output/$benchmark.json" --benchmark_out_format=json \
+    >"$output/$benchmark.log" 2>&1; then
+    tail -n 80 "$output/$benchmark.log" >&2
+    exit 1
+  fi
 done
 python3 tools/bench/check_m2_overhead.py \
   --copy "$output/inferx_cuda_copy_benchmark.json" \

@@ -56,10 +56,22 @@ outage blocks qualification rather than weakening the gate.
 
 `.github/workflows/ci-gpu.yml`, `tools/ci/run_compute_sanitizer.sh`,
 `tools/bench/run_m2_cuda.sh`, `inferx-device-info --json --self-test`, and the
-M2-labeled CTest suites define the evidence flow. The current local environment
-has a CUDA 13.0 compile-only toolchain alongside a system CUDA 12.0 compiler
-below the floor, but no accessible GPU. It provides syntax and CPU evidence
-only; it is not a qualifying run.
+M2-labeled CTest suites define the evidence flow.
+
+On 2026-09-01, the host WSL2 `Ubuntu-24.04` distribution ran the additional
+CUDA 13.0.88/GCC 13.3/SM 89 lane on an NVIDIA GeForce RTX 4080 SUPER (Windows
+driver 591.86, runtime 13000, driver API 13010). The asynchronous self-test and
+all real-device M2 suites passed: 45 unit, 10 integration, 2 correctness, 5
+isolated failure-containment, and 4 stress tests. Compute Sanitizer reported
+zero memcheck errors/leaks, zero racecheck hazards/warnings, and zero initcheck
+or synccheck errors. All operation-identical wrapper/direct benchmark medians
+were within the 3% gate after 30 paired repetitions; the event comparator
+prevents interprocedural specialization that is unavailable to the separately
+compiled production library.
+
+This is retained real-device evidence for the additional CUDA 13.0 lane. It is
+not a qualifying replacement for the required CUDA 12.8 run, which remains
+pending because that toolkit is not installed on the runner.
 
 ## Supersession
 

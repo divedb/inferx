@@ -74,6 +74,13 @@ def main() -> int:
             failed = True
             continue
         for wrapper_name in wrapper_names:
+            # Submission overhead is size-independent. Gate the high-sample
+            # 4 KiB pair; larger bounded cases remain bandwidth evidence.
+            if (
+                wrapper_prefix.startswith("BM_CudaPinned")
+                or wrapper_prefix.startswith("BM_CudaD2D")
+            ) and "/4096/" not in wrapper_name:
+                continue
             suffix = wrapper_name[len(wrapper_prefix) :]
             direct_name = direct_prefix + suffix
             if direct_name not in metrics:
