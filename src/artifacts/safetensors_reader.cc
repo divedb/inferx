@@ -128,9 +128,11 @@ absl::StatusOr<SafeTensorsMetadata> SafeTensorReader::ReadHeader(
   std::array<std::byte, 8> length_bytes{};
   if (auto status = file.ReadExact(0, length_bytes); !status.ok()) return status;
   const uint64_t header_size = DecodeLittleEndianU64(length_bytes);
-  if (header_size == 0 || header_size > limits.max_safetensors_header_bytes) {
-    return absl::ResourceExhaustedError(
-        "safetensors header length is outside the configured range");
+  if (header_size == 0) {
+    return absl::DataLossError("safetensors header length must be at least one byte");
+  }
+  if (header_size > limits.max_safetensors_header_bytes) {
+    return absl::ResourceExhaustedError("safetensors header length exceeds the configured limit");
   }
   if (header_size > file.identity().size - 8 || header_size > std::numeric_limits<size_t>::max()) {
     return absl::DataLossError("safetensors header length exceeds the opened file");
@@ -161,15 +163,13 @@ absl::StatusOr<SafeTensorsMetadata> SafeTensorReader::ReadHeader(
   if (auto status = internal::CheckUniqueKeys(*root, ""); !status.ok()) {
     return status;
   }
-  if (root->size() > limits.max_tensors + 1) {
-    return absl::ResourceExhaustedError("safetensors tensor count exceeds configured limit");
-  }
-
   SafeTensorsMetadata result;
   result.header_size = header_size;
   result.data_start = data_start;
   result.file_size = file.identity().size;
-  result.tensors.reserve(root->size());
+  const uint64_t reserve_count =
+      std::min<uint64_t>(static_cast<uint64_t>(root->size()), limits.max_tensors);
+  result.tensors.reserve(static_cast<size_t>(reserve_count));
   for (const auto field : *root) {
     std::string name(field.key);
     if (name == "__metadata__") {
@@ -188,15 +188,14 @@ absl::StatusOr<SafeTensorsMetadata> SafeTensorReader::ReadHeader(
     if (name.empty()) {
       return internal::JsonError("/", "tensor name must not be empty");
     }
+    if (result.tensors.size() >= limits.max_tensors) {
+      return absl::ResourceExhaustedError("safetensors tensor count exceeds configured limit");
+    }
     auto tensor =
         ParseTensor(std::move(name), field.value, data_start, file.identity().size, limits);
     if (!tensor.ok()) return tensor.status();
     result.tensors.push_back(std::move(*tensor));
   }
-  if (result.tensors.size() > limits.max_tensors) {
-    return absl::ResourceExhaustedError("safetensors tensor count exceeds configured limit");
-  }
-
   std::vector<const ArtifactTensor*> by_offset;
   by_offset.reserve(result.tensors.size());
   for (const auto& tensor : result.tensors) by_offset.push_back(&tensor);

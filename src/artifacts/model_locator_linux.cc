@@ -37,7 +37,10 @@ absl::Status OpenError(std::string_view operation, int error) {
 }
 
 int OpenWithFallback(int root_fd, std::string_view path, int* error) {
-  int parent = ::fcntl(root_fd, F_DUPFD_CLOEXEC, 0);
+  int parent = -1;
+  do {
+    parent = ::fcntl(root_fd, F_DUPFD_CLOEXEC, 0);
+  } while (parent < 0 && errno == EINTR);
   if (parent < 0) {
     *error = errno;
     return -1;

@@ -45,6 +45,25 @@ absl::StatusOr<ModelFingerprint> ModelFingerprint::Build(ModelFingerprintInput i
   if (input.architecture.empty()) {
     return absl::InvalidArgumentError("model fingerprint architecture is empty");
   }
+  if (input.semantic_config.empty()) {
+    return absl::InvalidArgumentError("model fingerprint semantic config is empty");
+  }
+  if (input.model_schema_version == 0 || input.weight_plan_schema_version == 0) {
+    return absl::InvalidArgumentError("model fingerprint component schema version is zero");
+  }
+  if (input.tokenizer_capability.empty()) {
+    return absl::FailedPreconditionError(
+        "model fingerprint requires qualified tokenizer capability metadata");
+  }
+  if (input.artifacts.empty()) {
+    return absl::InvalidArgumentError("model fingerprint artifact set is empty");
+  }
+  if (input.source_layout.empty() || input.quantization.empty() || input.adapter.empty()) {
+    return absl::InvalidArgumentError("model fingerprint compatibility records must not be empty");
+  }
+  if (input.rope.empty()) {
+    return absl::InvalidArgumentError("model fingerprint RoPE policy is empty");
+  }
   std::sort(input.artifacts.begin(), input.artifacts.end(),
             [](const FingerprintedArtifact& lhs, const FingerprintedArtifact& rhs) {
               return lhs.path < rhs.path;

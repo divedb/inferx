@@ -39,9 +39,10 @@ scaling fail explicitly. M3 plans only an identity transform and replicated full
 
 ## Validation evidence
 
-`ModelArtifactLoaderTest.BuildsCompleteTinyLlamaWeightPlan` proves the baseline schema reconciles all
-12 parameters in a one-layer fixture. Missing, unexpected, dtype, mixed-family, shape, and tie-digest
-cases are owned by the expanding M3 corpus.
+The model loader tests prove the baseline schema reconciles all 12 parameters in standalone and
+two-shard one-layer fixtures, including the omitted tied-LM-head alias. Catalog/planner tests reject
+out-of-file sources and duplicate parameter IDs before coverage. Missing, unexpected, dtype,
+mixed-family, shape, and tie-digest cases are owned by the expanding M3 corpus.
 
 ## Supersession
 

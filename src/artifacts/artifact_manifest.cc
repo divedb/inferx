@@ -27,6 +27,7 @@ const ArtifactManifestEntry* ArtifactManifest::Find(const SafeRelativePath& path
 
 absl::StatusOr<ArtifactManifest> ArtifactManifestReader::Read(const ArtifactFile& file,
                                                               const ArtifactLimits& limits) const {
+  if (auto status = limits.Validate(); !status.ok()) return status;
   auto bytes = file.ReadAll(limits.max_json_bytes);
   if (!bytes.ok()) return bytes.status();
   simdjson::dom::parser parser;
@@ -72,14 +73,19 @@ absl::StatusOr<ArtifactManifest> ArtifactManifestReader::Read(const ArtifactFile
   auto weights_text = internal::String(*weights_value, "/weights_entry");
   if (!weights_text.ok()) return weights_text.status();
   auto weights_entry = SafeRelativePath::Parse(*weights_text);
-  if (!weights_entry.ok()) return weights_entry.status();
+  if (!weights_entry.ok()) {
+    return internal::JsonError("/weights_entry", weights_entry.status().message());
+  }
 
   auto files_value = internal::Required(*root, "files", "");
   if (!files_value.ok()) return files_value.status();
   auto files = internal::Array(*files_value, "/files");
   if (!files.ok()) return files.status();
-  if (files->size() == 0 || files->size() > limits.max_tensors) {
-    return absl::ResourceExhaustedError("manifest file count is empty or exceeds configured limit");
+  if (files->size() == 0) {
+    return internal::JsonError("/files", "array must not be empty");
+  }
+  if (files->size() > limits.max_tensors) {
+    return absl::ResourceExhaustedError("manifest file count exceeds configured limit");
   }
 
   std::vector<ArtifactManifestEntry> entries;
@@ -103,7 +109,9 @@ absl::StatusOr<ArtifactManifest> ArtifactManifestReader::Read(const ArtifactFile
     auto path_text = internal::String(*path_value, path + "/path");
     if (!path_text.ok()) return path_text.status();
     auto safe_path = SafeRelativePath::Parse(*path_text);
-    if (!safe_path.ok()) return safe_path.status();
+    if (!safe_path.ok()) {
+      return internal::JsonError(path + "/path", safe_path.status().message());
+    }
     auto size_value = internal::Required(*object, "size", path);
     if (!size_value.ok()) return size_value.status();
     auto size = internal::Uint64(*size_value, path + "/size");
@@ -113,7 +121,9 @@ absl::StatusOr<ArtifactManifest> ArtifactManifestReader::Read(const ArtifactFile
     auto digest_text = internal::String(*digest_value, path + "/blake3");
     if (!digest_text.ok()) return digest_text.status();
     auto digest = Digest256::ParseHex(*digest_text);
-    if (!digest.ok()) return digest.status();
+    if (!digest.ok()) {
+      return internal::JsonError(path + "/blake3", digest.status().message());
+    }
     entries.push_back({std::move(*safe_path), *size, *digest});
     ++index;
   }

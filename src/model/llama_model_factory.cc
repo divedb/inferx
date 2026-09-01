@@ -102,6 +102,7 @@ ParameterSpec MakeParameter(std::string name, ParameterRole role, artifacts::Art
 
 absl::StatusOr<ModelSpec> LlamaModelFactory::ParseConfig(
     const artifacts::ArtifactFile& config, const artifacts::ArtifactLimits& limits) const {
+  if (auto status = limits.Validate(); !status.ok()) return status;
   auto bytes = config.ReadAll(limits.max_json_bytes);
   if (!bytes.ok()) return bytes.status();
   simdjson::dom::parser parser;

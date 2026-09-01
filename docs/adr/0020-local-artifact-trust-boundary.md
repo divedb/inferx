@@ -37,9 +37,9 @@ fs-verity or a content-addressed store later without weakening this API.
 
 ## Validation evidence
 
-`ModelLocatorTest.RejectsDescendantSymlink`, safe-path unit cases, file mutation checks, and mapping
-budget lifetime tests exercise the implemented boundary. Both openat2 and fallback configurations
-must remain in CI.
+`ModelLocatorTest.RejectsDescendantSymlink`, safe-path unit cases, file mutation checks, mapping
+budget lifetime tests, and `MappedTensorReaderTest` exercise the implemented boundary. Both openat2
+and fallback configurations must remain in CI.
 
 ## Supersession
 

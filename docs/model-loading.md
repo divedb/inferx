@@ -4,6 +4,8 @@
 external tensor catalog construction, and complete logical planning. Required fixed inputs are
 `config.json` and `tokenizer.json`. An index is preferred over standalone weights only when there is
 no ambiguity; if both exist, a manifest must explicitly select `model.safetensors.index.json`.
+Every ordinary JSON artifact is size-checked before hashing or parsing, and every consumed file plus
+the optional manifest is identity-checked again immediately before a successful inspection returns.
 
 The initial schema accepts `model_type=llama` and, when declared, exactly
 `LlamaForCausalLM`. It consumes vocabulary/hidden/intermediate sizes, layer and attention counts,

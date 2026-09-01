@@ -9,6 +9,10 @@ Every opened file records device, inode, mode, size, mtime, and ctime. Reads use
 hash and parse operations recheck identity. Mapping accepts only a validated byte range, aligns the
 private read-only map to host pages, exposes only requested bytes, and transactionally accounts the
 rounded bytes and active slot. Zero-byte tensors do not call `mmap`.
+Ranges larger than one mapping window are consumed with `MappedTensorReader`. The reader owns a
+duplicate of the already-rooted file descriptor, shares the originating pool's count/byte budget,
+and advances only after a window is mapped successfully. Returned windows are contiguous and never
+cross the validated requested range.
 
 The optional `inferx.manifest.json` schema is version 1 and contains `model_revision`,
 `weights_entry`, and unique file entries with path, uint64 size, and lowercase BLAKE3-256. All

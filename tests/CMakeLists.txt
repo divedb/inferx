@@ -31,7 +31,11 @@ inferx_apply_project_options(inferx_m3_artifacts_test)
 target_link_libraries(inferx_m3_artifacts_test PRIVATE
   inferx::artifacts inferx::model GTest::gtest_main)
 gtest_discover_tests(inferx_m3_artifacts_test
-  PROPERTIES LABELS "unit;m3" TIMEOUT 60)
+  PROPERTIES TIMEOUT 60)
+# GoogleTest discovers individual cases after build. Assign the labels at
+# CTest time so the semicolon-separated label list remains one property value.
+set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/m3_test_labels.cmake")
 
 # ---------------------------------------------------------------------------
 # compile: C++23 feature sentinel. Exercises library facilities, not macros.
@@ -187,6 +191,10 @@ add_custom_target(check-fast
   VERBATIM
   USES_TERMINAL
   COMMENT "InferX check-fast: format-check + unit/compile tests")
+add_dependencies(check-fast
+  inferx_base_test
+  inferx_m3_artifacts_test
+  inferx_cxx23_smoke)
 
 add_custom_target(check-analysis
   COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/check_headers.py

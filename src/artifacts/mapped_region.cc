@@ -3,12 +3,14 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <cerrno>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <utility>
 
 #include "absl/status/status.h"
@@ -56,8 +58,12 @@ std::span<const std::byte> MappedTensorLease::bytes() const {
 ShardMappingPool::ShardMappingPool(ArtifactLimits limits)
     : budget_(std::make_shared<Budget>()), limits_(limits) {}
 
+ShardMappingPool::ShardMappingPool(std::shared_ptr<Budget> budget, ArtifactLimits limits)
+    : budget_(std::move(budget)), limits_(limits) {}
+
 absl::StatusOr<MappedTensorLease> ShardMappingPool::Map(const ArtifactFile& file,
                                                         ArtifactByteRange range) {
+  if (auto status = limits_.Validate(); !status.ok()) return status;
   if (range.offset > file.identity().size || range.size > file.identity().size - range.offset) {
     return absl::InvalidArgumentError("mapping range exceeds artifact file");
   }
@@ -118,9 +124,21 @@ absl::StatusOr<MappedTensorLease> ShardMappingPool::Map(const ArtifactFile& file
   state->budget = budget_;
   state->mapping = mapping;
   state->mapping_size = static_cast<size_t>(rounded);
+  if (auto status = file.CheckUnchanged(); !status.ok()) return status;
   const auto* data = static_cast<const std::byte*>(mapping) + prefix;
   return MappedTensorLease(std::move(state), range, file.identity(), data,
                            static_cast<size_t>(range.size));
+}
+
+absl::StatusOr<MappedTensorReader> ShardMappingPool::OpenReader(const ArtifactFile& file,
+                                                                ArtifactByteRange range) const {
+  if (auto status = limits_.Validate(); !status.ok()) return status;
+  if (range.offset > file.identity().size || range.size > file.identity().size - range.offset) {
+    return absl::InvalidArgumentError("reader range exceeds artifact file");
+  }
+  auto duplicate = file.Duplicate();
+  if (!duplicate.ok()) return duplicate.status();
+  return MappedTensorReader(budget_, limits_, std::move(*duplicate), range);
 }
 
 uint64_t ShardMappingPool::active_regions() const {
@@ -131,6 +149,39 @@ uint64_t ShardMappingPool::active_regions() const {
 uint64_t ShardMappingPool::active_mapped_bytes() const {
   std::lock_guard lock(budget_->mutex);
   return budget_->bytes;
+}
+
+MappedTensorReader::MappedTensorReader(std::shared_ptr<ShardMappingPool::Budget> budget,
+                                       ArtifactLimits limits, ArtifactFile file,
+                                       ArtifactByteRange requested)
+    : budget_(std::move(budget)), limits_(limits), file_(std::move(file)), requested_(requested) {}
+
+absl::StatusOr<std::optional<MappedTensorLease>> MappedTensorReader::Next() {
+  if (consumed_ == requested_.size) return std::optional<MappedTensorLease>{};
+  if (requested_.offset > std::numeric_limits<uint64_t>::max() - consumed_) {
+    return absl::OutOfRangeError("reader window offset overflows uint64");
+  }
+  const uint64_t window_offset = requested_.offset + consumed_;
+  const long page_result = ::sysconf(_SC_PAGESIZE);
+  if (page_result <= 0) {
+    return absl::InternalError("sysconf(_SC_PAGESIZE) failed");
+  }
+  const uint64_t page = static_cast<uint64_t>(page_result);
+  const uint64_t rounded_capacity = (limits_.max_mapped_bytes / page) * page;
+  const uint64_t prefix = window_offset % page;
+  if (rounded_capacity <= prefix) {
+    return absl::ResourceExhaustedError(
+        "artifact.max_mapped_bytes cannot hold one page-aligned reader window");
+  }
+  const uint64_t remaining = requested_.size - consumed_;
+  const uint64_t payload_capacity = rounded_capacity - prefix;
+  const uint64_t window_size = std::min({remaining, limits_.map_window_bytes, payload_capacity});
+  const ArtifactByteRange window{window_offset, window_size};
+  ShardMappingPool pool(budget_, limits_);
+  auto lease = pool.Map(file_, window);
+  if (!lease.ok()) return lease.status();
+  consumed_ += window_size;
+  return std::optional<MappedTensorLease>(std::move(*lease));
 }
 
 }  // namespace inferx::artifacts

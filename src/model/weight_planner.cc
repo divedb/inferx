@@ -2,7 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <limits>
+#include <map>
 #include <optional>
 #include <set>
 #include <string>
@@ -43,6 +43,19 @@ absl::StatusOr<ExternalTensorCatalog> ExternalTensorCatalog::Build(
       return absl::InvalidArgumentError(
           "external tensor catalog name does not match header metadata");
     }
+    auto packed = artifacts::PackedTensorBytes(tensor.tensor.dtype, tensor.tensor.shape);
+    if (!packed.ok()) return packed.status();
+    if (*packed != tensor.tensor.packed_size_bytes ||
+        tensor.tensor.data.size != tensor.tensor.packed_size_bytes) {
+      return absl::DataLossError(
+          absl::StrCat(tensor.name, ": external tensor byte counts are inconsistent"));
+    }
+    if (tensor.tensor.absolute_file_offset > tensor.file_identity.size ||
+        tensor.tensor.packed_size_bytes >
+            tensor.file_identity.size - tensor.tensor.absolute_file_offset) {
+      return absl::DataLossError(
+          absl::StrCat(tensor.name, ": external tensor range exceeds its opened shard"));
+    }
   }
   std::sort(
       tensors.begin(), tensors.end(),
@@ -68,6 +81,7 @@ absl::StatusOr<WeightPlan> WeightPlanner::Build(const ModelSpec& model,
                                                 const ExternalTensorCatalog& external) const {
   std::set<std::string> expected_names;
   std::set<std::string> consumed_names;
+  std::map<ParameterId, const ParameterSpec*> parameters_by_id;
   std::vector<std::string> missing;
   std::optional<artifacts::ArtifactDType> package_dtype;
   WeightPlan plan;
@@ -75,23 +89,38 @@ absl::StatusOr<WeightPlan> WeightPlanner::Build(const ModelSpec& model,
   plan.coverage.external = external.tensors().size();
 
   for (const ParameterSpec& parameter : parameters) {
+    if (parameter.canonical_name.empty()) {
+      return absl::InternalError("parameter catalog contains an empty canonical name");
+    }
     if (!expected_names.insert(parameter.canonical_name).second) {
       return absl::InternalError("parameter catalog contains a duplicate canonical name");
     }
+    if (!parameters_by_id.emplace(parameter.id, &parameter).second) {
+      return absl::InternalError("parameter catalog contains a duplicate parameter ID");
+    }
+    if (parameter.allowed_source_dtypes.empty()) {
+      return absl::InternalError("parameter catalog contains an empty source dtype policy");
+    }
+  }
+  for (const ParameterSpec& parameter : parameters) {
+    if (!parameter.alias_target.has_value()) continue;
+    const auto target = parameters_by_id.find(*parameter.alias_target);
+    if (target == parameters_by_id.end()) {
+      return absl::InternalError("parameter alias target does not exist");
+    }
+    if (target->second == &parameter || target->second->alias_target.has_value()) {
+      return absl::InternalError("parameter aliases must directly target stored parameters");
+    }
+    if (parameter.shape != target->second->shape) {
+      return absl::InternalError("parameter alias shape differs from its target");
+    }
+  }
+
+  for (const ParameterSpec& parameter : parameters) {
     const ExternalTensor* source = external.Find(parameter.canonical_name);
     if (parameter.alias_target.has_value()) {
-      const ParameterId alias_target =
-          parameter.alias_target.value_or(ParameterId(std::numeric_limits<uint32_t>::max()));
-      const ParameterSpec* target = nullptr;
-      for (const ParameterSpec& candidate : parameters) {
-        if (candidate.id == alias_target) {
-          target = &candidate;
-          break;
-        }
-      }
-      if (target == nullptr) {
-        return absl::InternalError("parameter alias target does not exist");
-      }
+      const ParameterId alias_target = *parameter.alias_target;
+      const ParameterSpec* target = parameters_by_id.at(alias_target);
       const ExternalTensor* target_source = external.Find(target->canonical_name);
       if (target_source == nullptr) {
         missing.push_back(target->canonical_name);

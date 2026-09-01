@@ -40,6 +40,7 @@ class ArtifactFile {
 
   absl::Status ReadExact(uint64_t offset, std::span<std::byte> output) const;
   absl::StatusOr<std::vector<std::byte>> ReadAll(uint64_t limit) const;
+  absl::StatusOr<ArtifactFile> Duplicate() const;
   absl::Status CheckUnchanged() const;
 
  private:

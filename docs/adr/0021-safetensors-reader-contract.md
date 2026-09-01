@@ -36,9 +36,10 @@ official Rust implementation remains the differential oracle.
 
 ## Validation evidence
 
-`SafeTensorReaderTest.ValidatesShapeOffsetsAndMappingLifetime` and
-`SafeTensorReaderTest.RejectsPayloadHoles` cover the initial valid/security cases. The official Rust
-corpus and fuzz lanes remain required before closing the complete M3 gate.
+The safetensors unit suite covers layout/mapping lifetime, holes, malformed versus resource-limited
+header lengths, scalar/sub-byte/zero-byte layouts, and tensor limits in the presence of metadata.
+`ModelArtifactLoaderTest.BuildsCompleteShardedWeightPlan` covers complete two-shard composition. The
+official Rust corpus and fuzz lanes remain required before closing the complete M3 gate.
 
 ## Supersession
 

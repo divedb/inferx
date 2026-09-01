@@ -40,9 +40,9 @@ minting a misleading partial identity.
 
 ## Validation evidence
 
-`DigestTest.MatchesOfficialBlake3Vectors`, manifest/gitlink validation, file identity checks, and
-deterministic record-order unit coverage are the current evidence. Full fingerprint mutation tests
-activate with the tokenizer backend.
+`DigestTest.MatchesOfficialBlake3Vectors`, manifest success/digest-mismatch validation, file identity
+checks, and deterministic record-order unit coverage are the current evidence. Full fingerprint
+mutation tests activate with the tokenizer backend.
 
 ## Supersession
 

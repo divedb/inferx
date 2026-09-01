@@ -1,5 +1,6 @@
 #include "inferx/artifacts/artifact_file.h"
 
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -22,6 +23,18 @@ absl::Status ErrnoStatus(absl::StatusCode code, std::string_view operation, int 
   return absl::Status(code, absl::StrCat(operation, " failed (errno=", error, ")"));
 }
 
+absl::StatusOr<uint64_t> NextFileId() {
+  uint64_t current = g_next_file_id.load(std::memory_order_relaxed);
+  while (current != 0) {
+    const uint64_t next = current == std::numeric_limits<uint64_t>::max() ? 0 : current + 1;
+    if (g_next_file_id.compare_exchange_weak(current, next, std::memory_order_relaxed,
+                                             std::memory_order_relaxed)) {
+      return current;
+    }
+  }
+  return absl::ResourceExhaustedError("artifact file ID space exhausted");
+}
+
 absl::StatusOr<FileIdentity> IdentityFromFd(int fd) {
   struct stat info {};
   while (::fstat(fd, &info) != 0) {
@@ -40,10 +53,6 @@ absl::StatusOr<FileIdentity> IdentityFromFd(int fd) {
   identity.modified_nanoseconds = static_cast<int64_t>(info.st_mtim.tv_nsec);
   identity.changed_seconds = static_cast<int64_t>(info.st_ctim.tv_sec);
   identity.changed_nanoseconds = static_cast<int64_t>(info.st_ctim.tv_nsec);
-  identity.internal_id = g_next_file_id.fetch_add(1, std::memory_order_relaxed);
-  if (identity.internal_id == 0) {
-    return absl::ResourceExhaustedError("artifact file ID space exhausted");
-  }
   return identity;
 }
 
@@ -93,8 +102,12 @@ absl::Status ArtifactFile::ReadExact(uint64_t offset, std::span<std::byte> outpu
     if (position > static_cast<uint64_t>(std::numeric_limits<off_t>::max())) {
       return absl::OutOfRangeError("artifact read position does not fit off_t");
     }
-    const ssize_t count = ::pread(fd_, output.data() + completed, output.size() - completed,
-                                  static_cast<off_t>(position));
+    const size_t remaining = output.size() - completed;
+    const size_t request = remaining > static_cast<size_t>(std::numeric_limits<ssize_t>::max())
+                               ? static_cast<size_t>(std::numeric_limits<ssize_t>::max())
+                               : remaining;
+    const ssize_t count =
+        ::pread(fd_, output.data() + completed, request, static_cast<off_t>(position));
     if (count < 0) {
       if (errno == EINTR) continue;
       return ErrnoStatus(absl::StatusCode::kInternal, "pread", errno);
@@ -120,6 +133,21 @@ absl::StatusOr<std::vector<std::byte>> ArtifactFile::ReadAll(uint64_t limit) con
   return result;
 }
 
+absl::StatusOr<ArtifactFile> ArtifactFile::Duplicate() const {
+  if (fd_ < 0) return absl::FailedPreconditionError("artifact file is closed");
+  if (auto status = CheckUnchanged(); !status.ok()) return status;
+  int duplicate = -1;
+  do {
+    duplicate = ::fcntl(fd_, F_DUPFD_CLOEXEC, 0);
+  } while (duplicate < 0 && errno == EINTR);
+  if (duplicate < 0) {
+    return ErrnoStatus(absl::StatusCode::kInternal, "artifact fd duplication", errno);
+  }
+  ArtifactFile result(duplicate, identity_, relative_path_);
+  if (auto status = result.CheckUnchanged(); !status.ok()) return status;
+  return result;
+}
+
 absl::Status ArtifactFile::CheckUnchanged() const {
   if (fd_ < 0) return absl::FailedPreconditionError("artifact file is closed");
   auto current = IdentityFromFd(fd_);
@@ -132,6 +160,13 @@ absl::Status ArtifactFile::CheckUnchanged() const {
 
 // Used only by the rooted opener, which must snapshot identity immediately
 // after the fd is acquired.
-absl::StatusOr<FileIdentity> SnapshotFileIdentityForArtifact(int fd) { return IdentityFromFd(fd); }
+absl::StatusOr<FileIdentity> SnapshotFileIdentityForArtifact(int fd) {
+  auto identity = IdentityFromFd(fd);
+  if (!identity.ok()) return identity.status();
+  auto internal_id = NextFileId();
+  if (!internal_id.ok()) return internal_id.status();
+  identity->internal_id = *internal_id;
+  return identity;
+}
 
 }  // namespace inferx::artifacts

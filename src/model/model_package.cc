@@ -34,11 +34,16 @@ struct ConsumedFile {
   artifacts::Digest256 digest;
 };
 
-absl::StatusOr<ConsumedFile> ConsumeFile(
-    const artifacts::ArtifactSession& session, const artifacts::SafeRelativePath& path,
-    const std::optional<artifacts::ArtifactManifest>& manifest) {
+absl::StatusOr<ConsumedFile> ConsumeFile(const artifacts::ArtifactSession& session,
+                                         const artifacts::SafeRelativePath& path,
+                                         const std::optional<artifacts::ArtifactManifest>& manifest,
+                                         std::optional<uint64_t> json_size_limit = std::nullopt) {
   auto file = session.OpenRegular(path);
   if (!file.ok()) return file.status();
+  if (json_size_limit.has_value() && file->identity().size > *json_size_limit) {
+    return absl::ResourceExhaustedError(
+        absl::StrCat(path.string(), " exceeds artifact.max_json_bytes"));
+  }
   auto digest = artifacts::HashFile(*file);
   if (!digest.ok()) return digest.status();
   if (manifest.has_value()) {
@@ -52,6 +57,21 @@ absl::StatusOr<ConsumedFile> ConsumeFile(
     }
   }
   return ConsumedFile{path, file->identity(), *digest};
+}
+
+absl::Status RecheckConsumedFile(const artifacts::ArtifactSession& session,
+                                 const ConsumedFile& consumed) {
+  auto file = session.OpenRegular(consumed.path);
+  if (!file.ok()) {
+    return absl::AbortedError(absl::StrCat(
+        consumed.path.string(),
+        " could not be reopened during final identity check: ", file.status().message()));
+  }
+  if (!consumed.identity.SameFileAndVersion(file->identity())) {
+    return absl::AbortedError(
+        absl::StrCat(consumed.path.string(), " changed during model inspection"));
+  }
+  return file->CheckUnchanged();
 }
 
 absl::StatusOr<std::vector<ExternalTensor>> ReadStandalone(
@@ -174,9 +194,11 @@ absl::StatusOr<InspectedModelArtifacts> ModelArtifactLoader::Inspect(
   auto has_manifest = session->ExistsRegular(*manifest_path);
   if (!has_manifest.ok()) return has_manifest.status();
   std::optional<artifacts::ArtifactManifest> manifest;
+  std::optional<artifacts::FileIdentity> manifest_identity;
   if (*has_manifest) {
     auto file = session->OpenRegular(*manifest_path);
     if (!file.ok()) return file.status();
+    manifest_identity = file->identity();
     artifacts::ArtifactManifestReader reader;
     auto parsed = reader.Read(*file, limits);
     if (!parsed.ok()) return parsed.status();
@@ -206,13 +228,12 @@ absl::StatusOr<InspectedModelArtifacts> ModelArtifactLoader::Inspect(
 
   std::vector<ConsumedFile> consumed;
   for (const auto& required : {*config_path, *tokenizer_path, selected}) {
-    auto file = ConsumeFile(*session, required, manifest);
-    if (!file.ok()) return file.status();
-    if ((required == *config_path || required == *tokenizer_path) &&
-        file->identity.size > limits.max_json_bytes) {
-      return absl::ResourceExhaustedError(
-          absl::StrCat(required.string(), " exceeds artifact.max_json_bytes"));
+    std::optional<uint64_t> json_size_limit;
+    if (required == *config_path || required == *tokenizer_path || required == *index_path) {
+      json_size_limit = limits.max_json_bytes;
     }
+    auto file = ConsumeFile(*session, required, manifest, json_size_limit);
+    if (!file.ok()) return file.status();
     consumed.push_back(std::move(*file));
   }
   for (const std::string_view optional_name : {"tokenizer_config.json", "special_tokens_map.json",
@@ -222,7 +243,10 @@ absl::StatusOr<InspectedModelArtifacts> ModelArtifactLoader::Inspect(
     auto exists = session->ExistsRegular(*optional_path);
     if (!exists.ok()) return exists.status();
     if (*exists) {
-      auto file = ConsumeFile(*session, *optional_path, manifest);
+      const std::optional<uint64_t> json_size_limit =
+          optional_name.ends_with(".json") ? std::optional<uint64_t>(limits.max_json_bytes)
+                                           : std::nullopt;
+      auto file = ConsumeFile(*session, *optional_path, manifest, json_size_limit);
       if (!file.ok()) return file.status();
       consumed.push_back(std::move(*file));
     }
@@ -281,6 +305,21 @@ absl::StatusOr<InspectedModelArtifacts> ModelArtifactLoader::Inspect(
   if (manifest.has_value() && manifest->files.size() != consumed.size()) {
     return absl::DataLossError(
         "manifest declares files that the selected package does not consume");
+  }
+  for (const auto& file : consumed) {
+    if (auto status = RecheckConsumedFile(*session, file); !status.ok()) return status;
+  }
+  if (manifest_identity.has_value()) {
+    auto manifest_file = session->OpenRegular(*manifest_path);
+    if (!manifest_file.ok()) {
+      return absl::AbortedError(
+          absl::StrCat("inferx.manifest.json could not be reopened during final identity check: ",
+                       manifest_file.status().message()));
+    }
+    if (!manifest_identity->SameFileAndVersion(manifest_file->identity())) {
+      return absl::AbortedError("inferx.manifest.json changed during model inspection");
+    }
+    if (auto status = manifest_file->CheckUnchanged(); !status.ok()) return status;
   }
   std::vector<artifacts::FingerprintedArtifact> fingerprinted;
   fingerprinted.reserve(consumed.size());
