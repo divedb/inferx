@@ -69,3 +69,5 @@ Every ADR contains, in order:
 | [0028](0028-cublaslt-algorithm-and-workspace.md) | cuBLASLt algorithm and workspace policy | Accepted |
 | [0029](0029-attention-backend-and-flashinfer.md) | Recorded FlashInfer attention candidate | Rejected |
 | [0030](0030-cuda-glue-kernel-policy.md) | Owned CUDA glue kernel policy | Accepted |
+| [0031](0031-kernels-backend-architecture.md) | Kernels backend architecture and provider chain | Accepted |
+| [0032](0032-external-kernel-providers.md) | External kernel provider qualification at the pins | Accepted (provisional) |
