@@ -21,6 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       gcc-13 \
       git \
       include-what-you-use \
+      libssl-dev \
       ninja-build \
       python3.12 \
       python3-pip \

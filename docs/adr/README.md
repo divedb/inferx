@@ -64,3 +64,4 @@ Every ADR contains, in order:
 | [0024](0024-model-integrity-and-fingerprint.md) | Model integrity and fingerprint | Accepted |
 | [0025](0025-tokenizer-backend-and-concurrency.md) | Tokenizer backend and concurrency | Proposed (blocked) |
 | [0026](0026-prompt-processing-contract.md) | Prompt processing contract | Accepted |
+| [0027](0027-hugging-face-model-resolution.md) | Hugging Face model resolution and cache handoff | Accepted |

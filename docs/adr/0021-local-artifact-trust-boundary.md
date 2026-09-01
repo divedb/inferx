@@ -12,16 +12,18 @@ inode safe from truncation.
 
 ## Decision
 
-InferX accepts only an explicit local directory. The selected root may be a symlink because the
-operator chose it; it is canonicalized once and opened as a directory fd. Every descendant is a
-validated UTF-8 `SafeRelativePath` and is opened relative to that fd. Linux uses `openat2` with
+`ModelLocator` accepts only an explicit local directory. ADR 0027 may resolve a model name and
+atomically materialize a symlink-free local directory before this boundary. The selected root may
+be a symlink because the operator or resolver chose it; it is canonicalized once and opened as a
+directory fd. Every descendant is a validated UTF-8 `SafeRelativePath` and is opened relative to
+that fd. Linux uses `openat2` with
 `RESOLVE_BENEATH`, `RESOLVE_NO_SYMLINKS`, and `RESOLVE_NO_MAGICLINKS`; kernels without it use an
 `openat` component walk with `O_NOFOLLOW`. Only regular files are accepted.
 
 An opened file is identified by device, inode, type/mode, size, mtime, and ctime. Reads use `pread`;
 identity is checked before and after parsing/hashing and again after reopening. A model directory
-must be atomically staged and remain immutable while loaded. Malicious truncation of a live mapping,
-which Linux may report as `SIGBUS`, is outside the in-process recovery guarantee.
+must be atomically staged and remain immutable while loaded. Malicious truncation of a live
+mapping, which Linux may report as `SIGBUS`, is outside the in-process recovery guarantee.
 
 ## Alternatives
 
@@ -31,9 +33,9 @@ which Linux may report as `SIGBUS`, is outside the in-process recovery guarantee
 
 ## Consequences
 
-There is no recursive scan, canonical-path reopen, pickle, device file, FIFO, socket, remote lookup,
-or symlink below the selected root. Root relocation does not affect identity. Deployment may add
-fs-verity or a content-addressed store later without weakening this API.
+Inside `ModelLocator` there is no recursive scan, canonical-path reopen, pickle, device file, FIFO,
+socket, remote lookup, or symlink below the selected root. Root relocation does not affect identity.
+Deployment may add fs-verity or a content-addressed store later without weakening this API.
 
 ## Validation evidence
 

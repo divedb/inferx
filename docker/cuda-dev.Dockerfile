@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       gcc \
       git \
       include-what-you-use \
+      libssl-dev \
       ninja-build \
       python3 \
     && rm -rf /var/lib/apt/lists/* \

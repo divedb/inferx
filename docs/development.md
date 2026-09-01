@@ -10,12 +10,13 @@ is the acceptance contract; this guide matches it). Platform support:
 
 Ubuntu 24.04 with: GCC 13 (`g++-13`), Clang 18 (`clang-18 clang-tidy-18
 clang-format-18`), CMake ≥ 3.28, Ninja ≥ 1.11, Python 3.12, `include-what-you-use`
-(for the analysis lane). Nothing else — CUDA is optional.
+(for the analysis lane), and OpenSSL 3 development files for native Hugging Face downloads. CUDA is
+optional.
 
 One-time initialization (the only network step; everything after is offline):
 
 ```bash
-python3 tools/deps/bootstrap.py --profile core   # Abseil, simdjson, BLAKE3, tests/benchmark
+python3 tools/deps/bootstrap.py --profile core   # Abseil, simdjson, BLAKE3, curl, tests/benchmark
 python3 tools/deps/bootstrap.py --list           # see profiles and statuses
 ```
 

@@ -55,6 +55,9 @@ option(INFERX_BUILD_TOOLS "Build InferX developer tools such as inferx-info."
 option(INFERX_ENABLE_TOKENIZATION
        "Build the M3 tokenizer adapter after its dependency qualification gate is closed."
        OFF)
+option(INFERX_ENABLE_HF_HUB
+       "Resolve uncached Hugging Face model IDs with native HTTPS downloads."
+       ${_INFERX_TOP_LEVEL_DEFAULT})
 option(INFERX_M3_ENABLE_OPENAT2
        "Use Linux openat2 for rooted artifact opens, with a checked openat fallback."
        ON)

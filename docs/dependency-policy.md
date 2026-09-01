@@ -13,10 +13,10 @@ authoritative records are [`third_party/manifest.json`](../third_party/manifest.
    (`tools/deps/bootstrap.py`).
 2. **The gitlink is the lock.** The manifest's `revision` field is a mirror; drift
    between the two fails `tools/deps/check_manifest.py`.
-3. **Profiles initialize only what a feature needs.** From M3, `core` = Abseil, simdjson,
-   BLAKE3, GoogleTest, and Google Benchmark. Optional dependency directories are never inspected
-   unless their
-   feature is enabled; a default configure succeeds with optional submodules missing.
+3. **Profiles initialize only what a feature needs.** From M3 model resolution, `core` = Abseil,
+   simdjson, BLAKE3, curl, GoogleTest, and Google Benchmark. Optional dependency directories are
+   never inspected unless their feature is enabled; a default configure succeeds with optional
+   submodules missing.
 4. **An enabled feature with a missing dependency fails configure immediately**,
    naming the path and the bootstrap profile that initializes it.
 5. **No local patches inside submodules.** A required change goes upstream or through
@@ -49,7 +49,8 @@ proposed in an ADR/milestone
 
 ## System dependencies
 
-CUDA toolkit, cuBLASLt, and NCCL are system dependencies found with `find_package`
+CUDA toolkit, cuBLASLt, NCCL, and OpenSSL 3 for the native Hugging Face transport are system
+dependencies found with `find_package`
 (`INFERX_DEPENDENCY_PROVIDER=system` mode does the same for source dependencies for
 packagers). Minimum versions are enforced at configure time. Python is a developer
 tooling dependency only (3.12) and never a runtime requirement.

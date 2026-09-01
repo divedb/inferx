@@ -47,6 +47,7 @@ libstdc++ (or libc++), recorded here when qualified.
 | clang-format | major 18 | pinned major; `tools/check_format.sh` enforces |
 | clang-tidy | major 18 | `tools/run_clang_tidy.sh` selects `clang-tidy-18` |
 | include-what-you-use | 0.21 | analysis preset |
+| OpenSSL development package | 3.0 | required by the default native Hugging Face HTTPS transport; not required with `INFERX_ENABLE_HF_HUB=OFF` |
 
 Formatting note: clang-format 18's `Standard` accepts at most `c++20`/`Latest`
 (the `c++23`/`c++2b` spellings need 19+), so `.clang-format` uses `Latest`

@@ -4,8 +4,11 @@ add_library(inferx_artifacts STATIC
   artifact_manifest.cc
   artifact_tensor.cc
   digest.cc
+  hf_cache.cc
+  hf_http_client.cc
   mapped_region.cc
   model_fingerprint.cc
+  model_resolver.cc
   model_locator_linux.cc
   safe_relative_path.cc
   safetensors_index.cc
@@ -28,6 +31,12 @@ target_link_libraries(inferx_artifacts
   PRIVATE $<BUILD_INTERFACE:absl::strings>
           simdjson::simdjson
           blake3::blake3)
+if(INFERX_ENABLE_HF_HUB)
+  target_sources(inferx_artifacts PRIVATE curl_http_client.cc)
+  target_link_libraries(inferx_artifacts PRIVATE CURL::libcurl)
+else()
+  target_sources(inferx_artifacts PRIVATE hf_http_client_disabled.cc)
+endif()
 if(INFERX_M3_ENABLE_OPENAT2)
   target_compile_definitions(inferx_artifacts PRIVATE INFERX_M3_USE_OPENAT2=1)
 else()

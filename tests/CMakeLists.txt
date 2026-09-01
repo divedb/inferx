@@ -33,6 +33,15 @@ target_link_libraries(inferx_m3_artifacts_test PRIVATE
 gtest_discover_tests(inferx_m3_artifacts_test
   PROPERTIES TIMEOUT 60)
 
+add_executable(inferx_m3_model_resolver_test
+  unit/artifacts/m3_model_resolver_test.cc)
+inferx_apply_project_options(inferx_m3_model_resolver_test)
+target_include_directories(inferx_m3_model_resolver_test PRIVATE ${CMAKE_SOURCE_DIR})
+target_link_libraries(inferx_m3_model_resolver_test PRIVATE
+  inferx::artifacts GTest::gtest_main absl::status absl::statusor absl::strings)
+gtest_discover_tests(inferx_m3_model_resolver_test
+  PROPERTIES TIMEOUT 60)
+
 add_executable(inferx_m3_model_package_integration_test
   integration/model_package/m3_model_package_integration_test.cc)
 inferx_apply_project_options(inferx_m3_model_package_integration_test)
@@ -344,6 +353,17 @@ if(INFERX_BUILD_TOOLS)
             --binary $<TARGET_FILE:inferx-info>
             --expected-version ${PROJECT_VERSION})
   set_tests_properties(cli PROPERTIES LABELS "integration" TIMEOUT 120)
+  set(_INFERX_MODEL_INSPECT_TEST_OPTIONS "")
+  if(NOT INFERX_ENABLE_HF_HUB)
+    list(APPEND _INFERX_MODEL_INSPECT_TEST_OPTIONS --expect-downloads-disabled)
+  endif()
+  add_test(NAME model_inspect_cli
+    COMMAND Python3::Interpreter
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/model_inspect_cli_test.py
+            --binary $<TARGET_FILE:inferx-model-inspect>
+            --fixture ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/m3/tiny_llama
+            ${_INFERX_MODEL_INSPECT_TEST_OPTIONS})
+  set_tests_properties(model_inspect_cli PROPERTIES LABELS "integration;m3" TIMEOUT 120)
 endif()
 
 if(PROJECT_IS_TOP_LEVEL AND NOT (INFERX_ENABLE_ASAN OR INFERX_ENABLE_UBSAN OR INFERX_ENABLE_TSAN))
@@ -450,7 +470,7 @@ inferx_add_failure_test(consumer_missing_dependency
 inferx_add_failure_test(tokenizer_unqualified
   --fixture ${CMAKE_CURRENT_SOURCE_DIR}/failure/tokenizer_unqualified.cmake
   --arg INFERX_ROOT=${CMAKE_SOURCE_DIR}
-  EXPECT "INFERX_ENABLE_TOKENIZATION" "candidate-only" "streaming decode ABI")
+  EXPECT "INFERX_ENABLE_TOKENIZATION" "was removed" "streaming decode state")
 
 inferx_add_failure_test(manifest_gitlink_drift
   --script ${CMAKE_CURRENT_SOURCE_DIR}/failure/manifest_drift.py
@@ -488,7 +508,8 @@ add_dependencies(check-fast
   inferx_m2_config_test
   inferx_m2_runtime_test
   inferx_m2_tensor_test
-  inferx_m3_artifacts_test)
+  inferx_m3_artifacts_test
+  inferx_m3_model_resolver_test)
 if(INFERX_ENABLE_CUDA)
   add_dependencies(check-fast inferx_m2_cuda_unit_test)
 endif()

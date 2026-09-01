@@ -33,3 +33,11 @@ install(FILES
 install(FILES "${CMAKE_CURRENT_LIST_DIR}/../INTERNAL_USE_ONLY.md"
         DESTINATION "${CMAKE_INSTALL_DOCDIR}"
         RENAME INTERNAL_USE_ONLY.md)
+install(FILES
+        "${CMAKE_CURRENT_LIST_DIR}/../third_party/notices/divedb-tokenizer-MIT.txt"
+        DESTINATION "${CMAKE_INSTALL_DOCDIR}/third-party-notices")
+if(INFERX_ENABLE_HF_HUB AND INFERX_DEPENDENCY_PROVIDER STREQUAL "submodule")
+  install(FILES "${CMAKE_CURRENT_LIST_DIR}/../third_party/curl/COPYING"
+          DESTINATION "${CMAKE_INSTALL_DOCDIR}/third-party-notices"
+          RENAME curl-COPYING)
+endif()

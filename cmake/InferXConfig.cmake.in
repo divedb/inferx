@@ -7,6 +7,9 @@ include(CMakeFindDependencyMacro)
 # the pinned Abseil package (proven by tests/consumer_absl in M0).
 find_dependency(absl CONFIG)
 find_dependency(simdjson CONFIG)
+if("@INFERX_ENABLE_HF_HUB@")
+  find_dependency(CURL 8.21)
+endif()
 
 # Bundled builds export the portable implementation as
 # inferx::blake3_internal. System-provider builds retain the qualified

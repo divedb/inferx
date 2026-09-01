@@ -1,5 +1,9 @@
 # Dense Llama model loading
 
+`artifacts::ModelResolver` first turns a local directory or Hugging Face model ID into a
+symlink-free local root using the order and controls in [model resolution](model-resolution.md).
+Resolution is architecture-neutral; the loader capability described below remains dense Llama only.
+
 `ModelArtifactLoader::Inspect` performs deterministic discovery, content hashing, strict parsing,
 external tensor catalog construction, and complete logical planning. Required fixed inputs are
 `config.json` and `tokenizer.json`. An index is preferred over standalone weights only when there is

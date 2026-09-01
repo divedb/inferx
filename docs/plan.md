@@ -7,8 +7,9 @@ repository buildable and independently verifiable.
 ## 1. Historical repository baseline and working assumptions
 
 This section records the repository baseline from 2026-08-30 that drove the roadmap; it is not a
-current inventory. M0, M1, and M2 are now implemented. M3's artifact/model foundation is implemented
-and independently usable, while full M3 remains blocked on tokenizer qualification. Current status
+current inventory. M0, M1, and M2 are now implemented. M3's artifact/model foundation and
+local/cache/Hugging Face model resolution are implemented and independently usable, while full M3
+remains blocked on tokenizer qualification. Current status
 and evidence live in each milestone document.
 
 - There is no build system, C++ source, test, benchmark, CI configuration, or public API yet.
@@ -996,7 +997,7 @@ when the deadline and capacity permit.
 | Dependency | Intended use | Decision/gate |
 |---|---|---|
 | Abseil | `Status`/`StatusOr`, flags, logging, strings, hashing utilities | Baseline. Verify selected pin supports the chosen compiler/C++23 mode |
-| `divedb/tokenizer` | Native tokenizer JSON encode/decode | M0/M3 spike. Keep only if differential fidelity, incremental decode, thread safety, API stability, and license pass |
+| `divedb/tokenizer` | Native tokenizer JSON encode/decode; contained a useful Hub downloader | Rejected and removed in M3. Retain only attributed MIT Hub resolver code; select a qualified tokenizer replacement through ADR 0025 |
 | Boost.Beast submodule | HTTP/SSE over Boost.Asio | Baseline candidate. Its required Boost.Asio/System headers and build strategy must be pinned explicitly; Beast alone is not a complete dependency story |
 | Folly | Possible bounded queues/futures/executors | Deferred. Prefer C++23 + Asio for the initial runtime; remove if no measured need because its transitive/build cost is high |
 | CUTLASS | C++ CUDA templates for specialized GEMM/fusions and reference tuning tools | Baseline header dependency after CUDA compatibility qualification; cuBLASLt remains default GEMM |
