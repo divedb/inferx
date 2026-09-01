@@ -1300,6 +1300,8 @@ hardware-constrained release job.
 
 **Depends on:** M3 and M4.
 
+**Implementation specification:** [`docs/milestones/m5.md`](milestones/m5.md)
+
 **Deliverables**
 
 - `LlamaForCausalLM`, GPU weight loading, memory plan, eager `CudaExecutionBackend`, and one-request
@@ -1331,6 +1333,8 @@ hardware-constrained release job.
 ### M6 — Production paged KV cache
 
 **Depends on:** M5.
+
+**Implementation specification:** [`docs/milestones/m6.md`](milestones/m6.md)
 
 **Deliverables**
 
@@ -1364,6 +1368,8 @@ hardware-constrained release job.
 ### M7 — Asynchronous request engine and continuous batching
 
 **Depends on:** M6.
+
+**Implementation specification:** [`docs/milestones/m7.md`](milestones/m7.md)
 
 **Deliverables**
 
@@ -1403,6 +1409,8 @@ hardware-constrained release job.
 
 **Depends on:** M7.
 
+**Implementation specification:** [`docs/milestones/m8.md`](milestones/m8.md)
+
 **Deliverables**
 
 - Page-aligned chunked prefill, decode progress reservation, mixed/alternating phase capability,
@@ -1437,6 +1445,8 @@ hardware-constrained release job.
 ### M9 — Complete baseline sampling and OpenAI-compatible HTTP serving
 
 **Depends on:** M8.
+
+**Implementation specification:** [`docs/milestones/m9.md`](milestones/m9.md)
 
 **Deliverables**
 
@@ -1474,6 +1484,8 @@ hardware-constrained release job.
 
 **Depends on:** M9.
 
+**Implementation specification:** [`docs/milestones/m10.md`](milestones/m10.md)
+
 **Deliverables**
 
 - Metrics, tracing, structured/redacted logging, health aggregation, worker/GPU watchdogs, diagnostic
@@ -1510,6 +1522,8 @@ hardware-constrained release job.
 
 **Depends on:** M10 and M6.
 
+**Implementation specification:** [`docs/milestones/m11.md`](milestones/m11.md)
+
 **Deliverables**
 
 - Namespace-complete `PrefixKey`, radix/prefix index, full-page insert/match/pin/unpin, prioritized LRU
@@ -1545,6 +1559,8 @@ hardware-constrained release job.
 
 **Depends on:** M11.
 
+**Implementation specification:** [`docs/milestones/m12.md`](milestones/m12.md)
+
 **Deliverables**
 
 - GPU fused/qualified sampling path with counter RNG and minimal D2H output; asynchronous output
@@ -1579,6 +1595,8 @@ hardware-constrained release job.
 ### M13 — Quantization and second dense model family
 
 **Depends on:** M12. Independent of distributed milestones.
+
+**Implementation specification:** [`docs/milestones/m13.md`](milestones/m13.md)
 
 **Deliverables**
 
