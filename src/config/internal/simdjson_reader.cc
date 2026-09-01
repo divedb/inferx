@@ -52,6 +52,48 @@ absl::StatusOr<std::map<std::string, uint64_t>> ParseFlatIntegerObject(absl::str
     if (values.size() >= static_cast<size_t>(kMaxObjectMembers)) {
       return Invalid(name, absl::StrCat("more than ", kMaxObjectMembers, " members"));
     }
+    if (name == "cuda") {
+      simdjson::dom::object cuda;
+      if (const simdjson::error_code error = value.get(cuda); error != simdjson::SUCCESS) {
+        return Invalid(name, "must be an object");
+      }
+      std::set<std::string> cuda_seen;
+      for (auto [cuda_key, cuda_value] : cuda) {
+        std::string child(cuda_key);
+        const std::string flattened = "cuda." + child;
+        if (!cuda_seen.insert(child).second) {
+          return Invalid(flattened, "duplicate field");
+        }
+        if (values.size() >= static_cast<size_t>(kMaxObjectMembers)) {
+          return Invalid(flattened, absl::StrCat("more than ", kMaxObjectMembers, " members"));
+        }
+        uint64_t parsed = 0;
+        if (const simdjson::error_code integer_error = cuda_value.get(parsed);
+            integer_error == simdjson::SUCCESS) {
+          if (child == "enabled" || child == "enable_transfer_stream") {
+            return Invalid(flattened, "must be a boolean");
+          }
+        } else {
+          bool parsed_bool = false;
+          if (const simdjson::error_code bool_error = cuda_value.get(parsed_bool);
+              bool_error == simdjson::SUCCESS) {
+            if (child != "enabled" && child != "enable_transfer_stream") {
+              return Invalid(flattened, "must be an unsigned integer");
+            }
+            parsed = parsed_bool ? 1 : 0;
+          } else if (cuda_value.is_null()) {
+            if (child != "device_budget_bytes") {
+              return Invalid(flattened, "null is allowed only for device_budget_bytes");
+            }
+            parsed = 0;
+          } else {
+            return Invalid(flattened, "must be an unsigned integer, boolean, or null");
+          }
+        }
+        values.emplace(flattened, parsed);
+      }
+      continue;
+    }
     uint64_t parsed = 0;
     if (const simdjson::error_code error = value.get(parsed); error != simdjson::SUCCESS) {
       return Invalid(name, "must be an unsigned integer");

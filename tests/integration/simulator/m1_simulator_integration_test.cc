@@ -49,8 +49,8 @@ ScenarioOutcome RunScenario(const std::string& workload_text,
     return {workload.status(), {workload.status(), {}}, {}, {}};
   }
   InMemoryReplaySink replay(ReplayBufferLimits{.max_bytes = 8U << 20U, .max_records = 4096});
-  auto simulator = EngineSimulator::Create(
-      config, config::ModelCapabilities{TokenCount(32768), false}, replay);
+  auto simulator =
+      EngineSimulator::Create(config, config::ModelCapabilities{TokenCount(32768), false}, replay);
   if (!simulator.ok()) {
     return {simulator.status(), {simulator.status(), {}}, {}, {}};
   }
@@ -128,7 +128,8 @@ TEST(EngineSimulatorIntegrationTest, SameTimeRequestsRemainFcfsUnderConstrainedB
       "{\"schema_version\":1,\"event_type\":\"submit\",\"at_ns\":0,"
       "\"request_id\":2,\"model_id\":0,\"token_ids\":[3,4],"
       "\"max_output_tokens\":1}\n",
-      TestConfig(TestConfigValues{.active_sequences = 2, .kv_tokens = 16, .sequences_per_step = 1}));
+      TestConfig(
+          TestConfigValues{.active_sequences = 2, .kv_tokens = 16, .sequences_per_step = 1}));
   ASSERT_TRUE(outcome.harness_status.ok()) << outcome.harness_status;
   EXPECT_TRUE(outcome.simulation.status.ok()) << outcome.simulation.status;
   EXPECT_EQ(outcome.simulation.summary.finished, 2U);

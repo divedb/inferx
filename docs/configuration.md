@@ -1,4 +1,4 @@
-# InferX configuration (schema v1)
+# InferX configuration (schemas v1 and v2)
 
 The engine/simulator configuration pipeline (ADR 0011, `m1.md` section 8):
 `compiled defaults < JSON file < INFERX_* environment < CLI flags`, strict
@@ -7,8 +7,9 @@ registry is `INFERX_CONFIG_FIELDS` in
 [`include/inferx/config/parsed_config.h`](../include/inferx/config/parsed_config.h);
 this table mirrors it — changes update both in one commit.
 
-For every field `name`: environment `INFERX_<UPPERCASE_NAME>`, flag `--name`.
-No abbreviations, no boolean-negation aliases.
+For every field `name`: environment `INFERX_<UPPERCASE_NAME>`, with dots
+converted to underscores, and flag `--name`. No abbreviations or boolean-
+negation aliases.
 
 ## Schema fields
 
@@ -32,9 +33,10 @@ No abbreviations, no boolean-negation aliases.
 
 ## Semantics summary
 
-- Unknown JSON keys/flags, duplicate keys, non-integer values, nesting,
-  oversized files, invalid UTF-8: errors (strict parsing; m1.md section 8.4
-  lists the byte/depth/member limits in `config/parser_limits.h`).
+- Unknown JSON keys/flags, duplicate keys, wrong value types, unsupported
+  nesting, oversized files, and invalid UTF-8 are errors. The sole supported
+  nested object is schema-v2 `cuda` (strict parsing limits remain in
+  `config/parser_limits.h`).
 - An invalid value in a lower layer is an error even when a higher layer
   would replace it.
 - Validation produces the immutable `EngineConfig`; `CanonicalJson()` emits
@@ -46,3 +48,38 @@ No abbreviations, no boolean-negation aliases.
 `inferx-sim validate-config` / `explain-config` (M1.6) print effective values
 plus per-field provenance (`default`/`file`/`environment`/`command line`) in
 stable field order.
+
+## Schema v2 CUDA section
+
+M1 files that do not mention a CUDA field retain their byte-identical schema-v1
+canonical form. Any file, environment layer, or command-line layer that sets a
+CUDA field emits schema v2 with one canonical nested `cuda` object. JSON uses
+booleans for `enabled` and `enable_transfer_stream`, `null` for an automatic
+device budget, and unsigned decimal integers for all other fields. Environment
+and command-line overlays represent booleans as `0` or `1`; an automatic
+device budget is `0` internally.
+
+| Field | Range | Default | Rule |
+|---|---|---:|---|
+| `cuda.enabled` | boolean | false | True requires an `INFERX_ENABLE_CUDA` build |
+| `cuda.device_id` | 0..2³²−1 | 0 | Selected ordinal must exist and qualify at context creation |
+| `cuda.device_reserve_bytes` | 0..device total | 512 MiB | Excluded from allocatable budget |
+| `cuda.device_budget_bytes` | null or positive bytes | null | Resolved as total minus reserve; explicit value must fit |
+| `cuda.pinned_budget_bytes` | 1 MiB..4 GiB | 256 MiB | Process-wide pinned limit |
+| `cuda.event_pool_slots` | 8..65,536 | 1,024 | Covers uploads and completion fences |
+| `cuda.timing_event_slots` | 2..256 | 32 | Benchmark/diagnostic events only |
+| `cuda.metadata_ring_slots` | 2..64 | 3 | Paired pinned/device slots |
+| `cuda.metadata_slot_bytes` | 4 KiB..16 MiB | 1 MiB | Power of two |
+| `cuda.staging_pool_slots` | even 2..256 | 4 | Test pipeline consumes input/output pairs |
+| `cuda.staging_slot_bytes` | 4 KiB..64 MiB | 4 MiB | Power of two |
+| `cuda.workspace_slots` | 1..64 | 4 | At least `plan_buffer_slots` |
+| `cuda.workspace_bytes_per_slot` | 1 MiB..4 GiB | 16 MiB | Total is checked before allocation |
+| `cuda.enable_transfer_stream` | boolean | true | False routes copies onto compute explicitly |
+
+MiB/GiB use powers of 1,024; JSON stores bytes. Let
+`max_test_inflight = min(metadata_ring_slots, workspace_slots,
+staging_pool_slots / 2)`. Validation requires
+`event_pool_slots >= metadata_ring_slots + 2 * max_test_inflight`, checks the
+pinned metadata plus staging total against the pinned budget, and performs all
+geometry arithmetic with overflow checks. Hardware-dependent device-total and
+SM/UVA validation occurs before `CudaDeviceContext` allocation.

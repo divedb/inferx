@@ -86,14 +86,18 @@ A developer without CUDA can complete every CPU task. With a toolkit:
 ```bash
 cmake --preset cuda-release
 cmake --build --preset cuda-release --parallel
-ctest --preset cuda-release -L gpu --output-on-failure
-compute-sanitizer --tool memcheck out/build/cuda-release/platform/cuda/smoke/inferx_cuda_smoke_test
+out/build/cuda-release/inferx-device-info --json
+out/build/cuda-release/inferx-device-info --self-test
+ctest --preset cuda-release -L m2 --output-on-failure
+tools/ci/run_compute_sanitizer.sh --preset cuda-release --suite m2 \
+  --output out/sanitizer/m2
+tools/bench/run_m2_cuda.sh --preset cuda-release --output out/benchmarks/m2
 ```
 
 - Architectures are explicit (default accepted list: `89`); override in
   `CMakeUserPresets.json`, never via `native` in shared presets.
-- No GPU visible? The test exits 77 (CTest skip) with the reason — fine on a
-  dev box, a **failure** on the owned GPU runner.
+- No GPU visible? CUDA executables report a failure locally; the owned runner
+  additionally requires every M2 label to select and pass tests without skips.
 - `INFERX_ENABLE_CUDA=ON` with a missing toolkit is a configure error, never a
   silent CPU fallback (`tests/failure/` covers it).
 
@@ -139,7 +143,7 @@ job; M0 has no time gates.
 
 ```bash
 docker build -f docker/cpu-dev.Dockerfile  -t inferx-cpu-dev  .   # pinned ubuntu:24.04 digest
-docker build -f docker/cuda-dev.Dockerfile -t inferx-cuda-dev .   # pinned cuda 12.8 devel digest
+docker build -f docker/cuda-dev.Dockerfile -t inferx-cuda-dev .   # pinned CUDA 13.0 devel digest
 
 docker run --rm -it -v "$PWD:/workspace" -w /workspace inferx-cpu-dev \
   bash -lc 'python3 tools/deps/bootstrap.py --profile core && \
@@ -156,8 +160,10 @@ paths are baked in; project dependencies are never downloaded into images.
 - **Manifest drift**: `python3 tools/deps/check_manifest.py` names the path and
   both revisions; fix gitlink + manifest together.
 - **CUDA host-compiler/toolkit mismatch**: see the pairing table in
-  [supported-platforms.md](supported-platforms.md); the 12.0 fallback lane
-  isolates `.cu` at C++20 (ADR 0005).
+  [supported-platforms.md](supported-platforms.md). M2 rejects CUDA 12.x; use
+  the pinned CUDA 13.0 image or an equivalent newer toolkit. CMake isolates
+  `.cu` at C++20 when the qualified combination does not expose `cuda_std_23`
+  (ADR 0020).
 - **clang-tidy/IWYU not found in analysis preset**: install `clang-tidy-18` /
   `include-what-you-use` or point `INFERX_CLANG_TIDY_BIN` / `INFERX_IWYU_BIN`.
 - **Clean rebuild**: remove `out/build/<preset>` (build-directory-specific —

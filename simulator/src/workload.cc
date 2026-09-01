@@ -374,8 +374,9 @@ absl::StatusOr<std::vector<WorkloadEvent>> ParseWorkloadJsonLines(absl::string_v
     if (length > config::kMaxJsonlRecordBytes) {
       return Invalid(line_number, "__json__", "record exceeds line limit");
     }
-    absl::StatusOr<WorkloadEvent> event = ParseLine(
-        text.substr(begin, length), LineIdentity{.number = line_number, .ordinal = line_number - 1});
+    absl::StatusOr<WorkloadEvent> event =
+        ParseLine(text.substr(begin, length),
+                  LineIdentity{.number = line_number, .ordinal = line_number - 1});
     if (!event.ok()) return event.status();
     if (require_sorted && have_previous && event->at < previous) {
       return Invalid(line_number, "at_ns", "workload is not timestamp-sorted");

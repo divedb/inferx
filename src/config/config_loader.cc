@@ -30,6 +30,7 @@ absl::Status ApplyLayer(const FieldValues& layer, ConfigSource source,
     applied = true;                                        \
   } else
     INFERX_CONFIG_FIELDS(INFERX_CONFIG_SET)
+    INFERX_CUDA_CONFIG_FIELDS(INFERX_CONFIG_SET)
     (void)0;  // terminate the generated else-chain
 #undef INFERX_CONFIG_SET
     if (!applied) {
@@ -42,7 +43,7 @@ absl::Status ApplyLayer(const FieldValues& layer, ConfigSource source,
 std::string EnvironmentName(absl::string_view json_name) {
   std::string upper(json_name);
   for (char& character : upper) {
-    character = character == '_'
+    character = character == '_' || character == '.'
                     ? '_'
                     : static_cast<char>(absl::ascii_toupper(static_cast<unsigned char>(character)));
   }
@@ -77,14 +78,11 @@ absl::StatusOr<FieldValues> ParseConfigJson(absl::string_view json_text) {
   if (!parsed.ok()) {
     return parsed;
   }
-  // User config objects may omit the schema marker; canonical effective
-  // config embedded in replay always includes it. Accept exactly v1 and keep
-  // the marker out of the overlay field set.
-  if (auto version = parsed->find("schema_version"); version != parsed->end()) {
-    if (version->second != 1) {
-      return FieldError("config", "schema_version", "unsupported version");
+  if (const auto schema = parsed->find("schema_version"); schema != parsed->end()) {
+    if (schema->second != 1 && schema->second != 2) {
+      return FieldError("config", "schema_version", "must be 1 or 2");
     }
-    parsed->erase(version);
+    parsed->erase(schema);
   }
   // Unknown JSON keys are errors at the config boundary (ADR 0011), not
   // only when a layer is applied.
@@ -95,6 +93,7 @@ absl::StatusOr<FieldValues> ParseConfigJson(absl::string_view json_text) {
     known = true;                                     \
   }
     INFERX_CONFIG_FIELDS(INFERX_KNOWN)
+    INFERX_CUDA_CONFIG_FIELDS(INFERX_KNOWN)
 #undef INFERX_KNOWN
     (void)value;
     if (!known) {
@@ -133,6 +132,7 @@ absl::StatusOr<FieldValues> ReadConfigEnvironment() {
     values.emplace((json_name), *parsed);                                    \
   }
   INFERX_CONFIG_FIELDS(INFERX_CONFIG_ENV)
+  INFERX_CUDA_CONFIG_FIELDS(INFERX_CONFIG_ENV)
 #undef INFERX_CONFIG_ENV
   return values;
 }

@@ -42,7 +42,10 @@ class EngineConfig {
   [[nodiscard]] uint64_t camel() const noexcept { return values_.camel.value; }
 
   INFERX_CONFIG_FIELDS(INFERX_CONFIG_ACCESSOR)
+  INFERX_CUDA_CONFIG_FIELDS(INFERX_CONFIG_ACCESSOR)
 #undef INFERX_CONFIG_ACCESSOR
+
+  [[nodiscard]] bool has_cuda_section() const noexcept { return has_cuda_section_; }
 
   // Byte-stable canonical serialization (see file comment).
   [[nodiscard]] std::string CanonicalJson() const;
@@ -50,6 +53,7 @@ class EngineConfig {
  private:
   EngineConfig() = default;
   ParsedConfig values_;
+  bool has_cuda_section_ = false;
 };
 
 // Exposed for tests and tools: the field list with json spellings, sorted

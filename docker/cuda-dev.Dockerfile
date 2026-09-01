@@ -1,11 +1,11 @@
-# CUDA developer container (m0.md section 12): NVIDIA CUDA 12.8 development
-# image (ADR 0005 qualification candidate) plus the accepted host toolchain.
-# Base pinned by digest (linux/amd64 manifest list). No project dependencies
+# CUDA developer container: NVIDIA CUDA 13.0 development image (ADR 0020)
+# plus the accepted host toolchain.
+# Base pinned by its multi-platform index digest. No project dependencies
 # are downloaded in the image; bootstrap uses repository gitlinks.
 #
 # Build: docker build -f docker/cuda-dev.Dockerfile -t inferx-cuda-dev .
 # Run:   docker run --gpus all -it --rm -v "$PWD:/workspace" inferx-cuda-dev
-FROM nvidia/cuda@sha256:9a8fffc32a955361aa66d754e7a0cda2513052eaf5aaf8f3ba69b80578d1c6a9 # 12.8.0-devel-ubuntu24.04
+FROM nvidia/cuda@sha256:1e8ac7a54c184a1af8ef2167f28fa98281892a835c981ebcddb1fad04bdd452d # 13.0.0-devel-ubuntu24.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \

@@ -1,6 +1,6 @@
 # ADR 0005: Toolchain floor and CUDA language level
 
-- Status: Proposed
+- Status: Superseded by [ADR 0020](0020-cuda-13-toolchain-and-m2-qualification.md)
 - Date: 2026-08-30
 - Deciding owner: repository owner (implementation proceeds provisionally)
 - Seed: `docs/milestones/m0.md` sections 6.1, 10
@@ -66,8 +66,9 @@ decision records both the floor and the isolation rule.
   `std::expected` on lanes that expose it — documented unavailable on Clang 18 +
   libstdc++ 13 because libstdc++ gates `<expected>` on `__cpp_concepts >= 202002L`
   and Clang reports `201907L`).
-- CUDA: `cuda-release` preset (NVCC 13.0, sm_89, RTX 4080) builds and runs the
-  `gpu`-label smoke; NVCC 12.0 lane verified with the C++20 isolation path.
+- CUDA: `cuda-release` preset (NVCC 13.0.88, GCC 13.3, sm_89, RTX 4080 SUPER)
+  builds and runs the M2 real-device suites through WSL2; NVCC 12.0 lane was
+  compile-verified with the C++20 isolation path.
   CUDA 12.8 remains candidate until the owned runner matrix is accepted.
 
 ## Supersession

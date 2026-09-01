@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <utility>
 
 #include "inferx/base/id.h"
 #include "inferx/base/status.h"
@@ -10,7 +11,11 @@
 #include "inferx/base/version.h"
 #include "inferx/config/parsed_config.h"
 #include "inferx/engine/execution_ticket.h"
+#include "inferx/runtime/buffer_pool.h"
 #include "inferx/scheduler/work_kind.h"
+#include "inferx/tensor/allocator.h"
+#include "inferx/tensor/buffer.h"
+#include "inferx/tensor/shape.h"
 
 int main() {
   const char* expected_env = std::getenv("INFERX_EXPECTED_VERSION");
@@ -43,6 +48,24 @@ int main() {
     return 1;
   }
   const inferx::Version version = inferx::GetVersion();
+  const inferx::Shape scalar = inferx::Shape::Create({}).value();
+  inferx::CpuAllocator allocator;
+  inferx::Buffer backing =
+      allocator
+          .Allocate(inferx::AllocationRequest{inferx::Device::Host(), inferx::MemoryKind::kHost,
+                                              inferx::ByteCount(64), inferx::ByteCount(64),
+                                              inferx::MemoryCategory::kTest})
+          .value();
+  inferx::FixedBufferPool pool =
+      inferx::FixedBufferPool::Create(
+          std::move(backing), inferx::PoolGeometry{1, inferx::ByteCount(64), inferx::ByteCount(64),
+                                                   inferx::PoolGeneration(0)})
+          .value();
+  inferx::BufferLease lease = pool.Acquire().value();
+  if (scalar.NumElements().value() != 1 || !lease.Release().ok() || !pool.Close().ok()) {
+    std::cerr << "installed tensor/runtime contracts did not behave\n";
+    return 1;
+  }
   std::cout << "consumer ok: " << version.major << "." << version.minor << "." << version.patch
             << "\n";
   return 0;

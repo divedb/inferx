@@ -81,13 +81,12 @@ TEST(LatencyModelTest, UsesCheckedSchemaFormula) {
 
 TEST(FakeExecutorTest, TicketDeliveryAndAcknowledgementOwnPlanLease) {
   PlanFixture fixture = PrefillPlan();
-  auto executor = FakeExecutor::Create(
-      LatencyModel(LatencyModelParameters{
-          .base = Nanoseconds(100),
-          .prefill_per_token = Nanoseconds(10),
-          .decode_per_sequence = Nanoseconds(20),
-      }),
-      1, 2);
+  auto executor = FakeExecutor::Create(LatencyModel(LatencyModelParameters{
+                                           .base = Nanoseconds(100),
+                                           .prefill_per_token = Nanoseconds(10),
+                                           .decode_per_sequence = Nanoseconds(20),
+                                       }),
+                                       1, 2);
   ASSERT_TRUE(executor.ok());
   auto ticket = (*executor)->Submit(std::move(fixture.lease));
   ASSERT_TRUE(ticket.ok()) << ticket.status();
@@ -112,13 +111,12 @@ TEST(FakeExecutorTest, TicketDeliveryAndAcknowledgementOwnPlanLease) {
 
 TEST(FakeExecutorTest, RequestFailureRuleIsConsumedExactlyOnce) {
   PlanFixture fixture = PrefillPlan();
-  auto executor = FakeExecutor::Create(
-      LatencyModel(LatencyModelParameters{
-          .base = Nanoseconds(1),
-          .prefill_per_token = Nanoseconds(0),
-          .decode_per_sequence = Nanoseconds(0),
-      }),
-      1, 1);
+  auto executor = FakeExecutor::Create(LatencyModel(LatencyModelParameters{
+                                           .base = Nanoseconds(1),
+                                           .prefill_per_token = Nanoseconds(0),
+                                           .decode_per_sequence = Nanoseconds(0),
+                                       }),
+                                       1, 1);
   ASSERT_TRUE(executor.ok());
   ASSERT_TRUE((*executor)
                   ->AddFailureRule(FailureRule{

@@ -1,7 +1,7 @@
 # InferX test tree (m0.md sections 7, 13). CTest labels: unit, compile,
-# dependency, integration, failure, gpu (the last registered by
-# platform/cuda/smoke). Every test gets a bounded timeout and runs from any
-# working directory through absolute paths.
+# dependency, integration, failure, and the M2 category labels. Every test
+# gets a bounded timeout and runs from any working directory through absolute
+# paths.
 
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
@@ -147,6 +147,122 @@ set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/m1_test_labels.cmake")
 
 # ---------------------------------------------------------------------------
+# m2-unit: checked tensor values, views, ownership, and CPU reference copy.
+# ---------------------------------------------------------------------------
+add_executable(inferx_m2_tensor_test unit/tensor/m2_tensor_test.cc)
+inferx_apply_project_options(inferx_m2_tensor_test)
+target_link_libraries(inferx_m2_tensor_test PRIVATE
+  inferx::tensor GTest::gtest_main absl::status absl::statusor)
+gtest_discover_tests(inferx_m2_tensor_test
+  PROPERTIES TIMEOUT 120)
+
+add_executable(inferx_m2_runtime_test
+  unit/runtime/m2_runtime_test.cc
+  fakes/fake_allocator.cc
+  fakes/fake_fence.cc)
+inferx_apply_project_options(inferx_m2_runtime_test)
+target_include_directories(inferx_m2_runtime_test PRIVATE ${CMAKE_SOURCE_DIR})
+target_link_libraries(inferx_m2_runtime_test PRIVATE
+  inferx::runtime GTest::gtest_main absl::status absl::statusor absl::strings)
+gtest_discover_tests(inferx_m2_runtime_test
+  PROPERTIES TIMEOUT 120)
+
+add_executable(inferx_m2_config_test unit/config/m2_cuda_config_test.cc)
+inferx_apply_project_options(inferx_m2_config_test)
+target_link_libraries(inferx_m2_config_test PRIVATE
+  inferx::config GTest::gtest_main absl::status absl::statusor)
+gtest_discover_tests(inferx_m2_config_test
+  PROPERTIES TIMEOUT 120)
+
+add_executable(inferx_m2_runtime_stress_test
+  stress/runtime/m2_runtime_stress_test.cc
+  fakes/fake_fence.cc)
+inferx_apply_project_options(inferx_m2_runtime_stress_test)
+target_include_directories(inferx_m2_runtime_stress_test PRIVATE ${CMAKE_SOURCE_DIR})
+target_link_libraries(inferx_m2_runtime_stress_test PRIVATE
+  inferx::runtime GTest::gtest_main absl::status absl::statusor absl::strings)
+if(INFERX_ENABLE_TSAN)
+  # TSan provides strong global new/delete interceptors. The same warmed pool
+  # cycles still run in this lane, while allocation-count evidence is owned by
+  # the ordinary and ASan/UBSan lanes.
+  target_compile_definitions(inferx_m2_runtime_stress_test PRIVATE
+    INFERX_M2_TSAN_BUILD=1)
+endif()
+gtest_discover_tests(inferx_m2_runtime_stress_test
+  PROPERTIES TIMEOUT 180)
+
+if(INFERX_ENABLE_CUDA AND INFERX_BUILD_GPU_TESTS)
+  add_executable(inferx_m2_cuda_unit_test
+    unit/cuda/m2_cuda_unit_test.cc
+    fakes/fake_allocator.cc)
+  inferx_apply_project_options(inferx_m2_cuda_unit_test)
+  target_include_directories(inferx_m2_cuda_unit_test PRIVATE
+    ${CMAKE_SOURCE_DIR})
+  target_link_libraries(inferx_m2_cuda_unit_test PRIVATE
+    inferx_cuda GTest::gtest_main CUDA::cudart
+    absl::status absl::statusor absl::strings)
+  target_compile_definitions(inferx_m2_cuda_unit_test PRIVATE
+    INFERX_CUDA_DEBUG_POINTERS=1)
+  gtest_discover_tests(inferx_m2_cuda_unit_test
+    PROPERTIES TIMEOUT 120)
+
+  add_executable(inferx_cuda_integration_test
+    integration/cuda/cuda_test_pipeline.cc
+    integration/cuda/m2_cuda_integration_test.cc)
+  inferx_apply_project_options(inferx_cuda_integration_test)
+  target_include_directories(inferx_cuda_integration_test PRIVATE
+    ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/kernels/cuda/test)
+  target_link_libraries(inferx_cuda_integration_test PRIVATE
+    inferx_cuda inferx_cuda_test_kernels GTest::gtest_main CUDA::cudart
+    absl::status absl::statusor absl::strings)
+  gtest_discover_tests(inferx_cuda_integration_test
+    PROPERTIES TIMEOUT 600)
+
+  add_executable(inferx_cuda_failure_child
+    failure/cuda/m2_cuda_failure_child.cc)
+  inferx_apply_project_options(inferx_cuda_failure_child)
+  target_link_libraries(inferx_cuda_failure_child PRIVATE
+    inferx_cuda CUDA::cudart absl::status absl::statusor)
+  target_include_directories(inferx_cuda_failure_child PRIVATE
+    ${CMAKE_SOURCE_DIR}/kernels/cuda/test)
+  target_link_libraries(inferx_cuda_failure_child PRIVATE
+    inferx_cuda_test_kernels)
+  add_test(NAME m2_cuda_illegal_address_child
+    COMMAND inferx_cuda_failure_child --illegal-address)
+  set_tests_properties(m2_cuda_illegal_address_child PROPERTIES
+    LABELS "m2;m2-failure" TIMEOUT 60)
+  add_test(NAME m2_cuda_assert_child
+    COMMAND inferx_cuda_failure_child --assert)
+  set_tests_properties(m2_cuda_assert_child PROPERTIES
+    LABELS "m2;m2-failure" TIMEOUT 60)
+  add_test(NAME m2_cuda_timeout_classification_child
+    COMMAND inferx_cuda_failure_child --classify-timeout)
+  set_tests_properties(m2_cuda_timeout_classification_child PROPERTIES
+    LABELS "m2;m2-failure" TIMEOUT 60)
+  add_test(NAME m2_cuda_device_lost_classification_child
+    COMMAND inferx_cuda_failure_child --classify-device-lost)
+  set_tests_properties(m2_cuda_device_lost_classification_child PROPERTIES
+    LABELS "m2;m2-failure" TIMEOUT 60)
+
+  add_executable(inferx_tensor_cuda_correctness
+    correctness/tensor_cuda/m2_tensor_cuda_correctness.cc)
+  inferx_apply_project_options(inferx_tensor_cuda_correctness)
+  target_include_directories(inferx_tensor_cuda_correctness PRIVATE
+    ${CMAKE_SOURCE_DIR}/kernels/cuda/test)
+  target_link_libraries(inferx_tensor_cuda_correctness PRIVATE
+    inferx_cuda inferx_cuda_test_kernels GTest::gtest_main CUDA::cudart
+    absl::status absl::statusor)
+  gtest_discover_tests(inferx_tensor_cuda_correctness
+    PROPERTIES TIMEOUT 900)
+endif()
+
+# GoogleTest discovers individual cases after build. Assign both the general
+# M2 label and the required category at CTest time; passing a semicolon list
+# through gtest_discover_tests loses the second label.
+set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/m2_test_labels.cmake")
+
+# ---------------------------------------------------------------------------
 # compile: C++23 feature sentinel. Exercises library facilities, not macros.
 # ---------------------------------------------------------------------------
 add_executable(inferx_cxx23_smoke compile/cxx23_smoke.cc)
@@ -284,6 +400,12 @@ inferx_add_failure_test(manifest_gitlink_drift
 # The drift fixture mutates the mirrored abseil-cpp revision in a temporary
 # manifest copy; the real gitlink must win (see failure/manifest_drift.py).
 
+add_test(NAME m2_cuda_header_boundary
+  COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/check_cuda_boundaries.py
+          --source-root ${CMAKE_SOURCE_DIR})
+set_tests_properties(m2_cuda_header_boundary PROPERTIES
+  LABELS "m2;m2-unit" TIMEOUT 60)
+
 # ---------------------------------------------------------------------------
 # Aggregate convenience targets (m0.md section 9.4). They never configure
 # other build trees; sanitizer and CUDA lanes stay separate invocations.
@@ -297,6 +419,8 @@ add_custom_target(check-fast
   COMMENT "InferX check-fast: format-check + unit/compile tests")
 
 add_custom_target(check-analysis
+  COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/check_cuda_boundaries.py
+          --source-root ${CMAKE_SOURCE_DIR}
   COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/check_headers.py
           --source-root ${CMAKE_SOURCE_DIR} --build-dir ${CMAKE_BINARY_DIR}
   COMMAND ${CMAKE_SOURCE_DIR}/tools/run_clang_tidy.sh ${CMAKE_BINARY_DIR}
