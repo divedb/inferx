@@ -71,8 +71,8 @@ isolated failure-containment, and 4 stress tests.
 Compute Sanitizer reported zero memcheck errors/leaks, zero racecheck hazards/
 warnings, and zero initcheck or synccheck errors. All seven operation-identical
 wrapper/direct median comparisons passed the 3% gate after 30 paired
-repetitions: H2D 0.747%, D2H 0.627%, D2D -1.308%, event 0.155%, and the three
-launch comparisons from -1.138% to -0.348%. The clean manifest is retained at
+repetitions. The retained `overhead.json` records the exact p50/p90/p99 values
+and computed overheads for each run. The clean cross-artifact manifest is at
 `out/evidence/m2-cuda13-wsl-final/manifest.json`.
 
 ## Supersession
