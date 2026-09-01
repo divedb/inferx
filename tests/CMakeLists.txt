@@ -53,6 +53,28 @@ if(INFERX_BUILD_M4_REFERENCE_TESTS)
   gtest_discover_tests(inferx_m4_artifact_adapter_test PROPERTIES TIMEOUT 120)
 endif()
 
+if(INFERX_BUILD_M4_REFERENCE_TESTS)
+  add_executable(inferx_kernels_dispatch_test unit/kernels/kernel_dispatch_test.cc)
+  inferx_apply_project_options(inferx_kernels_dispatch_test)
+  target_compile_definitions(inferx_kernels_dispatch_test PRIVATE
+    INFERX_KERNELS_SOURCE_DIR="${CMAKE_SOURCE_DIR}/kernels")
+  target_link_libraries(inferx_kernels_dispatch_test PRIVATE
+    inferx_kernels GTest::gtest_main)
+  gtest_discover_tests(inferx_kernels_dispatch_test PROPERTIES TIMEOUT 120)
+endif()
+
+if(INFERX_ENABLE_CUDA AND INFERX_BUILD_M4_GPU_TESTS)
+  add_executable(inferx_kernels_cuda_test unit/cuda/kernels_cuda_test.cc)
+  inferx_apply_project_options(inferx_kernels_cuda_test)
+  target_include_directories(inferx_kernels_cuda_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/kernels/cuda/dispatch ${CMAKE_SOURCE_DIR}/platform/cuda/include)
+  target_link_libraries(inferx_kernels_cuda_test PRIVATE
+    inferx_kernels inferx_kernels_cuda inferx::ops inferx::tensor
+    GTest::gtest_main CUDA::cudart absl::status absl::statusor absl::strings
+    absl::synchronization)
+  gtest_discover_tests(inferx_kernels_cuda_test PROPERTIES TIMEOUT 120)
+endif()
+
 if(INFERX_ENABLE_CUDA AND INFERX_BUILD_M4_GPU_TESTS)
   add_executable(inferx_m4_cuda_ops_test unit/cuda/m4_cuda_ops_test.cc)
   inferx_apply_project_options(inferx_m4_cuda_ops_test)
