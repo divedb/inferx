@@ -23,6 +23,58 @@ include(GoogleTest)
 gtest_discover_tests(inferx_base_test
   PROPERTIES LABELS "unit" TIMEOUT 60)
 
+# M3 artifact/model contract: rooted path safety, official digest vectors,
+# safetensors layout checks, mapping accounting, and complete Llama coverage.
+add_executable(inferx_m3_artifacts_test
+  unit/artifacts/m3_artifacts_test.cc)
+inferx_apply_project_options(inferx_m3_artifacts_test)
+target_link_libraries(inferx_m3_artifacts_test PRIVATE
+  inferx::artifacts inferx::model GTest::gtest_main)
+gtest_discover_tests(inferx_m3_artifacts_test
+  PROPERTIES TIMEOUT 60)
+
+add_executable(inferx_m3_model_package_integration_test
+  integration/model_package/m3_model_package_integration_test.cc)
+inferx_apply_project_options(inferx_m3_model_package_integration_test)
+target_compile_definitions(inferx_m3_model_package_integration_test PRIVATE
+  INFERX_M3_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/m3")
+target_link_libraries(inferx_m3_model_package_integration_test PRIVATE
+  inferx::artifacts inferx::model GTest::gtest_main)
+gtest_discover_tests(inferx_m3_model_package_integration_test
+  PROPERTIES TIMEOUT 120)
+
+add_executable(inferx_m3_safetensors_corpus_test
+  correctness/safetensors/m3_safetensors_corpus_test.cc)
+inferx_apply_project_options(inferx_m3_safetensors_corpus_test)
+target_compile_definitions(inferx_m3_safetensors_corpus_test PRIVATE
+  INFERX_M3_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/m3")
+target_link_libraries(inferx_m3_safetensors_corpus_test PRIVATE
+  inferx::artifacts GTest::gtest_main)
+gtest_discover_tests(inferx_m3_safetensors_corpus_test
+  PROPERTIES TIMEOUT 120)
+
+add_executable(inferx_m3_artifact_stress_test
+  stress/artifacts/m3_artifact_stress_test.cc)
+inferx_apply_project_options(inferx_m3_artifact_stress_test)
+target_compile_definitions(inferx_m3_artifact_stress_test PRIVATE
+  INFERX_M3_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/m3")
+target_link_libraries(inferx_m3_artifact_stress_test PRIVATE
+  inferx::artifacts inferx::model GTest::gtest_main)
+gtest_discover_tests(inferx_m3_artifact_stress_test
+  PROPERTIES TIMEOUT 300)
+
+add_custom_target(m3-fixture-check
+  COMMAND Python3::Interpreter
+          ${CMAKE_SOURCE_DIR}/tools/fixtures/generate_m3_artifact_fixtures.py
+          --check
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  VERBATIM
+  COMMENT "InferX M3: verify committed artifact fixtures")
+# GoogleTest discovers individual cases after build. Assign the labels at
+# CTest time so the semicolon-separated label list remains one property value.
+set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/m3_test_labels.cmake")
+
 # ---------------------------------------------------------------------------
 # m1-unit: M1 base contract tests (labels include the general `m1` label).
 # ---------------------------------------------------------------------------
@@ -286,11 +338,13 @@ gtest_discover_tests(inferx_absl_qualification_test
 # under tests/consumer* are separate CMake projects driven by Python drivers
 # so they cannot see the source tree or build tree by accident.
 # ---------------------------------------------------------------------------
-add_test(NAME cli
-  COMMAND Python3::Interpreter ${CMAKE_CURRENT_SOURCE_DIR}/integration/cli_test.py
-          --binary $<TARGET_FILE:inferx-info>
-          --expected-version ${PROJECT_VERSION})
-set_tests_properties(cli PROPERTIES LABELS "integration" TIMEOUT 120)
+if(INFERX_BUILD_TOOLS)
+  add_test(NAME cli
+    COMMAND Python3::Interpreter ${CMAKE_CURRENT_SOURCE_DIR}/integration/cli_test.py
+            --binary $<TARGET_FILE:inferx-info>
+            --expected-version ${PROJECT_VERSION})
+  set_tests_properties(cli PROPERTIES LABELS "integration" TIMEOUT 120)
+endif()
 
 if(PROJECT_IS_TOP_LEVEL AND NOT (INFERX_ENABLE_ASAN OR INFERX_ENABLE_UBSAN OR INFERX_ENABLE_TSAN))
   # Only the top-level build may install; a subproject embedder uses its own
@@ -393,6 +447,11 @@ inferx_add_failure_test(consumer_missing_dependency
   --arg CONSUMER_DIR=${CMAKE_CURRENT_SOURCE_DIR}/consumer_absl
   EXPECT "absl")
 
+inferx_add_failure_test(tokenizer_unqualified
+  --fixture ${CMAKE_CURRENT_SOURCE_DIR}/failure/tokenizer_unqualified.cmake
+  --arg INFERX_ROOT=${CMAKE_SOURCE_DIR}
+  EXPECT "INFERX_ENABLE_TOKENIZATION" "candidate-only" "streaming decode ABI")
+
 inferx_add_failure_test(manifest_gitlink_drift
   --script ${CMAKE_CURRENT_SOURCE_DIR}/failure/manifest_drift.py
   --arg INFERX_ROOT=${CMAKE_SOURCE_DIR}
@@ -417,6 +476,22 @@ add_custom_target(check-fast
   VERBATIM
   USES_TERMINAL
   COMMENT "InferX check-fast: format-check + unit/compile tests")
+add_dependencies(check-fast
+  inferx_base_test
+  inferx_cxx23_smoke
+  inferx_m1_config_test
+  inferx_m1_fsm_test
+  inferx_m1_scheduler_test
+  inferx_m1_simulator_components_test
+  inferx_m1_status_test
+  inferx_m1_value_test
+  inferx_m2_config_test
+  inferx_m2_runtime_test
+  inferx_m2_tensor_test
+  inferx_m3_artifacts_test)
+if(INFERX_ENABLE_CUDA)
+  add_dependencies(check-fast inferx_m2_cuda_unit_test)
+endif()
 
 add_custom_target(check-analysis
   COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/check_cuda_boundaries.py

@@ -1,16 +1,21 @@
 // Downstream consumer entry point: proves the installed package, headers, and
 // static library work with only CMAKE_PREFIX_PATH pointing at the prefix.
+#include <cstddef>
 #include <cstdlib>
 #include <iostream>
+#include <span>
 #include <string>
 #include <utility>
 
+#include "inferx/artifacts/artifact_limits.h"
+#include "inferx/artifacts/digest.h"
 #include "inferx/base/id.h"
 #include "inferx/base/status.h"
 #include "inferx/base/token.h"
 #include "inferx/base/version.h"
 #include "inferx/config/parsed_config.h"
 #include "inferx/engine/execution_ticket.h"
+#include "inferx/model/model_spec.h"
 #include "inferx/runtime/buffer_pool.h"
 #include "inferx/scheduler/work_kind.h"
 #include "inferx/tensor/allocator.h"
@@ -64,6 +69,13 @@ int main() {
   inferx::BufferLease lease = pool.Acquire().value();
   if (scalar.NumElements().value() != 1 || !lease.Release().ok() || !pool.Close().ok()) {
     std::cerr << "installed tensor/runtime contracts did not behave\n";
+    return 1;
+  }
+  const absl::Status artifact_limits = inferx::artifacts::ArtifactLimits{}.Validate();
+  const auto empty_digest = inferx::artifacts::HashBytes(std::span<const std::byte>{});
+  const inferx::model::ModelSpec empty_model(inferx::model::LlamaSpec{});
+  if (!artifact_limits.ok() || !empty_digest.ok() || empty_model.canonical_bytes().empty()) {
+    std::cerr << "installed artifact/model contracts did not behave\n";
     return 1;
   }
   std::cout << "consumer ok: " << version.major << "." << version.minor << "." << version.patch

@@ -52,6 +52,12 @@ option(INFERX_BUILD_BENCHMARKS "Build InferX benchmarks (Google Benchmark smoke 
        ${_INFERX_TOP_LEVEL_DEFAULT})
 option(INFERX_BUILD_TOOLS "Build InferX developer tools such as inferx-info."
        ${_INFERX_TOP_LEVEL_DEFAULT})
+option(INFERX_ENABLE_TOKENIZATION
+       "Build the M3 tokenizer adapter after its dependency qualification gate is closed."
+       OFF)
+option(INFERX_M3_ENABLE_OPENAT2
+       "Use Linux openat2 for rooted artifact opens, with a checked openat fallback."
+       ON)
 option(INFERX_ENABLE_CUDA "Enable the optional CUDA platform (explicit opt-in; a missing toolkit is fatal when ON)."
        OFF)
 option(INFERX_BUILD_GPU_TESTS "Build M2 GPU tests (requires INFERX_ENABLE_CUDA)."

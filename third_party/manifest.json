@@ -4,6 +4,7 @@
     "core": [
       "simdjson",
       "abseil-cpp",
+      "blake3",
       "googletest",
       "benchmark"
     ]
@@ -17,14 +18,30 @@
       "revision": "0a851a64cd984e9e1a6cab93b6e773aa3f4dc30d",
       "license": "Apache-2.0",
       "license_file": "third_party/simdjson/LICENSE",
-      "owner": "config",
+      "owner": "config-artifacts",
       "features": [
         "core"
       ],
       "default_enabled": true,
       "status": "approved",
       "qualification": "docs/dependencies/simdjson.md",
-      "notes": "Pinned at release v4.6.5 per m1.md section 3. Private parser adapter only; never appears in installed InferX headers."
+      "notes": "Pinned at release v4.6.5 per m1.md section 3. Private config and artifact parser adapters only; never appears in installed InferX headers."
+    },
+    {
+      "name": "blake3",
+      "source_kind": "git-submodule",
+      "path": "third_party/blake3",
+      "url": "https://github.com/BLAKE3-team/BLAKE3.git",
+      "revision": "f3149ec5bb5449af877ba20377a11008ff499fa2",
+      "license": "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception",
+      "license_file": "third_party/blake3/LICENSE_A2",
+      "owner": "artifacts",
+      "features": [
+        "core"
+      ],
+      "default_enabled": true,
+      "status": "approved",
+      "qualification": "docs/dependencies/blake3.md"
     },
     {
       "name": "abseil-cpp",
@@ -140,9 +157,9 @@
         "tokenization"
       ],
       "default_enabled": false,
-      "status": "candidate",
+      "status": "rejected",
       "qualification": "docs/dependencies/tokenizer.md",
-      "notes": "Deferred to M3. License confirmed MIT at the pinned revision via raw.githubusercontent.com; API surface, thread safety, and incremental-decode correctness audits pending."
+      "notes": "M3.0 rejects this pin unchanged: forced duplicate dependencies, unconditional Hub/curl/OpenSSL closure, aborting Rust parse paths, and no upstream streaming decode ABI. Gitlink retained as audit evidence; production target disabled."
     },
     {
       "name": "hpc-ops",

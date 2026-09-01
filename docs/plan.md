@@ -4,10 +4,12 @@ Status: architecture and implementation roadmap. This document is the source of 
 individual design documents and ADRs supersede a section. Every milestone below must leave the
 repository buildable and independently verifiable.
 
-## 1. Repository reality and working assumptions
+## 1. Historical repository baseline and working assumptions
 
-This plan is deliberately aligned with the repository as it exists on 2026-08-30, not with an
-imagined mature codebase.
+This section records the repository baseline from 2026-08-30 that drove the roadmap; it is not a
+current inventory. M0, M1, and M2 are now implemented. M3's artifact/model foundation is implemented
+and independently usable, while full M3 remains blocked on tokenizer qualification. Current status
+and evidence live in each milestone document.
 
 - There is no build system, C++ source, test, benchmark, CI configuration, or public API yet.
 - `.clang-format` selects Google style but still says `Standard: c++20`; M0 must change it to
@@ -1263,6 +1265,8 @@ hardware-constrained release job.
 ### M4 — Reference operators and production CUDA backend adapters
 
 **Depends on:** M2 and M3.
+
+**Implementation specification:** [`docs/milestones/m4.md`](milestones/m4.md)
 
 **Deliverables**
 

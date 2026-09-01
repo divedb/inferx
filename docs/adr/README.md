@@ -58,3 +58,9 @@ Every ADR contains, in order:
 | [0018](0018-metadata-and-workspace-lifetime.md) | Metadata and workspace lifetime | Accepted |
 | [0019](0019-m2-gpu-qualification.md) | M2 GPU qualification | Superseded by ADR 0020 |
 | [0020](0020-cuda-13-toolchain-and-m2-qualification.md) | CUDA 13.0 toolchain and M2 GPU qualification | Accepted |
+| [0021](0021-local-artifact-trust-boundary.md) | Local artifact trust boundary | Accepted |
+| [0022](0022-safetensors-reader-contract.md) | Safetensors reader contract | Accepted |
+| [0023](0023-llama-model-and-weight-schema.md) | Llama model and weight schema | Accepted |
+| [0024](0024-model-integrity-and-fingerprint.md) | Model integrity and fingerprint | Accepted |
+| [0025](0025-tokenizer-backend-and-concurrency.md) | Tokenizer backend and concurrency | Proposed (blocked) |
+| [0026](0026-prompt-processing-contract.md) | Prompt processing contract | Accepted |

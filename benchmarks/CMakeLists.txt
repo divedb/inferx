@@ -11,6 +11,13 @@ inferx_apply_project_options(inferx_memory_pool_benchmark)
 target_link_libraries(inferx_memory_pool_benchmark PRIVATE
   inferx::runtime benchmark::benchmark)
 
+add_executable(inferx_artifact_benchmark m3/artifact_benchmark.cc)
+inferx_apply_project_options(inferx_artifact_benchmark)
+target_compile_definitions(inferx_artifact_benchmark PRIVATE
+  INFERX_M3_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/m3")
+target_link_libraries(inferx_artifact_benchmark PRIVATE
+  inferx::artifacts inferx::model benchmark::benchmark)
+
 if(INFERX_ENABLE_CUDA)
   target_compile_definitions(inferx_memory_pool_benchmark PRIVATE
     INFERX_MEMORY_POOL_BENCHMARK_CUDA=1)

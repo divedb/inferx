@@ -1,0 +1,9 @@
+file	accepted	reason
+valid_scalar.safetensors	true	scalar shape covers the payload
+valid_empty.safetensors	true	zero-element tensor at a payload boundary
+valid_subbyte.safetensors	true	sub-byte dtype rounds up to complete bytes
+invalid_overlap.safetensors	false	overlapping tensor ranges
+invalid_hole.safetensors	false	unclaimed byte before tensor payload
+invalid_bad_dtype.safetensors	false	unknown dtype
+invalid_duplicate_name.safetensors	false	duplicate tensor name
+invalid_truncated_header.safetensors	false	declared header exceeds file
