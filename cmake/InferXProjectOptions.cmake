@@ -61,24 +61,22 @@ option(INFERX_M3_ENABLE_OPENAT2
 option(INFERX_ENABLE_CUDA "Enable the optional CUDA platform (explicit opt-in; a missing toolkit is fatal when ON)."
        OFF)
 option(INFERX_ENABLE_FLASHINFER
-       "Enable the qualified native-only FlashInfer M4 adapter (recorded pin is rejected)." OFF)
+       "Build the kernels-architecture FlashInfer providers (AOT device-kernel instantiations at the pinned revision; requires the gitlink, ADR 0032)." OFF)
 option(INFERX_ENABLE_CUTLASS
-       "Enable an evidence-qualified CUTLASS M4 backend (no backend is registered)." OFF)
+       "Build the kernels-architecture CUTLASS GEMM provider (requires the gitlink, ADR 0032)." OFF)
+option(INFERX_ENABLE_HPC_OPS
+       "Reserve the hpc-ops provider slot (SM90+ module; probes only until the adapter qualifies, ADR 0032)." OFF)
 option(INFERX_BUILD_M4_REFERENCE_TESTS "Build M4 CPU contract/reference tests."
        ${_INFERX_TOP_LEVEL_DEFAULT})
 option(INFERX_BUILD_M4_GPU_TESTS "Build M4 GPU tests (requires INFERX_ENABLE_CUDA)."
        ${_INFERX_TOP_LEVEL_DEFAULT})
 option(INFERX_BUILD_M4_BENCHMARKS "Build M4 operator/dispatch benchmarks."
        ${_INFERX_TOP_LEVEL_DEFAULT})
-if(INFERX_ENABLE_FLASHINFER)
-  message(FATAL_ERROR
-    "INFERX_ENABLE_FLASHINFER is ON, but ADR 0029 rejects the recorded pin; use the owned "
-    "inferx_cuda attention fallback until a new native-only pin is qualified.")
-endif()
-if(INFERX_ENABLE_CUTLASS)
-  message(FATAL_ERROR
-    "INFERX_ENABLE_CUTLASS is ON, but M4 records CUTLASS as qualified-deferred with no measured gap.")
-endif()
+# The kernels-architecture branch (ADR 0031/0032) supersedes the ADR 0029
+# rejection for the new provider chain: FlashInfer/CUTLASS enter as AOT
+# instantiations of the pinned gitlinks with no JIT/cubin-loading path, and
+# the option gates remain OFF by default until qualification evidence is
+# complete. The legacy M4 platform adapters are unaffected.
 option(INFERX_BUILD_GPU_TESTS "Build M2 GPU tests (requires INFERX_ENABLE_CUDA)."
        ${_INFERX_TOP_LEVEL_DEFAULT})
 option(INFERX_BUILD_COMPUTE_SANITIZER_TESTS

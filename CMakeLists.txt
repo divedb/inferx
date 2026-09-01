@@ -58,6 +58,11 @@ if(INFERX_ENABLE_CUDA)
   endif()
 endif()
 
+# Unified kernels layer (ADR 0031): the neutral dispatch target builds on
+# every preset; CUDA categories register only under INFERX_ENABLE_CUDA and
+# after InferXCuda.cmake has set the CUDA language variables.
+add_subdirectory(kernels)
+
 if(BUILD_TESTING)
   add_subdirectory(tests)
 endif()
