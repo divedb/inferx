@@ -395,6 +395,18 @@ if(INFERX_BUILD_TOOLS)
             --fixture ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/model/tiny_llama
             ${_INFERX_MODEL_INSPECT_TEST_OPTIONS})
   set_tests_properties(model_inspect_cli PROPERTIES LABELS "integration;model" TIMEOUT 120)
+
+  if(INFERX_BUILD_VLLM_DIFFERENTIAL_TESTS)
+    add_test(NAME real_model_vllm_differential
+      COMMAND Python3::Interpreter
+              ${CMAKE_CURRENT_SOURCE_DIR}/integration/real_model_vllm_test.py
+              --inferx-binary $<TARGET_FILE:inferx-generate>
+              --download-dir ${CMAKE_BINARY_DIR}/real-model-cache)
+    set_tests_properties(real_model_vllm_differential PROPERTIES
+      LABELS "integration;model;external"
+      RUN_SERIAL TRUE
+      TIMEOUT 900)
+  endif()
 endif()
 
 if(PROJECT_IS_TOP_LEVEL AND NOT (INFERX_ENABLE_ASAN OR INFERX_ENABLE_UBSAN OR INFERX_ENABLE_TSAN))

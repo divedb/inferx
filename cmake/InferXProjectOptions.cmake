@@ -58,6 +58,9 @@ option(INFERX_ENABLE_TOKENIZATION
 option(INFERX_ENABLE_OPENAT2
        "Use Linux openat2 for rooted artifact opens, with a checked openat fallback."
        ON)
+option(INFERX_ENABLE_HF_HUB
+       "Enable direct Hugging Face model downloads through libcurl."
+       ON)
 option(INFERX_ENABLE_CUDA "Enable the optional CUDA platform (explicit opt-in; a missing toolkit is fatal when ON)."
        OFF)
 option(INFERX_ENABLE_FLASHINFER
@@ -72,6 +75,17 @@ option(INFERX_BUILD_OPERATOR_GPU_TESTS "Build operator GPU tests (requires INFER
        ${_INFERX_TOP_LEVEL_DEFAULT})
 option(INFERX_BUILD_OPERATOR_BENCHMARKS "Build operator/dispatch benchmarks."
        ${_INFERX_TOP_LEVEL_DEFAULT})
+option(INFERX_BUILD_VLLM_DIFFERENTIAL_TESTS
+       "Register the opt-in real-model differential test against vLLM."
+       OFF)
+if(INFERX_BUILD_VLLM_DIFFERENTIAL_TESTS AND NOT INFERX_BUILD_TOOLS)
+  message(FATAL_ERROR
+    "INFERX_BUILD_VLLM_DIFFERENTIAL_TESTS=ON requires INFERX_BUILD_TOOLS=ON")
+endif()
+if(INFERX_BUILD_VLLM_DIFFERENTIAL_TESTS AND NOT INFERX_ENABLE_HF_HUB)
+  message(FATAL_ERROR
+    "INFERX_BUILD_VLLM_DIFFERENTIAL_TESTS=ON requires INFERX_ENABLE_HF_HUB=ON")
+endif()
 # The kernels-architecture branch (ADR 0031/0032) supersedes the ADR 0029
 # rejection for the new provider chain: FlashInfer/CUTLASS enter as AOT
 # instantiations of the pinned gitlinks with no JIT/cubin-loading path, and

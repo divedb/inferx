@@ -104,8 +104,7 @@ absl::StatusOr<SingleRequestRunner::Result> SingleRequestRunner::Run(GenerateReq
     if (IsTerminal(context->state) || context->state == RequestState::kFinishing) {
       status = FinishIfTerminal(id, now, result);
       if (!status.ok()) return status;
-      if (IsTerminal(context->state)) return result;
-      continue;  // Finishing -> Finished via the terminal emission
+      return result;
     }
     if (context->state != RequestState::kPrefillReady &&
         context->state != RequestState::kDecodeReady) {

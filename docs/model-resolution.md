@@ -11,6 +11,35 @@ inferx-model-inspect ./models/tiny-llama --offline
 inferx-model-inspect Qwen/Qwen2.5-0.5B-Instruct --download-dir /models/hf-cache
 ```
 
+For a supported dense Llama checkpoint, `inferx-generate` resolves and downloads the model through
+the same path, executes the CPU reference backend, and writes the prompt and generated token IDs as
+JSON:
+
+```sh
+inferx-generate amakhov/tiny-random-llama \
+  --revision fbf68d33cf68a9d1d4b71b3d098ae82c8c14443b \
+  --download-dir /models/hf-cache \
+  --prompt 'The capital of France is' \
+  --max-tokens 8 \
+  --temperature 0.0
+```
+
+The current generation backend implements greedy decoding, so `0.0` is the only accepted
+temperature. The repository also contains an opt-in vLLM differential test. Configure it with a
+Python interpreter that has vLLM installed, then run the registered test:
+
+```sh
+cmake --preset dev-gcc \
+  -DINFERX_BUILD_VLLM_DIFFERENTIAL_TESTS=ON \
+  -DPython3_EXECUTABLE=/path/to/vllm/python
+cmake --build --preset dev-gcc --target inferx-generate
+ctest --test-dir out/build/dev-gcc --output-on-failure \
+  -R '^real_model_vllm_differential$'
+```
+
+The test pins the checkpoint revision, passes InferX's prompt token IDs directly to vLLM, forces
+FP32 and temperature zero, and requires exact equality of every generated token ID.
+
 Resolution is deterministic and local-first:
 
 1. use `MODEL` directly when it names an existing directory;

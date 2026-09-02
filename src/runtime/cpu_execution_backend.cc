@@ -70,7 +70,7 @@ float DecodeFp16(uint16_t bits) {
         fraction32 <<= 1;
         ++shift;
       }
-      result = sign | ((112 - shift + 127) << 23) | ((fraction32 & 0x3FF) << 13);
+      result = sign | ((113 - shift) << 23) | ((fraction32 & 0x3FF) << 13);
     } else {
       result = sign;  // +/-0
     }
