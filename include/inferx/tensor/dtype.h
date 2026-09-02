@@ -1,4 +1,4 @@
-// Closed M2 storage dtype vocabulary. FP16/BF16 are storage-only here.
+// Closed storage dtype vocabulary. FP16/BF16 are storage-only here.
 #ifndef INFERX_TENSOR_DTYPE_H_
 #define INFERX_TENSOR_DTYPE_H_
 
@@ -10,7 +10,7 @@
 
 namespace inferx {
 
-enum class DType : uint8_t {
+enum class Dtype : uint8_t {
   kBool,
   kUInt8,
   kInt8,
@@ -26,10 +26,10 @@ enum class DType : uint8_t {
   kFloat64,
 };
 
-[[nodiscard]] absl::StatusOr<ByteCount> DTypeSize(DType dtype);
-[[nodiscard]] absl::StatusOr<absl::string_view> DTypeName(DType dtype);
-[[nodiscard]] absl::StatusOr<bool> IsFloatingPoint(DType dtype);
-[[nodiscard]] absl::StatusOr<bool> IsIntegral(DType dtype);
+[[nodiscard]] absl::StatusOr<ByteCount> DtypeSize(Dtype dtype);
+[[nodiscard]] absl::StatusOr<absl::string_view> DtypeName(Dtype dtype);
+[[nodiscard]] absl::StatusOr<bool> IsFloatingPoint(Dtype dtype);
+[[nodiscard]] absl::StatusOr<bool> IsIntegral(Dtype dtype);
 
 }  // namespace inferx
 

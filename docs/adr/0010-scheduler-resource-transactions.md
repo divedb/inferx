@@ -48,7 +48,7 @@ and expose no simulator or CUDA types.
 
 ## Validation evidence
 
-- `inferx_m1_scheduler_test` covers commit/rollback/release, admission classes,
+- `inferx_scheduler_test` covers commit/rollback/release, admission classes,
   FCFS ordering, pool exhaustion/generation, prefill/decode ranges, budget
   saturation, and validator failures.
 - `inferx_scheduler_benchmark` measures 1/32/256/1024 requests in four workload

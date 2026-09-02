@@ -1,4 +1,4 @@
-# inferx_base: the minimal installed static base library (m0.md section 6.4).
+# inferx_base: the minimal installed static base library.
 
 add_library(inferx_base STATIC version.cc)
 add_library(inferx::base ALIAS inferx_base)

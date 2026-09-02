@@ -16,8 +16,8 @@ compared or reproduced unless they identify the exact hardware and toolchain.
    explicit accepted architecture list (currently SM 89). The recorded CUDA
    13.0/SM 89 lane remains additional evidence, not a replacement for 12.8.
 2. The GPU CI job runs on a real required device, fails when discovery or the
-   self-test fails, and runs every `m2-integration`, `m2-correctness`,
-   `m2-failure`, and `m2-stress` test without skip-as-success behavior.
+   self-test fails, and runs every `platform-integration`, `platform-correctness`,
+   `platform-failure`, and `platform-stress` test without skip-as-success behavior.
 3. Compute Sanitizer memcheck, racecheck, initcheck, and synccheck run as
    separate bounded invocations. Any InferX warning/error is failure; expected
    illegal-access fixtures are isolated from the clean suite.
@@ -55,7 +55,7 @@ outage blocks qualification rather than weakening the gate.
 ## Validation evidence
 
 `.github/workflows/ci-gpu.yml`, `tools/ci/run_compute_sanitizer.sh`,
-`tools/bench/run_m2_cuda.sh`, `inferx-device-info --json --self-test`, and the
+`tools/bench/run_cuda_benchmarks.sh`, `inferx-device-info --json --self-test`, and the
 M2-labeled CTest suites define the evidence flow.
 
 On 2026-09-01, the host WSL2 `Ubuntu-24.04` distribution ran the additional

@@ -36,7 +36,7 @@ RequestState ResolveAfterCompletion(const RequestContext& context, const Request
 }
 
 // --- The expanded declarative table -----------------------------------------
-// Wildcard rows from m1.md section 11.2 expanded; count kept explicit so a
+// Wildcard rows are expanded; count kept explicit so a
 // drifted table fails to compile.
 inline constexpr size_t kRuleCount = 43;  // Finishing row was already counted
 
@@ -67,7 +67,7 @@ constexpr std::array<TransitionRule, kRuleCount> kRules = {{
     {RequestState::kPreempted, RequestEventKind::kRequeue, nullptr, RequestState::kQueued,
      TransitionEffect::kIncrementEpoch},
     // Cancel/deadline from every nonterminal non-in-flight state except
-    // Finishing (m1.md section 11.2 wildcard expanded).
+    // Finishing (wildcard expanded).
     {RequestState::kReceived, RequestEventKind::kCancelRequested, nullptr, RequestState::kCancelled,
      TransitionEffect::kNone, true},
     {RequestState::kReceived, RequestEventKind::kDeadlineExpired, nullptr, RequestState::kCancelled,

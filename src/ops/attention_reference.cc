@@ -50,18 +50,18 @@ absl::Status ValidateAttention(const AttentionRequest& request) {
     return absl::InvalidArgumentError("attention.phase: expected prefill or decode");
   }
   absl::Status status =
-      internal::ValidateTensor(request.query, DType::kFloat32, 3, "attention.query");
+      internal::ValidateTensor(request.query, Dtype::kFloat32, 3, "attention.query");
   if (!status.ok()) return status;
-  status = internal::ValidateTensor(request.new_key, DType::kFloat32, 3, "attention.new_key");
+  status = internal::ValidateTensor(request.new_key, Dtype::kFloat32, 3, "attention.new_key");
   if (!status.ok()) return status;
-  status = internal::ValidateTensor(request.new_value, DType::kFloat32, 3, "attention.new_value");
+  status = internal::ValidateTensor(request.new_value, Dtype::kFloat32, 3, "attention.new_value");
   if (!status.ok()) return status;
-  status = internal::ValidateTensor(request.key_cache, DType::kFloat32, 4, "attention.key_cache");
+  status = internal::ValidateTensor(request.key_cache, Dtype::kFloat32, 4, "attention.key_cache");
   if (!status.ok()) return status;
   status =
-      internal::ValidateTensor(request.value_cache, DType::kFloat32, 4, "attention.value_cache");
+      internal::ValidateTensor(request.value_cache, Dtype::kFloat32, 4, "attention.value_cache");
   if (!status.ok()) return status;
-  status = internal::ValidateTensor(request.output, DType::kFloat32, 3, "attention.output");
+  status = internal::ValidateTensor(request.output, Dtype::kFloat32, 3, "attention.output");
   if (!status.ok()) return status;
 
   const uint64_t total_queries = request.query.shape().dim(0);

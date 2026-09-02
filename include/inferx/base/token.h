@@ -1,8 +1,8 @@
-// Unit-bearing token/count values (m1.md section 7.3; ADR 0008).
+// Unit-bearing token/count values (ADR 0008).
 //
 // These are not arithmetic types: calculations unwrap with checked helpers and
-// reconstruct the intended unit. Storage widths follow the m1.md table, and
-// tags keep distinct units non-interchangeable even when the storage matches.
+// reconstruct the intended unit. Tags keep distinct units non-interchangeable
+// even when the storage matches.
 
 #ifndef INFERX_BASE_TOKEN_H_
 #define INFERX_BASE_TOKEN_H_

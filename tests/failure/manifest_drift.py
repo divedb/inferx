@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Manifest/gitlink drift fixture (m0.md 13.5 row 10).
+"""Manifest/gitlink drift fixture.
 
 Copies the real manifest, mutates the mirrored abseil-cpp revision to a
 different 40-hex value, and runs the checker against the repository's actual

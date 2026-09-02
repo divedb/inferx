@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX SBOM generation for an installed InferX prefix (m0.md section 8.4).
+# SPDX SBOM generation for an installed InferX prefix.
 #
 # Usage: tools/deps/generate_sbom.sh <install-prefix> <output.spdx.json>
 #

@@ -1,6 +1,6 @@
-// InferX base version API. This is the only public header in M0; it must
-// remain self-contained (it is validated by tools/check_headers.py) and
-// includable from any translation unit in any order.
+// InferX base version API. It must remain self-contained (it is validated by
+// tools/check_headers.py) and includable from any translation unit in any
+// order.
 
 #ifndef INFERX_BASE_VERSION_H_
 #define INFERX_BASE_VERSION_H_

@@ -14,7 +14,7 @@ boundary.
 
 ## Decision
 
-1. `DType` is a closed checked enum; FP16/BF16 are storage types and bool is
+1. `Dtype` is a closed checked enum; FP16/BF16 are storage types and bool is
    one byte. Generic tensor headers contain no CUDA types.
 2. Shape and element-stride values use inline rank-eight storage. Rank zero is
    a scalar, any zero extent is empty, and all reach/product calculations are
@@ -55,7 +55,7 @@ rank, or allocation identity is a migration-visible API change.
 
 ## Validation evidence
 
-`inferx_m2_tensor_test`, the 10,000-case CPU transformation stress test, the
+`inferx_tensor_test`, the 10,000-case CPU transformation stress test, the
 installed consumer, header checks, and ASan/UBSan lanes validate this record.
 CUDA correctness uses the CPU copy as its byte-for-byte oracle.
 

@@ -23,7 +23,7 @@ struct LlamaOperatorSpec {
 };
 
 struct OperatorEnvelope {
-  DType storage_dtype = DType::kFloat32;
+  Dtype storage_dtype = Dtype::kFloat32;
   uint32_t maximum_batch = 1;
   uint32_t maximum_prompt_tokens = 512;
   uint32_t maximum_context = 4096;

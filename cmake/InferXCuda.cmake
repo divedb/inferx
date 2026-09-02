@@ -1,4 +1,4 @@
-# Optional, strict CUDA enablement (m2.md section 11; ADR 0020). Included by
+# Optional, strict CUDA enablement (ADR 0020). Included by
 # the top-level CMakeLists only when INFERX_ENABLE_CUDA=ON. Order matters:
 #
 #   1. explicit architecture list is required BEFORE toolkit detection, so an
@@ -9,7 +9,7 @@
 #      the CUDA subset is isolated at C++20 (ADR 0020);
 #   5. host-compiler/toolkit pairing validated where known-incompatible.
 
-# Accepted architecture list for the owned GPU lane (m0.md section 6.6: never
+# Accepted architecture list for the owned GPU lane (never
 # 'native' in presets/CI). Developers override via CMakeUserPresets.json.
 set(INFERX_CUDA_ACCEPTED_ARCHITECTURES "89" CACHE STRING
     "GPU compute capabilities InferX accepts (SM list, e.g. 89;90).")
@@ -59,7 +59,7 @@ endif()
 enable_language(CUDA)
 if(CMAKE_CUDA_COMPILER_VERSION VERSION_LESS 13.0)
   message(FATAL_ERROR
-    "M2 requires NVCC 13.0 or newer; detected "
+    "InferX requires NVCC 13.0 or newer; detected "
     "${CMAKE_CUDA_COMPILER_VERSION} at '${CMAKE_CUDA_COMPILER}'. See ADR 0020 "
     "and docs/supported-platforms.md. CUDA is never silently downgraded.")
 endif()

@@ -1,4 +1,4 @@
-// Immutable generation request values (m1.md section 9.1). Validation lives
+// Immutable generation request values. Validation lives
 // in inferx::api::ValidateGenerateRequest; after validation the request is
 // moved into the registry and never mutated.
 
@@ -18,7 +18,7 @@
 
 namespace inferx {
 
-// Non-interchangeable priority: M1 accepts only the default zero.
+// Non-interchangeable priority; only the default zero is accepted.
 class Priority {
  public:
   explicit constexpr Priority(int32_t value) noexcept : value_(value) {}
@@ -51,16 +51,16 @@ struct GenerateRequest {
   TenantScope tenant{0};  // explicitly constructed process-default scope
 };
 
-// The single M1 fake model capability record (m1.md section 9.1): ModelId(0),
-// context 32,768, no text support. M3 replaces this with real artifacts.
+// The simulator's single fake model capability record: ModelId(0), context
+// 32,768, and no text support.
 struct ModelRecord {
   ModelId id{0};
   TokenCount max_context_tokens{32768};
   bool accepts_text = false;
 };
 
-// Validation rules (m1.md section 9.1): token input only (text is
-// Unimplemented in M1); nonempty prompt; prompt + output must fit the model
+// Validation rules: token input only (text is unimplemented); nonempty
+// prompt; prompt + output must fit the model
 // context and the configured token budget; output limit must not overflow
 // the configured cap; deadline must not already be expired; priority must be
 // the default; tenant must be the process default; model must be the known

@@ -1,5 +1,5 @@
-# Fixture: CUDA architecture unset/outside the accepted list (m0.md 13.5 row
-# 7). Validated before toolkit detection so the failure is actionable on any
+# Fixture: CUDA architecture unset/outside the accepted list. Validated before
+# toolkit detection so the failure is actionable on any
 # machine; must print the accepted architecture list.
 cmake_minimum_required(VERSION 3.28)
 project(cuda_architecture_unset_fixture LANGUAGES CXX)

@@ -64,7 +64,7 @@ would break determinism and debuggability.
 
 ## Validation evidence
 
-- `tests/unit/config/m1_config_test.cc` (label `m1-unit`): defaults,
+- `tests/unit/config/config_test.cc` (label `core-unit`): defaults,
   precedence, provenance, unknown/duplicate fields, integer strictness,
   parser limits, every range and cross-field rule, latency overflow,
   capabilities mismatch, and canonical byte-equality across reordered input

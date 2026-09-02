@@ -1,4 +1,4 @@
-# Fixture: analysis requested but the tool is absent (m0.md 13.5 row 8).
+# Fixture: analysis requested but the tool is absent.
 # Must fail naming the required tool and version instead of silently skipping
 # analysis.
 cmake_minimum_required(VERSION 3.28)

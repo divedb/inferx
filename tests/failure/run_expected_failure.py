@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Expected-failure test driver (m0.md section 13.5).
+"""Expected-failure test driver.
 
 A test passes only when the command FAILS **and** every expected message
 fragment appears in its output; an unrelated failure does not satisfy it.

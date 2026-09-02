@@ -1,4 +1,4 @@
-// Immutable pooled step-plan schema and move-only lease (m1.md section 12.4).
+// Immutable pooled step-plan schema and move-only lease.
 
 #ifndef INFERX_SCHEDULER_STEP_PLAN_H_
 #define INFERX_SCHEDULER_STEP_PLAN_H_

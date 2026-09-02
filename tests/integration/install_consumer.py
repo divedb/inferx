@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install + independent consumer integration driver (m0.md section 6.7).
+"""Install and run the independent consumer integration driver.
 
 For tests/consumer: installs InferX into a prefix and configures a separate
 CMake project that locates it only through CMAKE_PREFIX_PATH. For
@@ -53,8 +53,8 @@ def main() -> int:
     work.mkdir(parents=True, exist_ok=True)
 
     # The pinned Abseil is installed into the prefix for both fixtures: the
-    # absl-only one proves the installed-dependency strategy, and since M1
-    # (ADR 0008) inferx::base exposes Abseil in public headers so the InferX
+    # absl-only one proves the installed-dependency strategy. inferx::base
+    # exposes Abseil in public headers, so the InferX
     # consumer needs the package in the same prefix too.
     prefix = work / ("absl-prefix" if kind == "absl" else "prefix")
     print(f"[install-consumer] install prefix: {prefix}")

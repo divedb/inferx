@@ -37,20 +37,22 @@ uint8_t FloatToFp8E4m3Bits(float value) {
   }
   if (exponent >= 15) return static_cast<uint8_t>(sign | 0x7EU);  // saturate
   // round mantissa (23 -> 3 bits) with round-to-nearest-even
-  uint32_t m3 = mantissa >> 20;
+  uint32_t reduced_mantissa = mantissa >> 20;
   const uint32_t remainder = mantissa & 0xFFFFFU;
-  if (remainder > 0x7FFFFU || (remainder == 0x7FFFFU && (m3 & 1U) != 0U)) ++m3;
-  if (m3 == 0x8U) {
-    m3 = 0;
+  if (remainder > 0x7FFFFU || (remainder == 0x7FFFFU && (reduced_mantissa & 1U) != 0U)) {
+    ++reduced_mantissa;
+  }
+  if (reduced_mantissa == 0x8U) {
+    reduced_mantissa = 0;
     ++exponent;
     if (exponent >= 15) return static_cast<uint8_t>(sign | 0x7EU);
   }
-  result = static_cast<uint8_t>((static_cast<uint32_t>(exponent) << 3) | (m3 & 0x7U));
+  result = static_cast<uint8_t>((static_cast<uint32_t>(exponent) << 3) | (reduced_mantissa & 0x7U));
   return static_cast<uint8_t>(sign | result);
 }
 
 absl::Status RequireFp32Host(const TensorView& tensor, const char* field) {
-  if (tensor.dtype() != DType::kFloat32) {
+  if (tensor.dtype() != Dtype::kFloat32) {
     return absl::UnimplementedError(std::string(field) + " reference: FP32 tensors required");
   }
   return absl::OkStatus();
@@ -62,7 +64,7 @@ absl::Status ValidateArgmax(const ArgmaxRequest& request) {
   if (request.logits.shape().rank() != 2 || request.logits.shape().dim(0) == 0 ||
       request.logits.shape().dim(1) == 0 || request.output.shape().rank() != 1 ||
       request.output.shape().dim(0) != request.logits.shape().dim(0) ||
-      (request.output.dtype() != DType::kInt32 && request.output.dtype() != DType::kInt64)) {
+      (request.output.dtype() != Dtype::kInt32 && request.output.dtype() != Dtype::kInt64)) {
     return absl::InvalidArgumentError("argmax: logits[rows, vocab] -> ids[rows] required");
   }
   return absl::OkStatus();
@@ -183,8 +185,8 @@ absl::Status ReferenceTopKRenorm(const TopKRenormRequest& request) {
 
 absl::Status ValidateFp8Quant(const Fp8QuantRequest& request) {
   if (request.input.shape().rank() != 2 || request.input.shape().dim(1) == 0 ||
-      request.output.shape() != request.input.shape() || request.output.dtype() != DType::kUInt8 ||
-      request.input.dtype() != DType::kFloat32 || request.scales.dtype() != DType::kFloat32 ||
+      request.output.shape() != request.input.shape() || request.output.dtype() != Dtype::kUInt8 ||
+      request.input.dtype() != Dtype::kFloat32 || request.scales.dtype() != Dtype::kFloat32 ||
       (request.granularity == QuantGranularity::kTokenGroup && request.group_size == 0)) {
     return absl::InvalidArgumentError(
         "fp8_quant: input[tokens,dim] FP32 -> uint8 e4m3 bits + FP32 scales required");
@@ -255,8 +257,8 @@ absl::Status ValidateSoftmaxTopK(const SoftmaxTopKRequest& request) {
       request.weights.shape().dim(0) != request.logits.shape().dim(0) ||
       request.weights.shape().dim(1) != request.ids.shape().dim(1) ||
       request.ids.shape().dim(0) != request.logits.shape().dim(0) ||
-      request.weights.dtype() != DType::kFloat32 || request.ids.dtype() != DType::kInt32 ||
-      request.logits.dtype() != DType::kFloat32) {
+      request.weights.dtype() != Dtype::kFloat32 || request.ids.dtype() != Dtype::kInt32 ||
+      request.logits.dtype() != Dtype::kFloat32) {
     return absl::InvalidArgumentError(
         "softmax_topk: logits[tokens,experts] -> weights FP32 + ids int32 required");
   }
@@ -311,8 +313,8 @@ absl::Status ValidateSigmoidBiasTopK(const SigmoidBiasTopKRequest& request) {
       request.weights.shape().dim(0) != request.logits.shape().dim(0) ||
       request.ids.shape().dim(0) != request.logits.shape().dim(0) ||
       request.weights.shape().dim(1) != request.ids.shape().dim(1) ||
-      request.weights.dtype() != DType::kFloat32 || request.ids.dtype() != DType::kInt32 ||
-      request.logits.dtype() != DType::kFloat32) {
+      request.weights.dtype() != Dtype::kFloat32 || request.ids.dtype() != Dtype::kInt32 ||
+      request.logits.dtype() != Dtype::kFloat32) {
     return absl::InvalidArgumentError(
         "sigmoid_bias_topk: logits[tokens,experts] + bias[experts] -> weights + ids required");
   }

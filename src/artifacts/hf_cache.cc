@@ -167,7 +167,7 @@ std::filesystem::path HuggingFaceCache::RefPath(std::string_view revision) const
   return repo_dir_ / "refs" / std::string(revision);
 }
 
-std::filesystem::path HuggingFaceCache::InferXSnapshotDir(std::string_view revision) const {
+std::filesystem::path HuggingFaceCache::InferxSnapshotDir(std::string_view revision) const {
   return repo_dir_ / "inferx" / "snapshots" / std::string(revision);
 }
 
@@ -267,7 +267,7 @@ absl::Status HuggingFaceCache::StoreFile(std::string_view revision, std::string_
 absl::StatusOr<std::filesystem::path> HuggingFaceCache::Materialize(
     std::string_view revision) const {
   const std::filesystem::path source = SnapshotDir(revision);
-  const std::filesystem::path destination = InferXSnapshotDir(revision);
+  const std::filesystem::path destination = InferxSnapshotDir(revision);
   if (SnapshotIsUsable(destination)) return destination;
   if (!SnapshotIsUsable(source)) {
     return absl::FailedPreconditionError(

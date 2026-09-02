@@ -1,4 +1,4 @@
-// Strong identity types (m1.md section 7.2; ADR 0008).
+// Strong identity types (ADR 0008).
 //
 // IDs are explicit, non-default-constructible, and non-interchangeable.
 // Absence is std::optional<Id>; zero is a valid value wherever the
@@ -22,8 +22,8 @@
 
 namespace inferx {
 
-// Tag types give each ID a distinct identity; representations follow the
-// m1.md section 7.2 table.
+// Tag types give each ID a distinct identity while allowing representations
+// appropriate to each domain.
 struct RequestIdTag {};
 struct SequenceIdTag {};
 struct StepIdTag {};

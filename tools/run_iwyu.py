@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""include-what-you-use enforcement over InferX translation units (m0.md
-section 9.3).
+"""include-what-you-use enforcement over InferX translation units.
 
 Replays each InferX-owned compile command from a build directory's
 compile_commands.json through include-what-you-use (qualified version 0.21)

@@ -40,7 +40,7 @@ struct ParameterSpec {
   std::string canonical_name;
   ParameterRole role;
   artifacts::ArtifactShape shape;
-  std::vector<artifacts::ArtifactDType> allowed_source_dtypes;
+  std::vector<artifacts::ArtifactDtype> allowed_source_dtypes;
   std::optional<uint32_t> logical_layer;
   std::optional<ParameterId> alias_target;
 };

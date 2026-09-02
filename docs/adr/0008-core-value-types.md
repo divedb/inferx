@@ -64,8 +64,8 @@ scheduler, replay, and later CUDA milestones share.
 
 ## Validation evidence
 
-- `tests/unit/base/m1_{id,token,checked_math,clock,status,status_macros}_test.cc`
-  (label `m1-unit`): construction boundaries, zero/max round trips, generator
+- the base value, ID, clock, channel, status, and checked-math unit tests
+  (label `core-unit`): construction boundaries, zero/max round trips, generator
   overflow, every signed/unsigned branch, payload validation, macro
   single-evaluation and move-only behavior.
 - Header self-containment probes cover all new headers; consumer test links

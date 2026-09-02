@@ -2,7 +2,7 @@
 #
 # The CUTLASS provider builds only when the dependency is enabled and its
 # gitlink is initialized; without it the gemm/logits operators report
-# Unimplemented from the new architecture (the M4 cuBLASLt path in
+# Unimplemented from the new architecture (the retired cuBLASLt path in
 # platform/cuda remains available and untouched).
 if(INFERX_ENABLE_CUTLASS)
   add_library(inferx_kernels_cuda_gemm STATIC cutlass_gemm.cu)

@@ -230,7 +230,7 @@ void RequestController::Commit(RequestContext& request, PreparedTransition trans
   if (decision.terminal.has_value()) {
     request.terminal = transition.impl_->terminal_record;
     // Exactly-once marker: entering a terminal state and building the
-    // terminal response is one lifecycle commit (m1.md section 11.2).
+    // terminal response is one lifecycle commit.
     request.terminal_emitted = true;
     request.pending_terminal_reason.reset();
     request.num_scheduled_tokens = 0;

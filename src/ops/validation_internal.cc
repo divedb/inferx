@@ -11,7 +11,7 @@ namespace inferx::ops::internal {
 namespace {
 
 template <typename View>
-absl::Status ValidateTensorImpl(const View& tensor, DType dtype, uint8_t rank,
+absl::Status ValidateTensorImpl(const View& tensor, Dtype dtype, uint8_t rank,
                                 std::string_view field, bool require_contiguous) {
   if (tensor.dtype() != dtype) {
     return absl::InvalidArgumentError(absl::StrCat(field, ": unexpected dtype"));
@@ -37,12 +37,12 @@ absl::StatusOr<TensorInterval> IntervalImpl(const View& tensor) {
 
 }  // namespace
 
-absl::Status ValidateTensor(const TensorView& tensor, DType dtype, uint8_t rank,
+absl::Status ValidateTensor(const TensorView& tensor, Dtype dtype, uint8_t rank,
                             std::string_view field, bool require_contiguous) {
   return ValidateTensorImpl(tensor, dtype, rank, field, require_contiguous);
 }
 
-absl::Status ValidateTensor(const MutableTensorView& tensor, DType dtype, uint8_t rank,
+absl::Status ValidateTensor(const MutableTensorView& tensor, Dtype dtype, uint8_t rank,
                             std::string_view field, bool require_contiguous) {
   return ValidateTensorImpl(tensor, dtype, rank, field, require_contiguous);
 }

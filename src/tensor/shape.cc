@@ -37,12 +37,12 @@ absl::StatusOr<uint64_t> Shape::NumElements() const {
   return product;
 }
 
-absl::StatusOr<ByteCount> Shape::Bytes(DType dtype) const {
+absl::StatusOr<ByteCount> Shape::Bytes(Dtype dtype) const {
   absl::StatusOr<uint64_t> elements = NumElements();
   if (!elements.ok()) {
     return elements.status();
   }
-  absl::StatusOr<ByteCount> element_size = DTypeSize(dtype);
+  absl::StatusOr<ByteCount> element_size = DtypeSize(dtype);
   if (!element_size.ok()) {
     return element_size.status();
   }

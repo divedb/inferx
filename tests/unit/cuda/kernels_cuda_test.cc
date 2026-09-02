@@ -36,7 +36,7 @@
 namespace inferx::kernels {
 namespace {
 
-// Device memory adopted into a Buffer without going through the M2 platform
+// Device memory adopted into a Buffer without going through the platform
 // layer: cudaMalloc plus a domain whose Release/Abandon return it.
 class CudaMallocDomain final : public AllocationDomain {
  public:
@@ -57,7 +57,7 @@ struct OwnedTensor {
 };
 
 template <typename T>
-absl::StatusOr<OwnedTensor<T>> MakeTensor(std::initializer_list<uint64_t> dimensions, DType dtype,
+absl::StatusOr<OwnedTensor<T>> MakeTensor(std::initializer_list<uint64_t> dimensions, Dtype dtype,
                                           std::span<const T> values, Device device,
                                           MemoryKind memory_kind) {
   const std::vector<uint64_t> dims(dimensions);
@@ -65,7 +65,7 @@ absl::StatusOr<OwnedTensor<T>> MakeTensor(std::initializer_list<uint64_t> dimens
 }
 
 template <typename T>
-absl::StatusOr<OwnedTensor<T>> MakeTensor(std::span<const uint64_t> dimensions, DType dtype,
+absl::StatusOr<OwnedTensor<T>> MakeTensor(std::span<const uint64_t> dimensions, Dtype dtype,
                                           std::span<const T> values, Device device,
                                           MemoryKind memory_kind) {
   auto shape = Shape::Create(dimensions);
@@ -115,7 +115,7 @@ absl::StatusOr<OwnedTensor<T>> MakeTensor(std::span<const uint64_t> dimensions, 
 }
 
 template <typename T>
-OwnedTensor<T> Required(std::span<const uint64_t> dimensions, DType dtype,
+OwnedTensor<T> Required(std::span<const uint64_t> dimensions, Dtype dtype,
                         std::span<const T> values, Device device, MemoryKind memory) {
   auto tensor = MakeTensor<T>(dimensions, dtype, values, device, memory);
   if (!tensor.ok()) ADD_FAILURE() << tensor.status();
@@ -126,7 +126,7 @@ OwnedTensor<T> Required(std::span<const uint64_t> dimensions, DType dtype,
 // Tensor construction failures (allocation exhaustion, invalid shapes) are
 // not recoverable inside a GPU oracle test: report and abort this process.
 template <typename T>
-OwnedTensor<T> Required(std::initializer_list<uint64_t> dimensions, DType dtype,
+OwnedTensor<T> Required(std::initializer_list<uint64_t> dimensions, Dtype dtype,
                         std::span<const T> values, Device device, MemoryKind memory) {
   const std::vector<uint64_t> dims(dimensions);
   auto tensor = MakeTensor<T>(std::span<const uint64_t>(dims), dtype, values, device, memory);
@@ -221,22 +221,22 @@ TEST_F(KernelsCudaFixture, FlashInferRmsNormMatchesReference) {
   const std::vector<float> weight = RandomFloats(kHidden, 43);
   const std::vector<float> zeros(kTokens * kHidden, 0.0F);
 
-  auto device_input = Required<float>({kTokens, kHidden}, DType::kFloat32, input,
+  auto device_input = Required<float>({kTokens, kHidden}, Dtype::kFloat32, input,
                                       Device::Cuda(DeviceId(0)), MemoryKind::kDevice);
-  auto device_weight = Required<float>({kHidden}, DType::kFloat32, weight,
+  auto device_weight = Required<float>({kHidden}, Dtype::kFloat32, weight,
                                        Device::Cuda(DeviceId(0)), MemoryKind::kDevice);
-  auto device_output = Required<float>({kTokens, kHidden}, DType::kFloat32, zeros,
+  auto device_output = Required<float>({kTokens, kHidden}, Dtype::kFloat32, zeros,
                                        Device::Cuda(DeviceId(0)), MemoryKind::kDevice);
   ops::RmsNormRequest request{device_input.view, device_weight.view, device_output.mutable_view,
                               1.0e-5F};
   ASSERT_TRUE(LaunchRmsNorm(request, Context89()).ok());
   ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
 
-  auto host_input = Required<float>({kTokens, kHidden}, DType::kFloat32, input, Device::Host(),
+  auto host_input = Required<float>({kTokens, kHidden}, Dtype::kFloat32, input, Device::Host(),
                                     MemoryKind::kHost);
   auto host_weight =
-      Required<float>({kHidden}, DType::kFloat32, weight, Device::Host(), MemoryKind::kHost);
-  auto host_output = Required<float>({kTokens, kHidden}, DType::kFloat32, zeros, Device::Host(),
+      Required<float>({kHidden}, Dtype::kFloat32, weight, Device::Host(), MemoryKind::kHost);
+  auto host_output = Required<float>({kTokens, kHidden}, Dtype::kFloat32, zeros, Device::Host(),
                                      MemoryKind::kHost);
   ASSERT_TRUE(
       ops::ReferenceRmsNorm({host_input.view, host_weight.view, host_output.mutable_view, 1.0e-5F})
@@ -257,11 +257,11 @@ TEST_F(KernelsCudaFixture, CustomSwiGluMatchesReference) {
   const std::vector<float> up = RandomFloats(kTokens * kHalf, 8);
   const std::vector<float> zeros(kTokens * kHalf, 0.0F);
 
-  auto device_gate = Required<float>({kTokens, kHalf}, DType::kFloat32, gate,
+  auto device_gate = Required<float>({kTokens, kHalf}, Dtype::kFloat32, gate,
                                      Device::Cuda(DeviceId(0)), MemoryKind::kDevice);
-  auto device_up = Required<float>({kTokens, kHalf}, DType::kFloat32, up, Device::Cuda(DeviceId(0)),
+  auto device_up = Required<float>({kTokens, kHalf}, Dtype::kFloat32, up, Device::Cuda(DeviceId(0)),
                                    MemoryKind::kDevice);
-  auto device_output = Required<float>({kTokens, kHalf}, DType::kFloat32, zeros,
+  auto device_output = Required<float>({kTokens, kHalf}, Dtype::kFloat32, zeros,
                                        Device::Cuda(DeviceId(0)), MemoryKind::kDevice);
   ASSERT_TRUE(
       LaunchSwiGlu({device_gate.view, device_up.view, device_output.mutable_view}, Context89())
@@ -269,11 +269,11 @@ TEST_F(KernelsCudaFixture, CustomSwiGluMatchesReference) {
   ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
 
   auto host_gate =
-      Required<float>({kTokens, kHalf}, DType::kFloat32, gate, Device::Host(), MemoryKind::kHost);
+      Required<float>({kTokens, kHalf}, Dtype::kFloat32, gate, Device::Host(), MemoryKind::kHost);
   auto host_up =
-      Required<float>({kTokens, kHalf}, DType::kFloat32, up, Device::Host(), MemoryKind::kHost);
+      Required<float>({kTokens, kHalf}, Dtype::kFloat32, up, Device::Host(), MemoryKind::kHost);
   auto host_output =
-      Required<float>({kTokens, kHalf}, DType::kFloat32, zeros, Device::Host(), MemoryKind::kHost);
+      Required<float>({kTokens, kHalf}, Dtype::kFloat32, zeros, Device::Host(), MemoryKind::kHost);
   ASSERT_TRUE(ops::ReferenceSwiGlu({host_gate.view, host_up.view, host_output.mutable_view}).ok());
 
   const std::vector<float> actual = ReadBack<float>(device_output.view);
@@ -292,11 +292,11 @@ TEST_F(KernelsCudaFixture, CutlassGemmMatchesReference) {
   const std::vector<float> weight = RandomFloats(kOut * kIn, 12);
   const std::vector<float> zeros(kTokens * kOut, 0.0F);
 
-  auto device_input = Required<float>({kTokens, kIn}, DType::kFloat32, input,
+  auto device_input = Required<float>({kTokens, kIn}, Dtype::kFloat32, input,
                                       Device::Cuda(DeviceId(0)), MemoryKind::kDevice);
-  auto device_weight = Required<float>({kOut, kIn}, DType::kFloat32, weight,
+  auto device_weight = Required<float>({kOut, kIn}, Dtype::kFloat32, weight,
                                        Device::Cuda(DeviceId(0)), MemoryKind::kDevice);
-  auto device_output = Required<float>({kTokens, kOut}, DType::kFloat32, zeros,
+  auto device_output = Required<float>({kTokens, kOut}, Dtype::kFloat32, zeros,
                                        Device::Cuda(DeviceId(0)), MemoryKind::kDevice);
   ops::GemmRequest request{device_input.view, device_weight.view, std::nullopt,
                            device_output.mutable_view};
@@ -304,11 +304,11 @@ TEST_F(KernelsCudaFixture, CutlassGemmMatchesReference) {
   ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
 
   auto host_input =
-      Required<float>({kTokens, kIn}, DType::kFloat32, input, Device::Host(), MemoryKind::kHost);
+      Required<float>({kTokens, kIn}, Dtype::kFloat32, input, Device::Host(), MemoryKind::kHost);
   auto host_weight =
-      Required<float>({kOut, kIn}, DType::kFloat32, weight, Device::Host(), MemoryKind::kHost);
+      Required<float>({kOut, kIn}, Dtype::kFloat32, weight, Device::Host(), MemoryKind::kHost);
   auto host_output =
-      Required<float>({kTokens, kOut}, DType::kFloat32, zeros, Device::Host(), MemoryKind::kHost);
+      Required<float>({kTokens, kOut}, Dtype::kFloat32, zeros, Device::Host(), MemoryKind::kHost);
   ASSERT_TRUE(ops::ReferenceGemm(
                   {host_input.view, host_weight.view, std::nullopt, host_output.mutable_view})
                   .ok());
@@ -336,15 +336,15 @@ TEST_F(KernelsCudaFixture, FlashInferRopeMatchesReference) {
     positions[token] = static_cast<int32_t>(7 + token);
 
   const Device cuda = Device::Cuda(DeviceId(0));
-  auto device_query = Required<float>({kTokens, kQueryHeads, kHeadDim}, DType::kFloat32, query,
+  auto device_query = Required<float>({kTokens, kQueryHeads, kHeadDim}, Dtype::kFloat32, query,
                                       cuda, MemoryKind::kDevice);
-  auto device_key = Required<float>({kTokens, kKvHeads, kHeadDim}, DType::kFloat32, key, cuda,
+  auto device_key = Required<float>({kTokens, kKvHeads, kHeadDim}, Dtype::kFloat32, key, cuda,
                                     MemoryKind::kDevice);
   auto device_positions =
-      Required<int32_t>({kTokens}, DType::kInt32, positions, cuda, MemoryKind::kDevice);
-  auto device_query_out = Required<float>({kTokens, kQueryHeads, kHeadDim}, DType::kFloat32,
+      Required<int32_t>({kTokens}, Dtype::kInt32, positions, cuda, MemoryKind::kDevice);
+  auto device_query_out = Required<float>({kTokens, kQueryHeads, kHeadDim}, Dtype::kFloat32,
                                           zeros_q, cuda, MemoryKind::kDevice);
-  auto device_key_out = Required<float>({kTokens, kKvHeads, kHeadDim}, DType::kFloat32, zeros_k,
+  auto device_key_out = Required<float>({kTokens, kKvHeads, kHeadDim}, Dtype::kFloat32, zeros_k,
                                         cuda, MemoryKind::kDevice);
   ops::RopeRequest request{device_query.view,
                            device_key.view,
@@ -357,15 +357,15 @@ TEST_F(KernelsCudaFixture, FlashInferRopeMatchesReference) {
   ASSERT_TRUE(LaunchRope(request, Context89()).ok());
   ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
 
-  auto host_query = Required<float>({kTokens, kQueryHeads, kHeadDim}, DType::kFloat32, query,
+  auto host_query = Required<float>({kTokens, kQueryHeads, kHeadDim}, Dtype::kFloat32, query,
                                     Device::Host(), MemoryKind::kHost);
-  auto host_key = Required<float>({kTokens, kKvHeads, kHeadDim}, DType::kFloat32, key,
+  auto host_key = Required<float>({kTokens, kKvHeads, kHeadDim}, Dtype::kFloat32, key,
                                   Device::Host(), MemoryKind::kHost);
   auto host_positions =
-      Required<int32_t>({kTokens}, DType::kInt32, positions, Device::Host(), MemoryKind::kHost);
-  auto host_query_out = Required<float>({kTokens, kQueryHeads, kHeadDim}, DType::kFloat32, zeros_q,
+      Required<int32_t>({kTokens}, Dtype::kInt32, positions, Device::Host(), MemoryKind::kHost);
+  auto host_query_out = Required<float>({kTokens, kQueryHeads, kHeadDim}, Dtype::kFloat32, zeros_q,
                                         Device::Host(), MemoryKind::kHost);
-  auto host_key_out = Required<float>({kTokens, kKvHeads, kHeadDim}, DType::kFloat32, zeros_k,
+  auto host_key_out = Required<float>({kTokens, kKvHeads, kHeadDim}, Dtype::kFloat32, zeros_k,
                                       Device::Host(), MemoryKind::kHost);
   ASSERT_TRUE(ops::ReferenceRope({host_query.view, host_key.view, host_positions.view,
                                   host_query_out.mutable_view, host_key_out.mutable_view, 10'000.0F,

@@ -1,4 +1,4 @@
-# Fixture: ASan and TSan enabled together (m0.md 13.5 row 5). Configure must
+# Fixture: ASan and TSan enabled together. Configure must
 # fail and identify the incompatible options.
 cmake_minimum_required(VERSION 3.28)
 project(asan_tsan_fixture LANGUAGES CXX)

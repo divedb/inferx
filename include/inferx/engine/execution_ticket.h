@@ -7,7 +7,7 @@
 
 namespace inferx {
 
-// A completion matches submitted work exactly (m1.md section 11.4).
+// A completion matches submitted work exactly.
 [[nodiscard]] bool TicketMatches(const ExecutionTicket& submitted,
                                  const ExecutionTicket& completion);
 

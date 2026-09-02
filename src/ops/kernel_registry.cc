@@ -29,13 +29,13 @@ absl::Status BackendCapability::Validate() const {
   constexpr uint8_t kKnownAliases =
       AliasMask(AliasMode::kDisjoint) | AliasMask(AliasMode::kExactLeft) |
       AliasMask(AliasMode::kExactRight) | AliasMask(AliasMode::kExactInPlace);
-  constexpr uint32_t kKnownDTypes =
-      (uint32_t{1} << (static_cast<uint8_t>(DType::kFloat64) + 1U)) - 1U;
+  constexpr uint32_t kKnownDtypes =
+      (uint32_t{1} << (static_cast<uint8_t>(Dtype::kFloat64) + 1U)) - 1U;
   if (backend > BackendId::kCutlass || op > OpKind::kLogits || device_kind > DeviceKind::kCuda ||
       input_layout > LayoutId::kContiguousKvBshd || weight_layout > LayoutId::kContiguousKvBshd ||
       output_layout > LayoutId::kContiguousKvBshd || (phase_mask & ~kKnownPhases) != 0 ||
-      (alias_mask & ~kKnownAliases) != 0 || (input_dtype_mask & ~kKnownDTypes) != 0 ||
-      (weight_dtype_mask & ~kKnownDTypes) != 0 || (output_dtype_mask & ~kKnownDTypes) != 0) {
+      (alias_mask & ~kKnownAliases) != 0 || (input_dtype_mask & ~kKnownDtypes) != 0 ||
+      (weight_dtype_mask & ~kKnownDtypes) != 0 || (output_dtype_mask & ~kKnownDtypes) != 0) {
     return absl::InvalidArgumentError("kernel_capability.vocabulary: unknown enum or mask bit");
   }
   if (rank > KernelKey::kMaxDimensions) {
@@ -86,9 +86,9 @@ absl::StatusOr<CapabilityMatch> BackendCapability::Match(const KernelKey& key) c
   };
   if (key.op != op || key.device_kind != device_kind) return reject("operation/device mismatch");
   if ((phase_mask & PhaseMask(key.phase)) == 0) return reject("phase unsupported");
-  if ((input_dtype_mask & DTypeMask(key.input_dtype)) == 0 ||
-      (weight_dtype_mask & DTypeMask(key.weight_dtype)) == 0 ||
-      (output_dtype_mask & DTypeMask(key.output_dtype)) == 0) {
+  if ((input_dtype_mask & DtypeMask(key.input_dtype)) == 0 ||
+      (weight_dtype_mask & DtypeMask(key.weight_dtype)) == 0 ||
+      (output_dtype_mask & DtypeMask(key.output_dtype)) == 0) {
     return reject("dtype unsupported");
   }
   if ((require_matching_input_weight_dtype && key.input_dtype != key.weight_dtype) ||

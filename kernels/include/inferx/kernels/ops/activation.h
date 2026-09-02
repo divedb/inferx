@@ -1,6 +1,6 @@
-// Activation category contracts (kernels-layer operators beyond the M4 set).
+// Activation category contracts for kernels-layer operators.
 // Fused-layout activation-and-mul matches the [tokens, 2*d] convention used
-// by FlashInfer/TokenSpeed; the M4 separate-tensor SwiGlu stays in ops/.
+// by FlashInfer/TokenSpeed; the separate-tensor SwiGlu stays in ops/.
 #ifndef INFERX_KERNELS_OPS_ACTIVATION_CONTRACTS_H_
 #define INFERX_KERNELS_OPS_ACTIVATION_CONTRACTS_H_
 

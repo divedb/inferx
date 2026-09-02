@@ -49,14 +49,14 @@ void* Address(const MutableTensorView& tensor) noexcept {
   return base == nullptr ? nullptr : base + tensor.byte_offset().value();
 }
 
-StorageType ToKernelStorageType(DType dtype) noexcept {
-  if (dtype == DType::kFloat16) return StorageType::kFloat16;
-  if (dtype == DType::kBFloat16) return StorageType::kBFloat16;
+StorageType ToKernelStorageType(Dtype dtype) noexcept {
+  if (dtype == Dtype::kFloat16) return StorageType::kFloat16;
+  if (dtype == Dtype::kBFloat16) return StorageType::kBFloat16;
   return StorageType::kFloat32;
 }
 
-bool SupportedStorage(DType dtype) noexcept {
-  return dtype == DType::kFloat32 || dtype == DType::kFloat16 || dtype == DType::kBFloat16;
+bool SupportedStorage(Dtype dtype) noexcept {
+  return dtype == Dtype::kFloat32 || dtype == Dtype::kFloat16 || dtype == Dtype::kBFloat16;
 }
 
 absl::Status ValidateIndptr(std::span<const int32_t> indptr, uint64_t expected_end) {
@@ -74,7 +74,7 @@ absl::Status ValidateIndptr(std::span<const int32_t> indptr, uint64_t expected_e
 
 namespace {
 
-// Mirrors the M2 sticky-fault set (platform/cuda IsCudaStickyFault): errors
+// Mirrors the retired platform layer's sticky-fault set: errors
 // that poison the device context rather than failing one launch.
 bool IsStickyLaunchFault(cudaError_t error) noexcept {
   switch (error) {

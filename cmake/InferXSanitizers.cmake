@@ -13,7 +13,7 @@ endif()
 if((INFERX_ENABLE_ASAN OR INFERX_ENABLE_UBSAN OR INFERX_ENABLE_TSAN) AND INFERX_ENABLE_CUDA)
   message(FATAL_ERROR
     "Incompatible options: CPU sanitizers (ASan/UBSan/TSan) cannot be combined "
-    "with INFERX_ENABLE_CUDA in M0; this would produce a partially sanitized "
+    "with INFERX_ENABLE_CUDA; this would produce a partially sanitized "
     "binary. Use the 'cuda-release' preset for CUDA and a sanitizer preset for "
     "CPU code.")
 endif()
@@ -35,7 +35,7 @@ endif()
 if(_INFERX_SANITIZER_FLAGS)
   add_library(inferx_sanitizers INTERFACE)
   add_library(inferx::sanitizers ALIAS inferx_sanitizers)
-  # Sanitizers are CPU-only in M0; compile flags apply to CXX sources only.
+  # Sanitizers are CPU-only; compile flags apply to CXX sources only.
   target_compile_options(inferx_sanitizers INTERFACE
     $<$<COMPILE_LANGUAGE:CXX>:${_INFERX_SANITIZER_FLAGS}>)
   target_link_options(inferx_sanitizers INTERFACE ${_INFERX_SANITIZER_FLAGS})

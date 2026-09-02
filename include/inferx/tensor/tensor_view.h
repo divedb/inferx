@@ -18,12 +18,12 @@ namespace inferx {
 
 class TensorView {
  public:
-  [[nodiscard]] static absl::StatusOr<TensorView> Create(BufferView buffer, DType dtype,
+  [[nodiscard]] static absl::StatusOr<TensorView> Create(BufferView buffer, Dtype dtype,
                                                          Shape shape, Strides strides,
                                                          ByteCount byte_offset = ByteCount(0));
 
   [[nodiscard]] const BufferView& buffer() const noexcept { return buffer_; }
-  [[nodiscard]] DType dtype() const noexcept { return dtype_; }
+  [[nodiscard]] Dtype dtype() const noexcept { return dtype_; }
   [[nodiscard]] const Shape& shape() const noexcept { return shape_; }
   [[nodiscard]] const Strides& strides() const noexcept { return strides_; }
   [[nodiscard]] ByteCount byte_offset() const noexcept { return byte_offset_; }
@@ -36,11 +36,11 @@ class TensorView {
 
  private:
   friend class MutableTensorView;
-  TensorView(BufferView buffer, DType dtype, Shape shape, Strides strides, ByteCount byte_offset,
+  TensorView(BufferView buffer, Dtype dtype, Shape shape, Strides strides, ByteCount byte_offset,
              LayoutAnalysis layout) noexcept;
 
   BufferView buffer_;
-  DType dtype_;
+  Dtype dtype_;
   Shape shape_;
   Strides strides_;
   ByteCount byte_offset_;
@@ -50,11 +50,11 @@ class TensorView {
 class MutableTensorView {
  public:
   [[nodiscard]] static absl::StatusOr<MutableTensorView> Create(
-      MutableBufferView buffer, DType dtype, Shape shape, Strides strides,
+      MutableBufferView buffer, Dtype dtype, Shape shape, Strides strides,
       ByteCount byte_offset = ByteCount(0));
 
   [[nodiscard]] const MutableBufferView& buffer() const noexcept { return buffer_; }
-  [[nodiscard]] DType dtype() const noexcept { return dtype_; }
+  [[nodiscard]] Dtype dtype() const noexcept { return dtype_; }
   [[nodiscard]] const Shape& shape() const noexcept { return shape_; }
   [[nodiscard]] const Strides& strides() const noexcept { return strides_; }
   [[nodiscard]] ByteCount byte_offset() const noexcept { return byte_offset_; }
@@ -62,11 +62,11 @@ class MutableTensorView {
   [[nodiscard]] TensorView AsConst() const;
 
  private:
-  MutableTensorView(MutableBufferView buffer, DType dtype, Shape shape, Strides strides,
+  MutableTensorView(MutableBufferView buffer, Dtype dtype, Shape shape, Strides strides,
                     ByteCount byte_offset, LayoutAnalysis layout) noexcept;
 
   MutableBufferView buffer_;
-  DType dtype_;
+  Dtype dtype_;
   Shape shape_;
   Strides strides_;
   ByteCount byte_offset_;

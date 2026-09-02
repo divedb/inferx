@@ -55,9 +55,9 @@ allocation only if it preserves lease, accounting, and generation semantics.
 
 ## Validation evidence
 
-`inferx_m2_runtime_test` covers transactions, limits, peak/leak accounting,
+`inferx_runtime_test` covers transactions, limits, peak/leak accounting,
 fake failures, deterministic slot order, stale release, and workspace rollback.
-`inferx_m2_runtime_stress_test` covers 100,000 generation cycles and the MPMC
+`inferx_runtime_stress_test` covers 100,000 generation cycles and the MPMC
 adapter; the `tsan` preset owns the race check.
 
 ## Supersession

@@ -1,4 +1,4 @@
-// Request state vocabulary (m1.md section 11.1). Shared closed enum: the
+// Request state vocabulary. Shared closed enum: the
 // lifecycle target owns the names only — no mutable request data, no
 // dependencies on scheduler or engine types.
 

@@ -1,4 +1,4 @@
-# CPU developer container (m0.md section 12): the accepted Ubuntu 24.04
+# CPU developer container: the accepted Ubuntu 24.04
 # compiler/CMake/Ninja/Python plus the analysis and SBOM toolchain. Base image
 # pinned by digest (linux/amd64 manifest list); the project does not download
 # dependencies here — bootstrap uses repository gitlinks.

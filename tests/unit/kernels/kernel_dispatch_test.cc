@@ -63,7 +63,7 @@ struct CpuTensor {
   TensorView view;
 };
 
-CpuTensor MakeCpuTensor(std::span<const uint64_t> dimensions, DType dtype) {
+CpuTensor MakeCpuTensor(std::span<const uint64_t> dimensions, Dtype dtype) {
   const auto shape = Shape::Create(dimensions);
   const auto strides = Strides::Contiguous(*shape);
   const auto bytes = shape->Bytes(dtype);
@@ -75,7 +75,7 @@ CpuTensor MakeCpuTensor(std::span<const uint64_t> dimensions, DType dtype) {
   return CpuTensor{std::move(*buffer), *tensor, tensor->AsConst()};
 }
 
-CpuTensor MakeCpuTensor(std::initializer_list<uint64_t> dimensions, DType dtype) {
+CpuTensor MakeCpuTensor(std::initializer_list<uint64_t> dimensions, Dtype dtype) {
   const std::vector<uint64_t> dims(dimensions);
   return MakeCpuTensor(std::span<const uint64_t>(dims), dtype);
 }
@@ -106,9 +106,9 @@ TEST_F(DispatchFixture, ProviderNamesAreStable) {
 TEST_F(DispatchFixture, LaunchWithoutBackendIsUnimplemented) {
   KernelExecutionContext context;
   context.device = Device::Cuda(DeviceId(0));
-  auto ids = MakeCpuTensor({1}, DType::kInt32);
-  auto weight = MakeCpuTensor({2, 2}, DType::kFloat32);
-  auto output = MakeCpuTensor({1, 2}, DType::kFloat32);
+  auto ids = MakeCpuTensor({1}, Dtype::kInt32);
+  auto weight = MakeCpuTensor({2, 2}, Dtype::kFloat32);
+  auto output = MakeCpuTensor({1, 2}, Dtype::kFloat32);
   ops::EmbeddingRequest request{ids.view, weight.view, output.mutable_view};
   EXPECT_EQ(LaunchEmbedding(request, context).code(), absl::StatusCode::kUnimplemented);
 }
@@ -122,14 +122,14 @@ TEST_F(DispatchFixture, RegisterAndDispatchToBackend) {
   KernelExecutionContext context;
   context.device = Device::Cuda(DeviceId(0));
   context.compute_capability = 89;
-  auto ids = MakeCpuTensor({1}, DType::kInt32);
-  auto weight = MakeCpuTensor({2, 2}, DType::kFloat32);
-  auto output = MakeCpuTensor({1, 2}, DType::kFloat32);
+  auto ids = MakeCpuTensor({1}, Dtype::kInt32);
+  auto weight = MakeCpuTensor({2, 2}, Dtype::kFloat32);
+  auto output = MakeCpuTensor({1, 2}, Dtype::kFloat32);
   EXPECT_TRUE(LaunchEmbedding({ids.view, weight.view, output.mutable_view}, context).ok());
   EXPECT_EQ(backend->embedding_launches, 1);
-  auto gate = MakeCpuTensor({1, 2}, DType::kFloat32);
-  auto up = MakeCpuTensor({1, 2}, DType::kFloat32);
-  auto fused = MakeCpuTensor({1, 2}, DType::kFloat32);
+  auto gate = MakeCpuTensor({1, 2}, Dtype::kFloat32);
+  auto up = MakeCpuTensor({1, 2}, Dtype::kFloat32);
+  auto fused = MakeCpuTensor({1, 2}, Dtype::kFloat32);
   EXPECT_TRUE(LaunchSwiGlu({gate.view, up.view, fused.mutable_view}, context).ok());
   EXPECT_EQ(backend->swiglu_launches, 1);
 }
@@ -147,9 +147,9 @@ TEST_F(DispatchFixture, NullAndHostBackendsAreRejected) {
 TEST_F(DispatchFixture, HostDeviceStaysUndispatched) {
   KernelExecutionContext context;
   context.device = Device::Host();
-  auto gate = MakeCpuTensor({1, 2}, DType::kFloat32);
-  auto up = MakeCpuTensor({1, 2}, DType::kFloat32);
-  auto fused = MakeCpuTensor({1, 2}, DType::kFloat32);
+  auto gate = MakeCpuTensor({1, 2}, Dtype::kFloat32);
+  auto up = MakeCpuTensor({1, 2}, Dtype::kFloat32);
+  auto fused = MakeCpuTensor({1, 2}, Dtype::kFloat32);
   // Host reference execution lives in inferx::ops, not the kernels layer.
   EXPECT_EQ(LaunchSwiGlu({gate.view, up.view, fused.mutable_view}, context).code(),
             absl::StatusCode::kUnimplemented);

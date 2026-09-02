@@ -1,4 +1,4 @@
-// Conservative full-reservation admission oracle (m1.md section 12.3).
+// Conservative full-reservation admission oracle.
 
 #ifndef INFERX_SCHEDULER_ADMISSION_CONTROLLER_H_
 #define INFERX_SCHEDULER_ADMISSION_CONTROLLER_H_

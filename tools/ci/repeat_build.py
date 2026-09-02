@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Repeated fresh-build stress driver (m0.md section 13.4).
+"""Repeated fresh-build stress driver.
 
 Creates distinct, validated paths below out/stress/ and repeats, at least
 three times by default:

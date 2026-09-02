@@ -62,7 +62,7 @@ happen; the roadmap (plan section 7.2) mandates one closed transition table.
 
 ## Validation evidence
 
-- `tests/unit/engine/m1_fsm_test.cc` (label `m1-unit`): happy path
+- `tests/unit/engine/fsm_test.cc` (label `core-unit`): happy path
   prefill→decodes→length with exact counters and terminal record;
   cancellation from every nonterminal non-in-flight state; in-flight
   cancel→drain; stale completion rejection without side effects;

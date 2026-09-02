@@ -1,4 +1,4 @@
-# CPU-only checked tensor and buffer contracts (M2.1).
+# CPU-only checked tensor and buffer contracts.
 add_library(inferx_tensor STATIC
   buffer.cc
   cpu_allocator.cc

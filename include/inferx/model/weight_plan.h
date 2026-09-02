@@ -26,7 +26,7 @@ struct TensorSource {
   artifacts::SafeRelativePath shard;
   artifacts::FileIdentity expected_file;
   artifacts::ArtifactByteRange file_range;
-  artifacts::ArtifactDType dtype;
+  artifacts::ArtifactDtype dtype;
   artifacts::ArtifactShape shape;
   artifacts::Digest256 file_digest;
 };

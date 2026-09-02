@@ -13,10 +13,10 @@
 namespace inferx {
 namespace {
 
-absl::Status ValidateViewBounds(const BufferView& buffer, DType dtype, const Shape& shape,
+absl::Status ValidateViewBounds(const BufferView& buffer, Dtype dtype, const Shape& shape,
                                 const Strides& strides, ByteCount byte_offset,
                                 LayoutAnalysis* analysis) {
-  absl::StatusOr<ByteCount> dtype_size = DTypeSize(dtype);
+  absl::StatusOr<ByteCount> dtype_size = DtypeSize(dtype);
   if (!dtype_size.ok()) {
     return dtype_size.status();
   }
@@ -72,7 +72,7 @@ bool RangesOverlap(uint64_t first_begin, uint64_t first_size, uint64_t second_be
 
 }  // namespace
 
-TensorView::TensorView(BufferView buffer, DType dtype, Shape shape, Strides strides,
+TensorView::TensorView(BufferView buffer, Dtype dtype, Shape shape, Strides strides,
                        ByteCount byte_offset, LayoutAnalysis layout) noexcept
     : buffer_(buffer),
       dtype_(dtype),
@@ -81,7 +81,7 @@ TensorView::TensorView(BufferView buffer, DType dtype, Shape shape, Strides stri
       byte_offset_(byte_offset),
       layout_(layout) {}
 
-absl::StatusOr<TensorView> TensorView::Create(BufferView buffer, DType dtype, Shape shape,
+absl::StatusOr<TensorView> TensorView::Create(BufferView buffer, Dtype dtype, Shape shape,
                                               Strides strides, ByteCount byte_offset) {
   LayoutAnalysis analysis;
   absl::Status status = ValidateViewBounds(buffer, dtype, shape, strides, byte_offset, &analysis);
@@ -117,7 +117,7 @@ absl::StatusOr<TensorView> TensorView::Slice(size_t axis, uint64_t begin, uint64
   }
   stride_values[axis] = *new_stride;
 
-  absl::StatusOr<ByteCount> element_size = DTypeSize(dtype_);
+  absl::StatusOr<ByteCount> element_size = DtypeSize(dtype_);
   if (!element_size.ok()) {
     return element_size.status();
   }
@@ -202,7 +202,7 @@ absl::StatusOr<TensorView> TensorView::Reshape(const Shape& shape) const {
   return Create(buffer_, dtype_, shape, *strides, byte_offset_);
 }
 
-MutableTensorView::MutableTensorView(MutableBufferView buffer, DType dtype, Shape shape,
+MutableTensorView::MutableTensorView(MutableBufferView buffer, Dtype dtype, Shape shape,
                                      Strides strides, ByteCount byte_offset,
                                      LayoutAnalysis layout) noexcept
     : buffer_(buffer),
@@ -212,7 +212,7 @@ MutableTensorView::MutableTensorView(MutableBufferView buffer, DType dtype, Shap
       byte_offset_(byte_offset),
       layout_(layout) {}
 
-absl::StatusOr<MutableTensorView> MutableTensorView::Create(MutableBufferView buffer, DType dtype,
+absl::StatusOr<MutableTensorView> MutableTensorView::Create(MutableBufferView buffer, Dtype dtype,
                                                             Shape shape, Strides strides,
                                                             ByteCount byte_offset) {
   LayoutAnalysis analysis;
@@ -255,7 +255,7 @@ absl::Status CopyTensorCpu(const TensorView& source, const MutableTensorView& de
   if (!destination_bytes.ok()) {
     return destination_bytes.status();
   }
-  absl::StatusOr<ByteCount> element_size = DTypeSize(source.dtype());
+  absl::StatusOr<ByteCount> element_size = DtypeSize(source.dtype());
   if (!element_size.ok()) {
     return element_size.status();
   }

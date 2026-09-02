@@ -22,9 +22,9 @@ struct KernelKey {
   ExecutionPhase phase = ExecutionPhase::kGeneric;
   DeviceKind device_kind = DeviceKind::kHost;
   uint16_t compute_capability = 0;
-  DType input_dtype = DType::kFloat32;
-  DType weight_dtype = DType::kFloat32;
-  DType output_dtype = DType::kFloat32;
+  Dtype input_dtype = Dtype::kFloat32;
+  Dtype weight_dtype = Dtype::kFloat32;
+  Dtype output_dtype = Dtype::kFloat32;
   MathMode math_mode = MathMode::kFp32Accumulate;
   LayoutId input_layout = LayoutId::kRowMajorDense;
   LayoutId weight_layout = LayoutId::kRowMajorDense;

@@ -30,9 +30,9 @@ absl::Status ReferenceActMul(const ActMulRequest& request) {
   if (!input_bytes.ok() || !output_bytes.ok()) {
     return absl::InvalidArgumentError("act_mul: host tensors required for the reference");
   }
-  const bool fp32 = request.input.dtype() == DType::kFloat32;
-  if (request.input.dtype() != DType::kFloat32 && request.input.dtype() != DType::kFloat16 &&
-      request.input.dtype() != DType::kBFloat16) {
+  const bool fp32 = request.input.dtype() == Dtype::kFloat32;
+  if (request.input.dtype() != Dtype::kFloat32 && request.input.dtype() != Dtype::kFloat16 &&
+      request.input.dtype() != Dtype::kBFloat16) {
     return absl::UnimplementedError("act_mul: FP32/FP16/BF16 required");
   }
   const auto read = [&](uint64_t index) {
@@ -84,7 +84,7 @@ absl::Status ValidateAdd3(const Add3Request& request) {
 absl::Status ReferenceAdd3(const Add3Request& request) {
   absl::Status status = ValidateAdd3(request);
   if (!status.ok()) return status;
-  if (request.a.dtype() != DType::kFloat32) {
+  if (request.a.dtype() != Dtype::kFloat32) {
     return absl::UnimplementedError("add3 reference: FP32 tensors required");
   }
   auto a = request.a.buffer().HostBytes();
@@ -119,7 +119,7 @@ absl::Status ValidateFusedAddRmsNorm(const FusedAddRmsNormRequest& request) {
 absl::Status ReferenceFusedAddRmsNorm(const FusedAddRmsNormRequest& request) {
   absl::Status status = ValidateFusedAddRmsNorm(request);
   if (!status.ok()) return status;
-  if (request.input.dtype() != DType::kFloat32) {
+  if (request.input.dtype() != Dtype::kFloat32) {
     return absl::UnimplementedError("fused_add_rmsnorm reference: FP32 tensors required");
   }
   auto input = request.input.buffer().HostBytes();
@@ -163,7 +163,7 @@ absl::Status ValidateGemmaRmsNorm(const GemmaRmsNormRequest& request) {
 absl::Status ReferenceGemmaRmsNorm(const GemmaRmsNormRequest& request) {
   absl::Status status = ValidateGemmaRmsNorm(request);
   if (!status.ok()) return status;
-  if (request.input.dtype() != DType::kFloat32) {
+  if (request.input.dtype() != Dtype::kFloat32) {
     return absl::UnimplementedError("gemma_rmsnorm reference: FP32 tensors required");
   }
   auto input = request.input.buffer().HostBytes();
@@ -207,7 +207,7 @@ absl::Status ValidateQkRmsNorm(const QkRmsNormRequest& request) {
 absl::Status ReferenceQkRmsNorm(const QkRmsNormRequest& request) {
   absl::Status status = ValidateQkRmsNorm(request);
   if (!status.ok()) return status;
-  if (request.query.dtype() != DType::kFloat32) {
+  if (request.query.dtype() != Dtype::kFloat32) {
     return absl::UnimplementedError("qk_rmsnorm reference: FP32 tensors required");
   }
   auto q = request.query.buffer().HostBytes();
@@ -262,7 +262,7 @@ absl::Status ValidateHadamardTransform(const HadamardTransformRequest& request) 
 absl::Status ReferenceHadamardTransform(const HadamardTransformRequest& request) {
   absl::Status status = ValidateHadamardTransform(request);
   if (!status.ok()) return status;
-  if (request.input.dtype() != DType::kFloat32) {
+  if (request.input.dtype() != Dtype::kFloat32) {
     return absl::UnimplementedError("hadamard reference: FP32 tensors required");
   }
   auto input = request.input.buffer().HostBytes();

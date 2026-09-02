@@ -1,4 +1,4 @@
-// Status propagation macros (m1.md section 7.1).
+// Status propagation macros.
 //
 // Exactly two macros: INFERX_RETURN_IF_ERROR and INFERX_ASSIGN_OR_RETURN.
 // Both evaluate their expression exactly once, preserve move-only values and

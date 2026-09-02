@@ -49,7 +49,7 @@ int main() {
   const inferx::ExecutionTicket ticket{inferx::ExecutionTicketId(1), inferx::StepId(1), 1};
   if (config.MaxActiveSequences.value != 256 || ticket.item_count != 1 ||
       inferx::ToString(inferx::WorkKind::kPrefill) != "prefill") {
-    std::cerr << "installed M1 module contracts did not behave\n";
+    std::cerr << "installed module contracts did not behave\n";
     return 1;
   }
   const inferx::Version version = inferx::GetVersion();

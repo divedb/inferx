@@ -1,4 +1,4 @@
-// Immutable effective configuration (m1.md sections 8.2-8.4). Constructed
+// Immutable effective configuration. Constructed
 // only through ValidateConfig; no mutators, no environment reads after
 // creation. CanonicalJson() emits the canonical UTF-8 form (schema version
 // first, lexicographic field order, decimal integers, no whitespace) that is
@@ -19,7 +19,7 @@ namespace inferx::config {
 
 struct BuildCapabilities {
   bool simulator = true;
-  bool cuda = false;  // M1 validation never requires CUDA.
+  bool cuda = false;
 };
 
 struct ModelCapabilities {

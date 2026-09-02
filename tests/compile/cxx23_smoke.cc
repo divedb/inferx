@@ -1,4 +1,4 @@
-// C++23 sentinel main (m0.md section 7.2): runs the feature probes so the
+// C++23 sentinel main: runs the feature probes so the
 // supported standard library is verified at runtime, not just the front end.
 #include <cstdio>
 #include <optional>

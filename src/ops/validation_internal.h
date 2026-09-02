@@ -17,9 +17,9 @@ struct TensorInterval {
   uint64_t size = 0;
 };
 
-[[nodiscard]] absl::Status ValidateTensor(const TensorView& tensor, DType dtype, uint8_t rank,
+[[nodiscard]] absl::Status ValidateTensor(const TensorView& tensor, Dtype dtype, uint8_t rank,
                                           std::string_view field, bool require_contiguous = true);
-[[nodiscard]] absl::Status ValidateTensor(const MutableTensorView& tensor, DType dtype,
+[[nodiscard]] absl::Status ValidateTensor(const MutableTensorView& tensor, Dtype dtype,
                                           uint8_t rank, std::string_view field,
                                           bool require_contiguous = true);
 [[nodiscard]] absl::Status ValidateSameDevice(const TensorView& first, const TensorView& second,

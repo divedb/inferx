@@ -1,4 +1,4 @@
-# Fixture: unsupported/too-old compiler (m0.md 13.5 row 3). Simulates a
+# Fixture: unsupported/too-old compiler. Simulates a
 # sub-floor compiler for the configure-time floor check in
 # InferXProjectOptions.cmake; must fail before compiling project sources.
 cmake_minimum_required(VERSION 3.28)

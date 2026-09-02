@@ -1,4 +1,4 @@
-// Schema-v1 safety constants (m1.md section 8.4). Shared by file readers and
+// Schema-v1 safety constants. Shared by file readers and
 // tests; defensive limits, not hidden CLI overrides.
 
 #ifndef INFERX_CONFIG_PARSER_LIMITS_H_

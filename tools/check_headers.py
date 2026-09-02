@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Public header self-containment probes (m0.md section 9.3).
+"""Public header self-containment probes.
 
 Generates one temporary translation unit per installed public header
 containing only that include and compiles it with the supported compiler and
@@ -70,7 +70,7 @@ def main() -> int:
                      f"temp directory, not {resolved}")
 
     failures: list[str] = []
-    # Since M1 (ADR 0008), public headers include Abseil headers. A consumer
+    # Public headers include Abseil headers. A consumer
     # sees them beside inferx/ in the installed prefix's include directory;
     # for the in-tree probe the pinned Abseil source provides the same
     # absl/... layout.

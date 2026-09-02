@@ -2,9 +2,9 @@
 
 include(CMakeFindDependencyMacro)
 
-# Dependencies of installed InferX targets. Since M1 (ADR 0008), inferx::base
+# Dependencies of installed InferX targets. Under ADR 0008, inferx::base
 # exposes absl::Status/hash/format in public headers; the prefix must contain
-# the pinned Abseil package (proven by tests/consumer_absl in M0).
+# the pinned Abseil package (proven by tests/consumer_absl).
 find_dependency(absl CONFIG)
 find_dependency(simdjson CONFIG)
 if("@INFERX_ENABLE_HF_HUB@")

@@ -1,4 +1,4 @@
-// Cross-component simulator invariants (m1.md section 16).
+// Cross-component simulator invariants.
 
 #ifndef INFERX_SIMULATOR_INVARIANT_CHECKER_H_
 #define INFERX_SIMULATOR_INVARIANT_CHECKER_H_

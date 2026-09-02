@@ -11,11 +11,11 @@ namespace inferx::ops {
 
 absl::Status ValidateEmbedding(const EmbeddingRequest& request) {
   absl::Status status =
-      internal::ValidateTensor(request.token_ids, DType::kInt32, 1, "embedding.token_ids");
+      internal::ValidateTensor(request.token_ids, Dtype::kInt32, 1, "embedding.token_ids");
   if (!status.ok()) return status;
-  status = internal::ValidateTensor(request.weight, DType::kFloat32, 2, "embedding.weight");
+  status = internal::ValidateTensor(request.weight, Dtype::kFloat32, 2, "embedding.weight");
   if (!status.ok()) return status;
-  status = internal::ValidateTensor(request.output, DType::kFloat32, 2, "embedding.output");
+  status = internal::ValidateTensor(request.output, Dtype::kFloat32, 2, "embedding.output");
   if (!status.ok()) return status;
   if (request.weight.shape().dim(0) == 0 || request.weight.shape().dim(1) == 0) {
     return absl::InvalidArgumentError(

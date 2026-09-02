@@ -1,4 +1,4 @@
-// The M3 tokenizer differential gate (m3.md section 18; ADR 0024): the
+// The tokenizer differential gate (ADR 0024): the
 // committed 10,000-case corpus produced by the pinned Hugging Face Python
 // oracle must match exactly -- encode with and without special tokens,
 // one-shot decode, and streaming decode equality.
@@ -144,7 +144,7 @@ TEST_P(TokenizerDifferentialTest, MatchesOracleExactly) {
     });
 
     // Streaming equality on every 5th case; per-chunk UTF-8 validity on
-    // every 25th (m3.md 13.4: every nonempty chunk is valid UTF-8 and prior
+    // every 25th: every nonempty chunk is valid UTF-8 and prior
     // bytes never change).
     if (i % 5 == 0) {
       auto decoder = tokenizer.NewIncrementalDecoder(decode);

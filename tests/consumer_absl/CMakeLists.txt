@@ -1,8 +1,8 @@
-# Dedicated installed-dependency consumer fixture (m0.md section 6.7; ADR
-# 0002): proves the future installed-dependency strategy — the pinned Abseil
+# Dedicated installed-dependency consumer fixture (ADR 0002): proves the
+# installed-dependency strategy — the pinned Abseil
 # installs into its own prefix and is consumed only via find_package(absl
-# CONFIG). This is the pattern InferXConfig.cmake.in will rely on once M1
-# exposes absl::Status publicly.
+# CONFIG). This is the pattern InferXConfig.cmake.in uses for public
+# absl::Status exposure.
 cmake_minimum_required(VERSION 3.28)
 project(inferx_absl_consumer LANGUAGES CXX)
 

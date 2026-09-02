@@ -52,14 +52,14 @@ struct BackendCapability {
   bool deterministic = true;
   bool preparation_uses_heuristics = false;
   bool launch_allocates = false;
-  std::string contract_version = "m4-v1";
+  std::string contract_version = "v1";
   std::string dependency_version;
 
   [[nodiscard]] absl::Status Validate() const;
   [[nodiscard]] absl::StatusOr<CapabilityMatch> Match(const KernelKey& key) const;
 };
 
-[[nodiscard]] constexpr uint32_t DTypeMask(DType dtype) noexcept {
+[[nodiscard]] constexpr uint32_t DtypeMask(Dtype dtype) noexcept {
   return uint32_t{1} << static_cast<uint8_t>(dtype);
 }
 [[nodiscard]] constexpr uint8_t PhaseMask(ExecutionPhase phase) noexcept {

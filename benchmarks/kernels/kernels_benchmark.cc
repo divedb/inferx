@@ -61,7 +61,7 @@ struct DevTensor {
 // interleaving cudaFree with large H2D copies produced nondeterministic
 // WSL2 driver faults during bring-up, and the benchmark never needs the
 // memory back.
-DevTensor MakeTensor(std::vector<uint64_t> dims, inferx::DType dtype, uint64_t seed,
+DevTensor MakeTensor(std::vector<uint64_t> dims, inferx::Dtype dtype, uint64_t seed,
                      bool fill = true) {
   using namespace inferx;
   auto shape = Shape::Create(dims);
@@ -74,28 +74,28 @@ DevTensor MakeTensor(std::vector<uint64_t> dims, inferx::DType dtype, uint64_t s
             static_cast<unsigned long long>(bytes->value()), cudaGetErrorString(alloc_status));
     exit(2);
   }
-  if (fill && dtype != DType::kUInt8 && dtype != DType::kInt32) {
-    const size_t element_bytes = (dtype == inferx::DType::kFloat32) ? 4 : 2;
+  if (fill && dtype != Dtype::kUInt8 && dtype != Dtype::kInt32) {
+    const size_t element_bytes = (dtype == inferx::Dtype::kFloat32) ? 4 : 2;
     const size_t count = bytes->value() / element_bytes;
     std::vector<float> values(count);
     std::mt19937 rng(static_cast<uint32_t>(seed));
     std::uniform_real_distribution<float> dist(-1.5F, 1.5F);
     for (float& value : values) value = dist(rng);
-    if (dtype == DType::kFloat16) {
+    if (dtype == Dtype::kFloat16) {
       std::vector<__half> halfs(count);
       for (size_t i = 0; i < count; ++i) halfs[i] = __float2half(values[i]);
       cudaError_t c = cudaMemcpy(memory, halfs.data(), bytes->value(), cudaMemcpyHostToDevice);
       if (c != cudaSuccess) {
         fprintf(stderr, "memcpy(fp16) failed: %s\n", cudaGetErrorString(c));
       }
-    } else if (dtype == DType::kBFloat16) {
+    } else if (dtype == Dtype::kBFloat16) {
       std::vector<__nv_bfloat16> bf16(count);
       for (size_t i = 0; i < count; ++i) bf16[i] = __float2bfloat16(values[i]);
       cudaError_t c = cudaMemcpy(memory, bf16.data(), bytes->value(), cudaMemcpyHostToDevice);
       if (c != cudaSuccess) {
         fprintf(stderr, "memcpy(bf16) failed: %s\n", cudaGetErrorString(c));
       }
-    } else if (dtype == DType::kFloat32) {
+    } else if (dtype == Dtype::kFloat32) {
       cudaError_t c = cudaMemcpy(memory, values.data(), bytes->value(), cudaMemcpyHostToDevice);
       if (c != cudaSuccess) {
         fprintf(stderr, "memcpy(fp32) failed: %s\n", cudaGetErrorString(c));
@@ -201,8 +201,8 @@ int main(int argc, char** argv) {
   if (stage >= 1)
     for (const auto& [tokens, dim, kind] : std::vector<std::tuple<uint64_t, uint64_t, const char*>>{
              {4096, 5120, "silu"}, {16384, 8192, "silu"}, {4096, 5120, "gelu"}}) {
-      auto input = MakeTensor({tokens, 2 * dim}, inferx::DType::kBFloat16, 1);
-      auto output = MakeTensor({tokens, dim}, inferx::DType::kBFloat16, 2, /*fill=*/false);
+      auto input = MakeTensor({tokens, 2 * dim}, inferx::Dtype::kBFloat16, 1);
+      auto output = MakeTensor({tokens, dim}, inferx::Dtype::kBFloat16, 2, /*fill=*/false);
       ActMulKind k = std::string(kind) == "silu" ? ActMulKind::kSilu : ActMulKind::kGelu;
       ActMulRequest request{input.view().AsConst(), output.view(), k};
       std::string name = std::string(kind) == "silu"
@@ -216,9 +216,9 @@ int main(int argc, char** argv) {
 
   // rmsnorm T4096 H5120 bf16
   if (stage >= 2) {
-    auto input = MakeTensor({4096, 5120}, inferx::DType::kBFloat16, 3);
-    auto weight = MakeTensor({5120}, inferx::DType::kBFloat16, 4);
-    auto output = MakeTensor({4096, 5120}, inferx::DType::kBFloat16, 5, false);
+    auto input = MakeTensor({4096, 5120}, inferx::Dtype::kBFloat16, 3);
+    auto weight = MakeTensor({5120}, inferx::Dtype::kBFloat16, 4);
+    auto output = MakeTensor({4096, 5120}, inferx::Dtype::kBFloat16, 5, false);
     inferx::ops::RmsNormRequest request{input.view().AsConst(), weight.view().AsConst(),
                                         output.view(), 1.0e-5F};
     emit("rmsnorm", "T4096_H5120",
@@ -228,9 +228,9 @@ int main(int argc, char** argv) {
 
   // fused_add_rmsnorm T4096 H5120 bf16
   if (stage >= 3) {
-    auto input = MakeTensor({4096, 5120}, inferx::DType::kBFloat16, 6);
-    auto residual = MakeTensor({4096, 5120}, inferx::DType::kBFloat16, 7);
-    auto weight = MakeTensor({5120}, inferx::DType::kBFloat16, 8);
+    auto input = MakeTensor({4096, 5120}, inferx::Dtype::kBFloat16, 6);
+    auto residual = MakeTensor({4096, 5120}, inferx::Dtype::kBFloat16, 7);
+    auto weight = MakeTensor({5120}, inferx::Dtype::kBFloat16, 8);
     inferx::kernels::FusedAddRmsNormRequest request{input.view(), residual.view(),
                                                     weight.view().AsConst(), 1.0e-5F};
     emit("fused_add_rmsnorm", "T4096_H5120",
@@ -240,10 +240,10 @@ int main(int argc, char** argv) {
 
   // qk_rmsnorm T4096 H32/KV8 D128 bf16
   {
-    auto q = MakeTensor({4096, 32, 128}, inferx::DType::kBFloat16, 9);
-    auto k = MakeTensor({4096, 8, 128}, inferx::DType::kBFloat16, 10);
-    auto qw = MakeTensor({128}, inferx::DType::kBFloat16, 11);
-    auto kw = MakeTensor({128}, inferx::DType::kBFloat16, 12);
+    auto q = MakeTensor({4096, 32, 128}, inferx::Dtype::kBFloat16, 9);
+    auto k = MakeTensor({4096, 8, 128}, inferx::Dtype::kBFloat16, 10);
+    auto qw = MakeTensor({128}, inferx::Dtype::kBFloat16, 11);
+    auto kw = MakeTensor({128}, inferx::Dtype::kBFloat16, 12);
     inferx::kernels::QkRmsNormRequest request{q.view(), k.view(), qw.view().AsConst(),
                                               kw.view().AsConst(), 1.0e-5F};
     emit("qk_rmsnorm", "T4096_H32_D128",
@@ -253,13 +253,13 @@ int main(int argc, char** argv) {
 
   // rope T4096 H32/KV8 D128 bf16
   {
-    auto q = MakeTensor({4096, 32, 128}, inferx::DType::kBFloat16, 13);
-    auto k = MakeTensor({4096, 8, 128}, inferx::DType::kBFloat16, 14);
-    auto qo = MakeTensor({4096, 32, 128}, inferx::DType::kBFloat16, 15, false);
-    auto ko = MakeTensor({4096, 8, 128}, inferx::DType::kBFloat16, 16, false);
+    auto q = MakeTensor({4096, 32, 128}, inferx::Dtype::kBFloat16, 13);
+    auto k = MakeTensor({4096, 8, 128}, inferx::Dtype::kBFloat16, 14);
+    auto qo = MakeTensor({4096, 32, 128}, inferx::Dtype::kBFloat16, 15, false);
+    auto ko = MakeTensor({4096, 8, 128}, inferx::Dtype::kBFloat16, 16, false);
     std::vector<int32_t> positions(4096);
     for (uint64_t t = 0; t < 4096; ++t) positions[t] = static_cast<int32_t>(t);
-    auto pos = MakeTensor({4096}, inferx::DType::kInt32, 17, false);
+    auto pos = MakeTensor({4096}, inferx::Dtype::kInt32, 17, false);
     cudaMemcpy(
         const_cast<void*>(inferx::kernels::BufferAccess::Address(pos.view().AsConst().buffer())),
         positions.data(), 4096 * 4, cudaMemcpyHostToDevice);
@@ -277,11 +277,11 @@ int main(int argc, char** argv) {
                   kWarmup));
   }
 
-  // gemm M4096/M8 K4096 N4096 bf16
+  // GEMM token counts 4096/8, input width 4096, output width 4096, bf16.
   for (uint64_t tokens : {4096ULL, 8ULL}) {
-    auto input = MakeTensor({tokens, 4096}, inferx::DType::kBFloat16, 18);
-    auto weight = MakeTensor({4096, 4096}, inferx::DType::kBFloat16, 19);
-    auto output = MakeTensor({tokens, 4096}, inferx::DType::kBFloat16, 20, false);
+    auto input = MakeTensor({tokens, 4096}, inferx::Dtype::kBFloat16, 18);
+    auto weight = MakeTensor({4096, 4096}, inferx::Dtype::kBFloat16, 19);
+    auto output = MakeTensor({tokens, 4096}, inferx::Dtype::kBFloat16, 20, false);
     inferx::ops::GemmRequest request{input.view().AsConst(), weight.view().AsConst(), std::nullopt,
                                      output.view()};
     emit("gemm", tokens == 4096 ? "M4096_K4096_N4096" : "M8_K4096_N4096",
@@ -292,12 +292,12 @@ int main(int argc, char** argv) {
   // attention decode B1_S4096 / B8_S2048 (bf16)
   for (const auto& [batch, context_len] :
        std::vector<std::tuple<uint64_t, uint64_t>>{{1, 4096}, {8, 2048}}) {
-    auto q = MakeTensor({batch, 32, 128}, inferx::DType::kBFloat16, 21);
-    auto new_k = MakeTensor({batch, 8, 128}, inferx::DType::kBFloat16, 22);
-    auto new_v = MakeTensor({batch, 8, 128}, inferx::DType::kBFloat16, 23);
-    auto k_cache = MakeTensor({batch, context_len, 8, 128}, inferx::DType::kBFloat16, 24);
-    auto v_cache = MakeTensor({batch, context_len, 8, 128}, inferx::DType::kBFloat16, 25);
-    auto output = MakeTensor({batch, 32, 128}, inferx::DType::kBFloat16, 26, false);
+    auto q = MakeTensor({batch, 32, 128}, inferx::Dtype::kBFloat16, 21);
+    auto new_k = MakeTensor({batch, 8, 128}, inferx::Dtype::kBFloat16, 22);
+    auto new_v = MakeTensor({batch, 8, 128}, inferx::Dtype::kBFloat16, 23);
+    auto k_cache = MakeTensor({batch, context_len, 8, 128}, inferx::Dtype::kBFloat16, 24);
+    auto v_cache = MakeTensor({batch, context_len, 8, 128}, inferx::Dtype::kBFloat16, 25);
+    auto output = MakeTensor({batch, 32, 128}, inferx::Dtype::kBFloat16, 26, false);
     std::vector<int32_t> q_indptr(batch + 1), kv_indptr(batch + 1), positions, lengths(batch);
     for (uint64_t b = 0; b < batch; ++b) {
       q_indptr[b + 1] = static_cast<int32_t>(b + 1);
@@ -306,10 +306,10 @@ int main(int argc, char** argv) {
       positions.push_back(static_cast<int32_t>(context_len - 1));
     }
     // device mirrors
-    auto d_q_indptr = MakeTensor({batch + 1}, inferx::DType::kInt32, 0, false);
-    auto d_kv_indptr = MakeTensor({batch + 1}, inferx::DType::kInt32, 0, false);
-    auto d_positions = MakeTensor({batch}, inferx::DType::kInt32, 0, false);
-    auto d_lengths = MakeTensor({batch}, inferx::DType::kInt32, 0, false);
+    auto d_q_indptr = MakeTensor({batch + 1}, inferx::Dtype::kInt32, 0, false);
+    auto d_kv_indptr = MakeTensor({batch + 1}, inferx::Dtype::kInt32, 0, false);
+    auto d_positions = MakeTensor({batch}, inferx::Dtype::kInt32, 0, false);
+    auto d_lengths = MakeTensor({batch}, inferx::Dtype::kInt32, 0, false);
     auto upload = [&](DevTensor& t, const void* data, size_t bytes) {
       cudaMemcpy(
           const_cast<void*>(inferx::kernels::BufferAccess::Address(t.view().AsConst().buffer())),
@@ -354,15 +354,15 @@ int main(int argc, char** argv) {
 
   // argmax / top_p_renorm B8 V131072 fp32
   {
-    auto logits = MakeTensor({8, 131072}, inferx::DType::kFloat32, 27);
-    auto ids = MakeTensor({8}, inferx::DType::kInt32, 0, false);
+    auto logits = MakeTensor({8, 131072}, inferx::Dtype::kFloat32, 27);
+    auto ids = MakeTensor({8}, inferx::Dtype::kInt32, 0, false);
     inferx::kernels::ArgmaxRequest request{logits.view().AsConst(), ids.view()};
     emit("argmax", "B8_V131072",
          TimeOnce([&](auto& c) { return inferx::kernels::LaunchArgmax(request, c); }, kIters,
                   kWarmup));
   }
   {
-    auto probs = MakeTensor({8, 131072}, inferx::DType::kFloat32, 28);
+    auto probs = MakeTensor({8, 131072}, inferx::Dtype::kFloat32, 28);
     inferx::kernels::TopPRenormRequest request{probs.view(), 0.95F};
     emit("top_p_renorm", "B8_V131072",
          TimeOnce([&](auto& c) { return inferx::kernels::LaunchTopPRenorm(request, c); }, kIters,
@@ -371,9 +371,9 @@ int main(int argc, char** argv) {
 
   // fp8 quant T4096 D7168 group 128 (fp32 in, uint8 out)
   {
-    auto input = MakeTensor({4096, 7168}, inferx::DType::kFloat32, 29);
-    auto output = MakeTensor({4096, 7168}, inferx::DType::kUInt8, 0, false);
-    auto scales = MakeTensor({4096ULL * 56ULL}, inferx::DType::kFloat32, 0, false);
+    auto input = MakeTensor({4096, 7168}, inferx::Dtype::kFloat32, 29);
+    auto output = MakeTensor({4096, 7168}, inferx::Dtype::kUInt8, 0, false);
+    auto scales = MakeTensor({4096ULL * 56ULL}, inferx::Dtype::kFloat32, 0, false);
     inferx::kernels::Fp8QuantRequest request{input.view().AsConst(), output.view(), scales.view(),
                                              inferx::kernels::QuantGranularity::kTokenGroup, 128};
     emit("fp8_quant", "T4096_D7168",
@@ -383,9 +383,9 @@ int main(int argc, char** argv) {
 
   // softmax_topk T512 E256 K8 fp32
   {
-    auto logits = MakeTensor({512, 256}, inferx::DType::kFloat32, 30);
-    auto weights = MakeTensor({512, 8}, inferx::DType::kFloat32, 0, false);
-    auto ids = MakeTensor({512, 8}, inferx::DType::kInt32, 0, false);
+    auto logits = MakeTensor({512, 256}, inferx::Dtype::kFloat32, 30);
+    auto weights = MakeTensor({512, 8}, inferx::Dtype::kFloat32, 0, false);
+    auto ids = MakeTensor({512, 8}, inferx::Dtype::kInt32, 0, false);
     inferx::kernels::SoftmaxTopKRequest request{logits.view().AsConst(), weights.view(), ids.view(),
                                                 true};
     emit("softmax_topk", "T512_E256_K8",
@@ -395,8 +395,8 @@ int main(int argc, char** argv) {
 
   // hadamard T4096 D128 bf16
   {
-    auto input = MakeTensor({4096, 128}, inferx::DType::kBFloat16, 31);
-    auto output = MakeTensor({4096, 128}, inferx::DType::kBFloat16, 32, false);
+    auto input = MakeTensor({4096, 128}, inferx::Dtype::kBFloat16, 31);
+    auto output = MakeTensor({4096, 128}, inferx::Dtype::kBFloat16, 32, false);
     inferx::kernels::HadamardTransformRequest request{input.view().AsConst(), output.view(),
                                                       0.044F};
     emit("hadamard", "T4096_D128",

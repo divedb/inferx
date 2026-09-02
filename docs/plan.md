@@ -258,7 +258,7 @@ enum class MemoryKind { kHost, kPinnedHost, kDevice, kManaged };
 
 struct TensorView {
   BufferView buffer;       // Non-owning, bounds-checked byte range.
-  DType dtype;
+  Dtype dtype;
   Shape shape;
   Strides strides;
 };
@@ -268,7 +268,7 @@ struct TensorView {
 offset, size, and alignment, but no ownership. Tensors are immutable by default; mutating operations
 receive `MutableTensorView`. Shapes have a small-rank optimized representation and checked
 `NumElements()`/`Bytes()`. Layout, quantization scales, and shard metadata are separate descriptors,
-not hidden in `DType`.
+not hidden in `Dtype`.
 
 ### 5.4 Configuration
 
@@ -1203,7 +1203,7 @@ hardware-constrained release job.
 
 **Deliverables**
 
-- `DType`, `Shape`, `Strides`, owning `Buffer`, tensor views, and CPU allocator.
+- `Dtype`, `Shape`, `Strides`, owning `Buffer`, tensor views, and CPU allocator.
 - CUDA capability discovery, RAII device/stream/event/handles, device and pinned allocations, async
   copies, event pool, metadata ring, workspace arena, and `CompletionFence`.
 - CUDA errors translated to status; fake allocator/failure hooks; memory accounting by category.

@@ -23,13 +23,13 @@ absl::StatusOr<GenerateRequest> ValidateGenerateRequest(const GenerateRequest& r
                                                         const ModelRecord& model,
                                                         MonotonicTime now) {
   if (request.model != model.id) {
-    return Invalid("model", "unknown model in M1 (only model 0 exists)");
+    return Invalid("model", "unknown model (only model 0 exists)");
   }
   if (request.priority != kDefaultPriority) {
-    return Invalid("priority", "non-default priority is Unimplemented in M1");
+    return Invalid("priority", "non-default priority is unimplemented");
   }
   if (request.tenant != TenantScope(0)) {
-    return Invalid("tenant", "only the process-default scope is accepted in M1");
+    return Invalid("tenant", "only the process-default scope is accepted");
   }
   if (request.deadline.has_value() && !(*request.deadline > now)) {
     return Invalid("deadline", "deadline must be strictly in the future");
@@ -38,7 +38,7 @@ absl::StatusOr<GenerateRequest> ValidateGenerateRequest(const GenerateRequest& r
   const std::vector<TokenId>* tokens = std::get_if<std::vector<TokenId>>(&request.input);
   if (tokens == nullptr) {
     return absl::Status(absl::StatusCode::kUnimplemented,
-                        "request.input: text input requires tokenization (M3)");
+                        "request.input: text input requires tokenization");
   }
   if (tokens->empty()) {
     return Invalid("input", "prompt must contain at least one token");

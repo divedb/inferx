@@ -82,8 +82,8 @@ absl::Status ValidateKernelKey(const KernelKey& key) {
     return absl::InvalidArgumentError("kernel_key.rank: exceeds durable key capacity");
   }
   if (key.op > OpKind::kLogits || key.phase > ExecutionPhase::kDecode ||
-      key.device_kind > DeviceKind::kCuda || key.input_dtype > DType::kFloat64 ||
-      key.weight_dtype > DType::kFloat64 || key.output_dtype > DType::kFloat64 ||
+      key.device_kind > DeviceKind::kCuda || key.input_dtype > Dtype::kFloat64 ||
+      key.weight_dtype > Dtype::kFloat64 || key.output_dtype > Dtype::kFloat64 ||
       key.math_mode > MathMode::kFp32Accumulate || key.input_layout > LayoutId::kContiguousKvBshd ||
       key.weight_layout > LayoutId::kContiguousKvBshd ||
       key.output_layout > LayoutId::kContiguousKvBshd ||

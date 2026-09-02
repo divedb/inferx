@@ -1,5 +1,5 @@
-// Declarative request transition table and pure decision function
-// (m1.md section 11). One constexpr rule array (wildcards expanded to
+// Declarative request transition table and pure decision function. One
+// constexpr rule array (wildcards expanded to
 // concrete state/event rows); absent cells are FailedPrecondition/kInvalidTransition
 // with no side effects. Conditional destinations are named pure resolvers.
 
@@ -18,7 +18,7 @@
 namespace inferx {
 
 // Side effects a transition instructs the coordinator to secure/release
-// around the no-fail commit (m1.md section 11.3).
+// around the no-fail commit.
 enum class TransitionEffect : uint8_t {
   kNone = 0,
   kReleaseReservation = 1u << 0,
@@ -53,8 +53,8 @@ struct TransitionDecision {
 absl::StatusOr<TransitionDecision> DecideTransition(const RequestContext& request,
                                                     const RequestEvent& event);
 
-// One concrete table row. Wildcard rows in m1.md section 11.2 are expanded
-// here; a unit test rejects duplicate cells.
+// One concrete table row. Wildcard rows are expanded here; a unit test
+// rejects duplicate cells.
 struct TransitionRule {
   RequestState current;
   RequestEventKind event;
@@ -67,8 +67,8 @@ struct TransitionRule {
   bool terminal = false;
 };
 
-// The expanded table (compile-time constant; the only transition
-// authority). Wildcard rows from m1.md section 11.2 are concrete here.
+// The expanded table (compile-time constant; the only transition authority).
+// Wildcard rows are concrete here.
 struct TransitionRuleSpan {
   const TransitionRule* data;
   size_t size;

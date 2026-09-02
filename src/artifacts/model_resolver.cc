@@ -346,7 +346,7 @@ absl::StatusOr<HubModelMetadata> ParseMetadata(std::string_view body) {
   return HubModelMetadata{std::string(*sha), {files.begin(), files.end()}};
 }
 
-std::string ETag(const internal::HttpResponse& response) {
+std::string Etag(const internal::HttpResponse& response) {
   auto value = response.Header("X-Linked-Etag");
   if (!value.has_value()) value = response.Header("ETag");
   if (!value.has_value()) return {};
@@ -511,7 +511,7 @@ absl::StatusOr<ResolvedModel> internal::ResolveModelWithClient(std::string_view 
       std::filesystem::remove(staged, error);
       return absl::DataLossError("Hugging Face artifact commit does not match model metadata");
     }
-    const std::string etag = ETag(*response);
+    const std::string etag = Etag(*response);
     if (etag.empty()) {
       std::filesystem::remove(staged, error);
       return absl::DataLossError("Hugging Face artifact response has no ETag");

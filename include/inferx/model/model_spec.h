@@ -26,7 +26,7 @@ struct LlamaSpec {
   std::optional<int32_t> bos_token_id;
   std::vector<int32_t> eos_token_ids;
   std::optional<int32_t> pad_token_id;
-  std::optional<artifacts::ArtifactDType> source_weight_type_hint;
+  std::optional<artifacts::ArtifactDtype> source_weight_type_hint;
 };
 
 class ModelSpec {

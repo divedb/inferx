@@ -197,10 +197,9 @@ BENCHMARK(Saturated)->Apply(Configure);
 
 int main(int argc, char** argv) {
   benchmark::Initialize(&argc, argv);
-  benchmark::AddCustomContext("inferx_milestone", "M1");
   benchmark::AddCustomContext(
-      "m1_config", "schema-v1;max_sequences_per_step=request-count;max_tokens_per_step=4096");
-  benchmark::AddCustomContext("m1_workload", "prefill,decode,mixed,saturated;1,32,256,1024");
+      "inferx_config", "schema-v1;max_sequences_per_step=request-count;max_tokens_per_step=4096");
+  benchmark::AddCustomContext("inferx_workload", "prefill,decode,mixed,saturated;1,32,256,1024");
   if (benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
   benchmark::RunSpecifiedBenchmarks();
   benchmark::Shutdown();

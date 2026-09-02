@@ -1,4 +1,4 @@
-// Single-thread deterministic discrete-event simulator (m1.md section 14).
+// Single-thread deterministic discrete-event simulator.
 
 #ifndef INFERX_SIMULATOR_ENGINE_SIMULATOR_H_
 #define INFERX_SIMULATOR_ENGINE_SIMULATOR_H_

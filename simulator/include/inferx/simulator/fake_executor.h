@@ -1,4 +1,4 @@
-// Deterministic ticket owner and completion producer (m1.md section 13).
+// Deterministic ticket owner and completion producer.
 
 #ifndef INFERX_SIMULATOR_FAKE_EXECUTOR_H_
 #define INFERX_SIMULATOR_FAKE_EXECUTOR_H_

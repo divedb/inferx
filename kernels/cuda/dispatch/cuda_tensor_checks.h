@@ -1,6 +1,6 @@
 // Shared request-validation and launch-result helpers for kernels/cuda
 // providers. This is the single copy of the alias/overlap/device checks that
-// the M4 glue duplicated per file; the legacy copies in platform/cuda stay
+// the dispatch glue centralized; the legacy copies in platform/cuda stay
 // untouched during the architecture transition (ADR 0031).
 #ifndef INFERX_KERNELS_CUDA_DISPATCH_CUDA_TENSOR_CHECKS_H_
 #define INFERX_KERNELS_CUDA_DISPATCH_CUDA_TENSOR_CHECKS_H_
@@ -74,8 +74,8 @@ absl::Status ValidateBinaryAlias(const TensorView& left, const TensorView& right
 [[nodiscard]] const void* Address(const TensorView& tensor) noexcept;
 [[nodiscard]] void* Address(const MutableTensorView& tensor) noexcept;
 
-[[nodiscard]] StorageType ToKernelStorageType(DType dtype) noexcept;
-[[nodiscard]] bool SupportedStorage(DType dtype) noexcept;
+[[nodiscard]] StorageType ToKernelStorageType(Dtype dtype) noexcept;
+[[nodiscard]] bool SupportedStorage(Dtype dtype) noexcept;
 
 template <typename View>
 absl::Status ValidateCudaTensor(const View& tensor, uint8_t rank, const char* field) {

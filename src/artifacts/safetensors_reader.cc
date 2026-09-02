@@ -53,7 +53,7 @@ absl::StatusOr<ArtifactTensor> ParseTensor(std::string name, simdjson::dom::elem
   if (!dtype_value.ok()) return dtype_value.status();
   auto dtype_name = internal::String(*dtype_value, path + "/dtype");
   if (!dtype_name.ok()) return dtype_name.status();
-  auto dtype = ParseArtifactDType(*dtype_name);
+  auto dtype = ParseArtifactDtype(*dtype_name);
   if (!dtype.ok()) {
     return internal::JsonError(path + "/dtype", dtype.status().message());
   }

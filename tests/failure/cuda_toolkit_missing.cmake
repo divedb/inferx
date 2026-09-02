@@ -1,4 +1,4 @@
-# Fixture: CUDA requested but the toolkit is absent (m0.md 13.5 row 6). The
+# Fixture: CUDA requested but the toolkit is absent. The
 # bogus compiler path forces detection failure even on machines that have a
 # toolkit; configuration must fail instead of silently disabling CUDA.
 cmake_minimum_required(VERSION 3.28)

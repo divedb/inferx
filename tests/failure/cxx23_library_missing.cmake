@@ -1,4 +1,4 @@
-# Fixture: C++23 library facility missing (m0.md 13.5 row 4). Configures
+# Fixture: C++23 library facility missing. Configures
 # cleanly but the compile must fail with the named missing facility; the
 # sentinel's static asserts name std::expected and the toolchain guidance.
 cmake_minimum_required(VERSION 3.28)

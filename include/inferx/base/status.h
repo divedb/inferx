@@ -1,4 +1,4 @@
-// Status conventions (m1.md section 7.1; ADR 0002/0008).
+// Status conventions (ADR 0002/0008).
 //
 // absl::Status/absl::StatusOr are the only cross-module error types. This
 // header adds the InferX reason classification (stable numeric values used by
@@ -22,8 +22,8 @@ namespace inferx {
 
 // Stable replay/metrics classification. It accompanies a status but never
 // replaces the canonical code. Renumbering or reusing a value requires a
-// replay-schema major change (m1.md section 7.1). The uint16_t
-// representation is fixed by that schema contract.
+// replay-schema major change. The uint16_t representation is fixed by that
+// schema contract.
 enum class ErrorReason : uint16_t {  // NOLINT(performance-enum-size)
   kNone = 0,
   kInvalidConfig = 1,

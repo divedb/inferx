@@ -1,5 +1,5 @@
-// Parsed configuration: one value plus provenance per schema field
-// (m1.md section 8.1). Defaults < JSON file < environment < CLI; later
+// Parsed configuration: one value plus provenance per schema field.
+// Defaults < JSON file < environment < CLI; later
 // sources override only fields they contain, and an invalid value in any
 // source is an error even when a later source would replace it. Validation
 // happens later, in ValidateConfig; this type carries parsed input only.
@@ -23,7 +23,7 @@ struct SourcedValue {
   ConfigSource source = ConfigSource::kDefault;
 };
 
-// Every M1 schema field is an unsigned integer. The X-macro list is the one
+// Every base schema field is an unsigned integer. The X-macro list is the one
 // registry (member, JSON/CLI spelling, default); ranges and cross-field rules
 // live in engine_config.cc; parsing and overlay application live in
 // config_loader.cc. Canonical output sorts lexicographically by field name,
@@ -45,7 +45,7 @@ struct SourcedValue {
   X(FakePrefillLatencyPerTokenNs, "fake_prefill_latency_per_token_ns", 100) \
   X(FakeDecodeLatencyPerSequenceNs, "fake_decode_latency_per_sequence_ns", 100)
 
-// M2 CUDA fields use flattened internal names while JSON serialization keeps
+// CUDA fields use flattened internal names while JSON serialization keeps
 // the documented nested `cuda` object. DeviceBudgetBytes == 0 denotes null.
 #define INFERX_CUDA_CONFIG_FIELDS(X)                                      \
   X(CudaEnabled, "cuda.enabled", 0)                                       \

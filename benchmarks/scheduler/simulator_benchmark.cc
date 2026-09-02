@@ -125,9 +125,8 @@ BENCHMARK(RunSimulator)
 
 int main(int argc, char** argv) {
   benchmark::Initialize(&argc, argv);
-  benchmark::AddCustomContext("inferx_milestone", "M1");
-  benchmark::AddCustomContext("m1_config", "schema-v1;fake-model=0;context=32768");
-  benchmark::AddCustomContext("m1_workload", "prompt=2;output=2;requests=1,32,256");
+  benchmark::AddCustomContext("inferx_config", "schema-v1;fake-model=0;context=32768");
+  benchmark::AddCustomContext("inferx_workload", "prompt=2;output=2;requests=1,32,256");
   if (benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
   benchmark::RunSpecifiedBenchmarks();
   benchmark::Shutdown();

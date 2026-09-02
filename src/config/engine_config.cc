@@ -115,7 +115,7 @@ absl::StatusOr<EngineConfig> EngineConfig::Validate(const ParsedConfig& parsed,
     }
   }
 
-  // Cross-field rules (m1.md section 8.2).
+  // Cross-field rules.
   if (parsed.MaxActiveSequences.value > parsed.MaxQueuedRequests.value) {
     return FieldError("max_active_sequences", "must be <= max_queued_requests");
   }
@@ -126,15 +126,15 @@ absl::StatusOr<EngineConfig> EngineConfig::Validate(const ParsedConfig& parsed,
   }
   if (parsed.MaxPromptTokens.value > parsed.MaxScheduledTokensPerStep.value) {
     return FieldError("max_prompt_tokens",
-                      "must be <= max_scheduled_tokens_per_step in M1 "
-                      "(chunking is M8)");
+                      "must be <= max_scheduled_tokens_per_step while "
+                      "chunking is unsupported");
   }
   if (parsed.MaxModelTokens.value > static_cast<uint64_t>(model.max_context_tokens.value())) {
     return FieldError("max_model_tokens", absl::StrCat("must not exceed model capability ",
                                                        model.max_context_tokens.value()));
   }
   if (!build.simulator) {
-    return FieldError("build_capabilities", "M1 configuration requires the simulator build");
+    return FieldError("build_capabilities", "configuration requires the simulator build");
   }
   if (absl::Status overflow = CheckLatencyOverflow(parsed); !overflow.ok()) {
     return overflow;
@@ -211,7 +211,7 @@ absl::StatusOr<EngineConfig> EngineConfig::Validate(const ParsedConfig& parsed,
 
 std::string EngineConfig::CanonicalJson() const {
   // Schema version first, then lexicographic field order, decimal integers,
-  // no insignificant whitespace (m1.md section 8.3).
+  // no insignificant whitespace.
   std::string out = has_cuda_section_ ? "{\"schema_version\":2" : "{\"schema_version\":1";
   std::vector<std::pair<std::string, uint64_t>> fields;
 #define INFERX_PAIR(camel, json_name, default_value) \

@@ -71,7 +71,7 @@ int OpenWithFallback(int root_fd, std::string_view path, int* error) {
 }
 
 int OpenBeneath(int root_fd, std::string_view path, int* error) {
-#if defined(__linux__) && defined(SYS_openat2) && INFERX_M3_USE_OPENAT2
+#if defined(__linux__) && defined(SYS_openat2) && INFERX_USE_OPENAT2
   struct open_how how {};
   how.flags = O_RDONLY | O_CLOEXEC | O_NOFOLLOW;
   how.resolve = RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS;

@@ -90,9 +90,9 @@ cmake --build --preset cuda-release --parallel
 nvidia-smi --query-gpu=name,compute_cap,driver_version --format=csv
 # (the M2 inferx-device-info tool was removed with the platform substrate)
 ctest --preset cuda-release -L m2 --output-on-failure
-tools/ci/run_compute_sanitizer.sh --preset cuda-release --suite m2 \
+tools/ci/run_compute_sanitizer.sh --preset cuda-release --suite platform \
   --output out/sanitizer/m2
-tools/bench/run_m2_cuda.sh --preset cuda-release --output out/benchmarks/m2
+tools/bench/run_cuda_benchmarks.sh --preset cuda-release --output out/benchmarks/cuda
 ```
 
 - Architectures are explicit (default accepted list: `89`); override in
@@ -117,7 +117,7 @@ out/build/dev-clang/inferx-sim run --config tests/integration/simulator/data/bas
   --workload tests/integration/simulator/data/basic_workload.json --trace out/traces/basic.jsonl
 out/build/dev-clang/inferx-sim replay --trace out/traces/basic.jsonl \
   --output out/traces/basic.replayed.jsonl
-ctest --preset dev-clang -L 'm1-unit|m1-integration|m1-correctness|m1-failure|m1-stress'
+ctest --preset dev-clang -L 'core-unit|core-integration|core-correctness|core-failure|core-stress'
 ```
 
 See [scheduler.md](scheduler.md), [simulator.md](simulator.md), and

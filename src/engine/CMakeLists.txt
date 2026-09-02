@@ -1,6 +1,6 @@
-# inferx_engine: lifecycle ownership layer (m1.md sections 10-11). The
-# LifecycleCoordinator/ResponseSink boundary lands with the simulator stage
-# (M1.6) which fixes its concrete shape; the controller/registry/FSM here
+# inferx_engine: lifecycle ownership layer. The
+# LifecycleCoordinator/ResponseSink boundary has a fixed concrete shape; the
+# controller/registry/FSM here
 # are the authoritative decision and ownership machinery.
 add_library(inferx_engine STATIC
   lifecycle_coordinator.cc

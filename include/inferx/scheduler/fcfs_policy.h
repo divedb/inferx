@@ -1,4 +1,4 @@
-// Allocation-free deterministic FCFS policy (m1.md section 12.3).
+// Allocation-free deterministic FCFS policy.
 
 #ifndef INFERX_SCHEDULER_FCFS_POLICY_H_
 #define INFERX_SCHEDULER_FCFS_POLICY_H_

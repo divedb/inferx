@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Format check/fix for InferX-owned sources (m0.md section 9.1).
+# Format check/fix for InferX-owned sources.
 #
 # The file list comes from `git ls-files` limited to InferX-owned extensions,
 # so third_party (gitlinks, never recursed) and out/ (ignored, untracked) are

@@ -1,4 +1,4 @@
-# Hardware-neutral M2 accounting, pool, workspace, and fence contracts.
+# Hardware-neutral accounting, pool, workspace, and fence contracts.
 add_library(inferx_runtime STATIC
   buffer_pool.cc
   completion_fence.cc

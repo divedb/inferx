@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# clang-tidy over InferX compile commands (m0.md section 9.2).
+# clang-tidy over InferX compile commands.
 #
 # Requires an existing 'analysis' configure directory (or any build dir with
 # compile_commands.json given as $1). Selects project files only — dependency

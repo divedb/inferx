@@ -1,4 +1,4 @@
-# inferx-sim: deterministic M1 simulator/config/replay developer CLI.
+# inferx-sim: deterministic simulator/config/replay developer CLI.
 add_executable(inferx-sim main.cc)
 inferx_apply_project_options(inferx-sim)
 target_link_libraries(inferx-sim PRIVATE

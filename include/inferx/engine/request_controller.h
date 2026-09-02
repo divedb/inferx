@@ -1,4 +1,4 @@
-// RequestController: the only RequestContext mutator (m1.md section 11.3).
+// RequestController: the only RequestContext mutator.
 // Prepare performs every fallible/allocation-bearing step; Commit is
 // noexcept and only moves prepared values and updates fixed-capacity state.
 
@@ -14,7 +14,7 @@
 
 namespace inferx {
 
-// Opaque outside the lifecycle implementation (m1.md section 11.3).
+// Opaque outside the lifecycle implementation.
 class PreparedTransition {
  public:
   PreparedTransition(PreparedTransition&&) noexcept;

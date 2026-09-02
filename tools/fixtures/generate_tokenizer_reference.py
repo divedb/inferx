@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate the M3 tokenizer differential corpus (m3.md section 18 gate).
+"""Generate the tokenizer differential corpus.
 
-For every checkpoint under tests/fixtures/m3/tokenizer_reference/, produces
+For every checkpoint under tests/fixtures/model/tokenizer_reference/, produces
 `cases.jsonl`: 2,500 deterministic (text, ids, decode) records produced by
 the pinned Hugging Face Python `tokenizers` oracle. The committed corpus is
 the acceptance evidence; this script regenerates it byte-identically from
@@ -10,7 +10,7 @@ its fixed seed.
 Usage:
     out/fixtures-venv/bin/python tools/fixtures/generate_tokenizer_reference.py
 
-The oracle version is pinned in requirements-m3.lock and recorded in
+The oracle version is pinned in tokenizer-requirements.lock and recorded in
 MANIFEST.json next to the corpus.
 """
 
@@ -25,7 +25,7 @@ from pathlib import Path
 from tokenizers import Tokenizer
 
 REPO = Path(__file__).resolve().parents[2]
-REFERENCE = REPO / "tests/fixtures/m3/tokenizer_reference"
+REFERENCE = REPO / "tests/fixtures/model/tokenizer_reference"
 CASES_PER_CHECKPOINT = 2500
 SEED = 20260902
 

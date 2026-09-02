@@ -142,7 +142,7 @@ absl::StatusOr<ParsedConfig> LoadConfig(const std::optional<FieldValues>& file_v
                                         const std::optional<FieldValues>& command_line_values) {
   ParsedConfig parsed;
   // Invalid values in ANY layer are errors even when a later layer would
-  // override them (m1.md section 8.1): broken deployment inputs must surface.
+  // override them: broken deployment inputs must surface.
   if (file_values.has_value()) {
     absl::Status status = ApplyLayer(*file_values, ConfigSource::kFile, "config", parsed);
     if (!status.ok()) {

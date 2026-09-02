@@ -23,7 +23,7 @@ class FlashInferRmsNormProvider final : public RmsNormProvider {
     }
     if (probe == nullptr) return true;  // chain probe: no shape constraints
     const uint64_t hidden = probe->input.shape().dim(1);
-    const uint32_t vec = probe->input.dtype() == DType::kFloat32 ? 4 : 8;
+    const uint32_t vec = probe->input.dtype() == Dtype::kFloat32 ? 4 : 8;
     return hidden % vec == 0;
   }
   absl::Status Launch(const ops::RmsNormRequest& request,

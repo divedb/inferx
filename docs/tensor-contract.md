@@ -5,9 +5,9 @@ operators. ADR 0014 is normative; this document is the caller guide.
 
 ## Values and layouts
 
-`DType` is a checked closed set from one-byte bool/integer storage through
+`Dtype` is a checked closed set from one-byte bool/integer storage through
 FP16, BF16, FP32, and FP64. FP16/BF16 are storage-only in M2. Always use
-`DTypeSize`, `DTypeName`, `IsIntegral`, and `IsFloatingPoint`; invalid enum
+`DtypeSize`, `DtypeName`, `IsIntegral`, and `IsFloatingPoint`; invalid enum
 values return `InvalidArgument`.
 
 `Shape::Create` and `Strides::CreateElements` accept rank 0 through 8 and keep
@@ -86,7 +86,7 @@ auto strides = inferx::Strides::Contiguous(*shape);
 auto bytes = buffer->MutableView({inferx::ByteCount(0),
                                   inferx::ByteCount(4096)});
 auto tensor = inferx::MutableTensorView::Create(
-    *bytes, inferx::DType::kFloat32, *shape, *strides);
+    *bytes, inferx::Dtype::kFloat32, *shape, *strides);
 if (!tensor.ok()) return tensor.status();
 
 // All views must be finished before explicit release.

@@ -99,29 +99,29 @@ Workspace SplitWorkspace(void* workspace, uint64_t batch, uint64_t tiles) {
   return w;
 }
 
-template <typename DType>
-flashinfer::paged_kv_t<DType, int32_t> MakePagedKv(const Workspace& w, const void* key_cache,
+template <typename Dtype>
+flashinfer::paged_kv_t<Dtype, int32_t> MakePagedKv(const Workspace& w, const void* key_cache,
                                                    const void* value_cache, uint64_t batch,
                                                    uint64_t max_context, uint64_t kv_heads,
                                                    uint64_t head_dim) {
-  return flashinfer::paged_kv_t<DType, int32_t>(
+  return flashinfer::paged_kv_t<Dtype, int32_t>(
       static_cast<uint32_t>(kv_heads), static_cast<uint32_t>(max_context),
       static_cast<uint32_t>(head_dim), static_cast<uint32_t>(batch), flashinfer::QKVLayout::kNHD,
-      static_cast<DType*>(const_cast<void*>(key_cache)),
-      static_cast<DType*>(const_cast<void*>(value_cache)), w.kv_indices, w.kv_indptr,
+      static_cast<Dtype*>(const_cast<void*>(key_cache)),
+      static_cast<Dtype*>(const_cast<void*>(value_cache)), w.kv_indices, w.kv_indptr,
       w.last_page_len);
 }
 
-template <typename DType>
+template <typename Dtype>
 cudaError_t DispatchDecode(const Workspace& w, const void* query, const void* key_cache,
                            const void* value_cache, void* output, uint64_t batch,
                            uint64_t max_context, uint64_t query_heads, uint64_t kv_heads,
                            uint64_t head_dim, cudaStream_t stream) {
   auto paged_kv =
-      MakePagedKv<DType>(w, key_cache, value_cache, batch, max_context, kv_heads, head_dim);
-  flashinfer::BatchDecodeParams<DType, DType, DType, int32_t> params(
-      static_cast<DType*>(const_cast<void*>(query)), /*q_rope_offset=*/nullptr, paged_kv,
-      static_cast<DType*>(output),
+      MakePagedKv<Dtype>(w, key_cache, value_cache, batch, max_context, kv_heads, head_dim);
+  flashinfer::BatchDecodeParams<Dtype, Dtype, Dtype, int32_t> params(
+      static_cast<Dtype*>(const_cast<void*>(query)), /*q_rope_offset=*/nullptr, paged_kv,
+      static_cast<Dtype*>(output),
       /*lse=*/nullptr, /*maybe_alibi_slopes=*/nullptr, static_cast<uint32_t>(query_heads),
       /*q_stride_n=*/static_cast<int32_t>(query_heads * head_dim),
       /*q_stride_h=*/static_cast<int32_t>(head_dim),
@@ -146,19 +146,19 @@ cudaError_t DispatchDecode(const Workspace& w, const void* query, const void* ke
   }
 }
 
-template <typename DType>
+template <typename Dtype>
 cudaError_t DispatchPrefill(const Workspace& w, const void* query, const void* key_cache,
                             const void* value_cache, void* output, uint64_t batch,
                             uint64_t total_queries, uint64_t max_context, uint64_t query_heads,
                             uint64_t kv_heads, uint64_t head_dim, uint32_t tiles,
                             cudaStream_t stream) {
   auto paged_kv =
-      MakePagedKv<DType>(w, key_cache, value_cache, batch, max_context, kv_heads, head_dim);
-  using Params = flashinfer::BatchPrefillPagedParams<DType, DType, DType, int32_t>;
-  Params params(static_cast<DType*>(const_cast<void*>(query)), paged_kv,
+      MakePagedKv<Dtype>(w, key_cache, value_cache, batch, max_context, kv_heads, head_dim);
+  using Params = flashinfer::BatchPrefillPagedParams<Dtype, Dtype, Dtype, int32_t>;
+  Params params(static_cast<Dtype*>(const_cast<void*>(query)), paged_kv,
                 /*maybe_custom_mask=*/nullptr, w.prefill_aux,
                 /*maybe_mask_indptr=*/nullptr, /*maybe_q_rope_offset=*/nullptr,
-                static_cast<DType*>(output), /*lse=*/nullptr, /*maybe_alibi_slopes=*/nullptr,
+                static_cast<Dtype*>(output), /*lse=*/nullptr, /*maybe_alibi_slopes=*/nullptr,
                 static_cast<uint32_t>(query_heads),
                 /*q_stride_n=*/static_cast<int32_t>(query_heads * head_dim),
                 /*q_stride_h=*/static_cast<int32_t>(head_dim),

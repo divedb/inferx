@@ -1,5 +1,5 @@
 // Build-only kernels-layer access to validated buffer addresses. This
-// accessor moved from the retired M2 platform layer (ADR 0031 retirement
+// accessor moved from the retired platform layer (ADR 0031 retirement
 // addendum): raw-address resolution is needed by every device backend, so
 // it lives with the unified kernels surface.
 #ifndef INFERX_KERNELS_CUDA_BUFFER_ACCESS_H_

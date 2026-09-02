@@ -1,4 +1,4 @@
-# Google Benchmark smoke (m0.md section 7.3): proves registration and JSON
+# Google Benchmark smoke: proves registration and JSON
 # output; it claims no meaningful performance number. Not registered with
 # CTest — CI's metrics job runs it explicitly with --benchmark_format=json.
 
@@ -6,12 +6,12 @@ add_executable(inferx_base_benchmark base_startup_benchmark.cc)
 inferx_apply_project_options(inferx_base_benchmark)
 target_link_libraries(inferx_base_benchmark PRIVATE inferx::base benchmark::benchmark)
 
-if(INFERX_BUILD_M4_BENCHMARKS)
-  add_executable(inferx_m4_dispatch_benchmark m4/dispatch_benchmark.cc)
-  inferx_apply_project_options(inferx_m4_dispatch_benchmark)
-  target_link_libraries(inferx_m4_dispatch_benchmark PRIVATE
+if(INFERX_BUILD_OPERATOR_BENCHMARKS)
+  add_executable(inferx_dispatch_benchmark dispatch/dispatch_benchmark.cc)
+  inferx_apply_project_options(inferx_dispatch_benchmark)
+  target_link_libraries(inferx_dispatch_benchmark PRIVATE
     inferx::ops benchmark::benchmark)
-  add_custom_target(inferx_m4_benchmarks DEPENDS inferx_m4_dispatch_benchmark)
+  add_custom_target(inferx_operator_benchmarks DEPENDS inferx_dispatch_benchmark)
 endif()
 
 # The allocation gate interposes the global allocation operators. TSan supplies

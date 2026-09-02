@@ -29,9 +29,9 @@ std::string NamesMessage(std::string_view prefix, const std::vector<std::string>
   return output;
 }
 
-bool IsSupportedFloatingWeight(artifacts::ArtifactDType dtype) {
-  return dtype == artifacts::ArtifactDType::kF16 || dtype == artifacts::ArtifactDType::kBf16 ||
-         dtype == artifacts::ArtifactDType::kF32;
+bool IsSupportedFloatingWeight(artifacts::ArtifactDtype dtype) {
+  return dtype == artifacts::ArtifactDtype::kF16 || dtype == artifacts::ArtifactDtype::kBf16 ||
+         dtype == artifacts::ArtifactDtype::kF32;
 }
 
 }  // namespace
@@ -83,7 +83,7 @@ absl::StatusOr<WeightPlan> WeightPlanner::Build(const ModelSpec& model,
   std::set<std::string> consumed_names;
   std::map<ParameterId, const ParameterSpec*> parameters_by_id;
   std::vector<std::string> missing;
-  std::optional<artifacts::ArtifactDType> package_dtype;
+  std::optional<artifacts::ArtifactDtype> package_dtype;
   WeightPlan plan;
   plan.coverage.expected = parameters.size();
   plan.coverage.external = external.tensors().size();
@@ -152,7 +152,7 @@ absl::StatusOr<WeightPlan> WeightPlanner::Build(const ModelSpec& model,
     if (!IsSupportedFloatingWeight(source->tensor.dtype)) {
       return absl::UnimplementedError(
           absl::StrCat(parameter.canonical_name, ": source dtype ",
-                       artifacts::ArtifactDTypeName(source->tensor.dtype),
+                       artifacts::ArtifactDtypeName(source->tensor.dtype),
                        " is not supported for dense Llama weights"));
     }
     if (std::find(parameter.allowed_source_dtypes.begin(), parameter.allowed_source_dtypes.end(),
@@ -171,7 +171,7 @@ absl::StatusOr<WeightPlan> WeightPlanner::Build(const ModelSpec& model,
           absl::StrCat(parameter.canonical_name, ": source packed byte count mismatch"));
     }
     if (package_dtype.value_or(source->tensor.dtype) != source->tensor.dtype) {
-      return absl::UnimplementedError("mixed source weight dtypes are unsupported in M3");
+      return absl::UnimplementedError("mixed source weight dtypes are unsupported");
     }
     package_dtype = source->tensor.dtype;
     const artifacts::ArtifactByteRange file_range{source->tensor.absolute_file_offset,

@@ -1,6 +1,6 @@
-// Abseil qualification test (m0.md section 7.3; ADR 0002): constructs and
-// inspects absl::Status/StatusOr entirely inside this test target so the M1
-// error API is proven without exposing Abseil from inferx::base in M0.
+// Abseil qualification test (ADR 0002): constructs and inspects
+// absl::Status/StatusOr entirely inside this test target so the error API is
+// proven without exposing Abseil from inferx::base prematurely.
 #include <gtest/gtest.h>
 
 #include <string>

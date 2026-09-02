@@ -12,7 +12,7 @@ namespace inferx::kernels::cuda {
 
 absl::Status ValidateEmbeddingForCuda(const ops::EmbeddingRequest& request,
                                       const CudaLaunchContext& context) {
-  if (request.token_ids.dtype() != DType::kInt32 || request.token_ids.shape().rank() != 1 ||
+  if (request.token_ids.dtype() != Dtype::kInt32 || request.token_ids.shape().rank() != 1 ||
       !request.token_ids.layout().contiguous ||
       request.token_ids.buffer().device().kind != DeviceKind::kCuda ||
       request.token_ids.buffer().memory_kind() != MemoryKind::kDevice) {
@@ -89,7 +89,7 @@ absl::Status ValidateRopeForCuda(const ops::RopeRequest& request,
   if (!status.ok()) return status;
   status = ValidateCudaTensor(request.key_output, 3, "kernels_cuda.rope.key_output");
   if (!status.ok()) return status;
-  if (request.positions.dtype() != DType::kInt32 || request.positions.shape().rank() != 1 ||
+  if (request.positions.dtype() != Dtype::kInt32 || request.positions.shape().rank() != 1 ||
       !request.positions.layout().contiguous ||
       request.positions.buffer().device().kind != DeviceKind::kCuda ||
       request.positions.buffer().memory_kind() != MemoryKind::kDevice ||

@@ -1,5 +1,5 @@
-// C++23 feature sentinel declarations (m0.md section 7.2): exercises library
-// and language facilities the roadmap relies on, not just compiler macros.
+// C++23 feature sentinel declarations: exercises library
+// and language facilities the project relies on, not just compiler macros.
 // The missing-facility fixture compiles this header at C++17 to prove the
 // diagnostics name the missing facility.
 #ifndef INFERX_TESTS_COMPILE_CXX23_FEATURES_H_
@@ -121,7 +121,7 @@ inline bool HasPrefix(std::string_view text, std::string_view prefix) {
   return text.size() >= prefix.size() && text.substr(0, prefix.size()) == prefix;
 }
 
-// --- Concepts constraint used by later milestones ---------------------------
+// --- Concepts constraint used by later components ---------------------------
 template <typename T>
 concept Numeric = std::integral<T> || std::floating_point<T>;
 

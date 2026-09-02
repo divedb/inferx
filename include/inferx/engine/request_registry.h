@@ -1,4 +1,4 @@
-// Request registry (m1.md section 10.2): owns contexts; hash map for lookup
+// Request registry: owns contexts; hash map for lookup
 // plus a btree map owning deterministic live order. Insert is transactional;
 // erase is terminal-only.
 

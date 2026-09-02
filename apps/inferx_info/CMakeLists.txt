@@ -1,4 +1,4 @@
-# inferx-info: build/toolchain metadata smoke CLI (m0.md section 7.1).
+# inferx-info: build/toolchain metadata smoke CLI.
 
 add_executable(inferx-info main.cc)
 inferx_apply_project_options(inferx-info)

@@ -25,7 +25,7 @@ class Shape {
     return std::span<const uint64_t>(dimensions_.data(), rank_);
   }
   [[nodiscard]] absl::StatusOr<uint64_t> NumElements() const;
-  [[nodiscard]] absl::StatusOr<ByteCount> Bytes(DType dtype) const;
+  [[nodiscard]] absl::StatusOr<ByteCount> Bytes(Dtype dtype) const;
 
   friend constexpr bool operator==(const Shape&, const Shape&) = default;
 

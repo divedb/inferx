@@ -1,5 +1,5 @@
-// Response events (m1.md section 9.2): per-request token deltas precede
-// exactly one terminal response. M1 exposes no text/logprobs/usage metadata.
+// Response events: per-request token deltas precede exactly one terminal
+// response. No text, log-probability, or usage metadata is exposed.
 
 #ifndef INFERX_API_RESPONSE_EVENT_H_
 #define INFERX_API_RESPONSE_EVENT_H_

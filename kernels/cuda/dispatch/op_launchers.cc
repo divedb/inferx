@@ -52,7 +52,7 @@ absl::Status ActMul(const ActMulRequest& request, const CudaLaunchContext& conte
 
 bool ActMulAvailable(const ActMulRequest* probe, uint16_t compute_capability) {
   if (!AlwaysAvailable(nullptr, compute_capability)) return false;
-  return probe == nullptr || probe->input.dtype() != DType::kUInt8;
+  return probe == nullptr || probe->input.dtype() != Dtype::kUInt8;
 }
 
 absl::Status Add3(const Add3Request& request, const CudaLaunchContext& context) {
@@ -90,7 +90,7 @@ absl::Status FusedAddRmsNorm(const FusedAddRmsNormRequest& request,
 bool FusedAddRmsNormAvailable(const FusedAddRmsNormRequest* probe, uint16_t compute_capability) {
   if (!AlwaysAvailable(nullptr, compute_capability)) return false;
   if (probe == nullptr) return true;
-  const uint32_t vec = probe->input.dtype() == DType::kFloat32 ? 4 : 8;
+  const uint32_t vec = probe->input.dtype() == Dtype::kFloat32 ? 4 : 8;
   return probe->input.shape().rank() == 2 && probe->input.shape().dim(1) % vec == 0;
 }
 
@@ -110,7 +110,7 @@ absl::Status GemmaRmsNorm(const GemmaRmsNormRequest& request, const CudaLaunchCo
 bool GemmaRmsNormAvailable(const GemmaRmsNormRequest* probe, uint16_t compute_capability) {
   if (!AlwaysAvailable(nullptr, compute_capability)) return false;
   if (probe == nullptr) return true;
-  const uint32_t vec = probe->input.dtype() == DType::kFloat32 ? 4 : 8;
+  const uint32_t vec = probe->input.dtype() == Dtype::kFloat32 ? 4 : 8;
   return probe->input.shape().rank() == 2 && probe->input.shape().dim(1) % vec == 0;
 }
 
@@ -131,7 +131,7 @@ absl::Status QkRmsNorm(const QkRmsNormRequest& request, const CudaLaunchContext&
 bool QkRmsNormAvailable(const QkRmsNormRequest* probe, uint16_t compute_capability) {
   if (!AlwaysAvailable(nullptr, compute_capability)) return false;
   if (probe == nullptr) return true;
-  const uint32_t vec = probe->query.dtype() == DType::kFloat32 ? 4 : 8;
+  const uint32_t vec = probe->query.dtype() == Dtype::kFloat32 ? 4 : 8;
   return probe->query.shape().rank() == 3 && probe->query.shape().dim(2) % vec == 0;
 }
 
@@ -184,7 +184,7 @@ absl::Status TopPRenorm(const TopPRenormRequest& request, const CudaLaunchContex
 
 bool TopPRenormAvailable(const TopPRenormRequest* probe, uint16_t compute_capability) {
   if (!AlwaysAvailable(nullptr, compute_capability)) return false;
-  return probe == nullptr || probe->probs.dtype() == DType::kFloat32;
+  return probe == nullptr || probe->probs.dtype() == Dtype::kFloat32;
 }
 
 absl::Status TopKRenorm(const TopKRenormRequest& request, const CudaLaunchContext& context) {

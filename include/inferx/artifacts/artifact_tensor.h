@@ -16,7 +16,7 @@ struct ArtifactByteRange {
   friend bool operator==(const ArtifactByteRange&, const ArtifactByteRange&) = default;
 };
 
-enum class ArtifactDType : uint8_t {
+enum class ArtifactDtype : uint8_t {
   kBool,
   kF4,
   kF6E2M3,
@@ -45,16 +45,16 @@ using ArtifactShape = std::vector<uint64_t>;
 
 struct ArtifactTensor {
   std::string name;
-  ArtifactDType dtype = ArtifactDType::kF32;
+  ArtifactDtype dtype = ArtifactDtype::kF32;
   ArtifactShape shape;
   ArtifactByteRange data;
   uint64_t absolute_file_offset = 0;
   uint64_t packed_size_bytes = 0;
 };
 
-absl::StatusOr<ArtifactDType> ParseArtifactDType(std::string_view spelling);
-std::string_view ArtifactDTypeName(ArtifactDType dtype);
-uint32_t ArtifactDTypeBits(ArtifactDType dtype);
-absl::StatusOr<uint64_t> PackedTensorBytes(ArtifactDType dtype, const ArtifactShape& shape);
+absl::StatusOr<ArtifactDtype> ParseArtifactDtype(std::string_view spelling);
+std::string_view ArtifactDtypeName(ArtifactDtype dtype);
+uint32_t ArtifactDtypeBits(ArtifactDtype dtype);
+absl::StatusOr<uint64_t> PackedTensorBytes(ArtifactDtype dtype, const ArtifactShape& shape);
 
 }  // namespace inferx::artifacts

@@ -13,9 +13,9 @@ namespace {
 absl::Status ValidateElementwiseInput(const TensorView& input, const MutableTensorView& output,
                                       const char* field) {
   absl::Status status =
-      internal::ValidateTensor(input, DType::kFloat32, input.shape().rank(), field);
+      internal::ValidateTensor(input, Dtype::kFloat32, input.shape().rank(), field);
   if (!status.ok()) return status;
-  status = internal::ValidateTensor(output, DType::kFloat32, input.shape().rank(), field);
+  status = internal::ValidateTensor(output, Dtype::kFloat32, input.shape().rank(), field);
   if (!status.ok()) return status;
   if (input.shape().rank() == 0 || input.shape() != output.shape()) {
     return absl::InvalidArgumentError("elementwise.shape: positive equal-rank shapes are required");
@@ -62,7 +62,7 @@ absl::Status ReferenceSilu(const SiluRequest& request) {
 absl::Status ValidateMultiply(const MultiplyRequest& request) {
   absl::Status status = ValidateElementwiseInput(request.left, request.output, "multiply.left");
   if (!status.ok()) return status;
-  status = internal::ValidateTensor(request.right, DType::kFloat32, request.left.shape().rank(),
+  status = internal::ValidateTensor(request.right, Dtype::kFloat32, request.left.shape().rank(),
                                     "multiply.right");
   if (!status.ok()) return status;
   if (request.right.shape() != request.left.shape()) {
@@ -127,7 +127,7 @@ absl::Status ReferenceSwiGlu(const SwiGluRequest& request) {
 absl::Status ValidateResidual(const ResidualRequest& request) {
   absl::Status status = ValidateElementwiseInput(request.left, request.output, "residual.left");
   if (!status.ok()) return status;
-  status = internal::ValidateTensor(request.right, DType::kFloat32, request.left.shape().rank(),
+  status = internal::ValidateTensor(request.right, Dtype::kFloat32, request.left.shape().rank(),
                                     "residual.right");
   if (!status.ok()) return status;
   if (request.right.shape() != request.left.shape()) {

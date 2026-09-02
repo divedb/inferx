@@ -1,4 +1,4 @@
-# CPU presubmit lanes (m0.md section 11.1; ADR 0006). Every job below is
+# CPU presubmit lanes (ADR 0006). Every job below is
 # required before merge. Checkout never uses `submodules: recursive`; the job
 # runs the core bootstrap profile so optional dependencies cannot slow or
 # break CPU CI. Third-party actions are pinned to commit SHAs with the
@@ -42,7 +42,7 @@ jobs:
         run: cmake -S . -B out/build/policy -G Ninja -DINFERX_BUILD_TOOLS=OFF -DBUILD_TESTING=OFF && cmake --build out/build/policy --target format-check
       - name: No generated or tracked build outputs
         run: |
-          # Generated content must stay out of the source tree (m0.md 16).
+          # Generated content must stay out of the source tree.
           if git ls-files -- 'out/*' 'build*/*' | grep -q .; then
             echo "error: build outputs are tracked in git" >&2; exit 1
           fi
@@ -81,7 +81,7 @@ jobs:
         run: |
           cmake --preset dev-gcc
           cmake --build --preset dev-gcc --parallel
-          python3 tools/ci/check_m1_labels.py --build-dir out/build/dev-gcc
+          python3 tools/ci/check_test_labels.py --build-dir out/build/dev-gcc
           ctest --preset dev-gcc
       - name: Upload test results
         if: always()
@@ -104,7 +104,7 @@ jobs:
         run: |
           cmake --preset dev-clang
           cmake --build --preset dev-clang --parallel
-          python3 tools/ci/check_m1_labels.py --build-dir out/build/dev-clang
+          python3 tools/ci/check_test_labels.py --build-dir out/build/dev-clang
           ctest --preset dev-clang
 
   asan-ubsan:
@@ -119,21 +119,21 @@ jobs:
         run: |
           cmake --preset asan-ubsan
           cmake --build --preset asan-ubsan --parallel
-          python3 tools/ci/check_m1_labels.py --build-dir out/build/asan-ubsan
-          ctest --preset asan-ubsan -L 'm1|m4' --output-on-failure
+          python3 tools/ci/check_test_labels.py --build-dir out/build/asan-ubsan
+          ctest --preset asan-ubsan -L 'core|operators' --output-on-failure
       - name: Nightly 1,000,000-operation deterministic stress
         if: github.event_name == 'schedule'
         run: |
           out/build/asan-ubsan/inferx_simulator_stress \
-            --seed=0x4d31535452455353 \
+            --seed=5562318636401906515 \
             --operations=1000000 \
-            --failure_output=out/failures/m1
+            --failure_output=out/failures/simulator
       - name: Upload minimized stress failures
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: m1-stress-failures
-          path: out/failures/m1/
+          name: simulator-stress-failures
+          path: out/failures/simulator/
           if-no-files-found: ignore
 
   tsan:
@@ -148,7 +148,7 @@ jobs:
         run: |
           cmake --preset tsan
           cmake --build --preset tsan --parallel
-          ctest --preset tsan -L m1-channel --output-on-failure
+          ctest --preset tsan -L core-channel --output-on-failure
 
   analysis:
     name: analysis (clang-tidy, IWYU, headers)
@@ -194,19 +194,19 @@ jobs:
       - name: Repeated fresh builds (stress)
         run: python3 tools/ci/repeat_build.py --jobs "$(nproc)"
       - name: Capture metrics JSON
-        run: python3 tools/ci/measure_build.py --preset cpu-release --output out/metrics/m0.json
+        run: python3 tools/ci/measure_build.py --preset cpu-release --output out/metrics/build.json
       - name: Benchmark JSON artifact
         run: |
           out/build/cpu-release/inferx_base_benchmark --benchmark_format=json \
             --benchmark_out=out/metrics/base_startup_benchmark.json \
             --benchmark_repetitions=3 || true
           out/build/cpu-release/inferx_scheduler_benchmark --benchmark_format=json \
-            --benchmark_out=out/metrics/m1-scheduler.json
-          python3 tools/ci/check_m1_benchmark.py --input out/metrics/m1-scheduler.json
+            --benchmark_out=out/metrics/scheduler.json
+          python3 tools/ci/check_scheduler_benchmark.py --input out/metrics/scheduler.json
           out/build/cpu-release/inferx_simulator_benchmark --benchmark_format=json \
-            --benchmark_out=out/metrics/m1-simulator.json
+            --benchmark_out=out/metrics/simulator.json
           python3 -c "import json;json.load(open('out/metrics/base_startup_benchmark.json'))"
-          python3 -c "import json;json.load(open('out/metrics/m1-simulator.json'))"
+          python3 -c "import json;json.load(open('out/metrics/simulator.json'))"
       - name: Upload metrics
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -227,7 +227,7 @@ jobs:
           cmake --preset cpu-release
           cmake --build --preset cpu-release --parallel
           cmake --install out/build/cpu-release --prefix out/install/cpu-release
-          tools/deps/generate_sbom.sh out/install/cpu-release out/sbom/inferx-m0.spdx.json
+          tools/deps/generate_sbom.sh out/install/cpu-release out/sbom/inferx.spdx.json
       - name: Upload SBOM
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

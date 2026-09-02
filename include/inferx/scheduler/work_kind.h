@@ -1,4 +1,4 @@
-// Hardware-neutral scheduler work vocabulary (m1.md sections 11-13).
+// Hardware-neutral scheduler work vocabulary.
 
 #ifndef INFERX_SCHEDULER_WORK_KIND_H_
 #define INFERX_SCHEDULER_WORK_KIND_H_

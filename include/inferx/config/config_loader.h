@@ -1,6 +1,6 @@
-// Configuration loading: source precedence and strict integer parsing
-// (m1.md sections 8.1-8.2). JSON is read by a private simdjson adapter; no
-// simdjson type appears in this public header.
+// Configuration loading with source precedence and strict integer parsing.
+// JSON is read by a private simdjson adapter; no simdjson type appears in
+// this public header.
 
 #ifndef INFERX_CONFIG_CONFIG_LOADER_H_
 #define INFERX_CONFIG_CONFIG_LOADER_H_

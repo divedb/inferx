@@ -11,11 +11,11 @@
 namespace inferx::ops {
 
 absl::Status ValidateGemm(const GemmRequest& request) {
-  absl::Status status = internal::ValidateTensor(request.input, DType::kFloat32, 2, "gemm.input");
+  absl::Status status = internal::ValidateTensor(request.input, Dtype::kFloat32, 2, "gemm.input");
   if (!status.ok()) return status;
-  status = internal::ValidateTensor(request.weight, DType::kFloat32, 2, "gemm.weight");
+  status = internal::ValidateTensor(request.weight, Dtype::kFloat32, 2, "gemm.weight");
   if (!status.ok()) return status;
-  status = internal::ValidateTensor(request.output, DType::kFloat32, 2, "gemm.output");
+  status = internal::ValidateTensor(request.output, Dtype::kFloat32, 2, "gemm.output");
   if (!status.ok()) return status;
   const uint64_t rows = request.input.shape().dim(0);
   const uint64_t inner = request.input.shape().dim(1);
@@ -34,7 +34,7 @@ absl::Status ValidateGemm(const GemmRequest& request) {
     return absl::InvalidArgumentError("gemm.addend: nonzero beta requires C");
   }
   if (request.addend.has_value()) {
-    status = internal::ValidateTensor(*request.addend, DType::kFloat32, 2, "gemm.addend");
+    status = internal::ValidateTensor(*request.addend, Dtype::kFloat32, 2, "gemm.addend");
     if (!status.ok()) return status;
     if (request.addend->shape() != request.output.shape()) {
       return absl::InvalidArgumentError("gemm.addend: expected shape [M,N]");

@@ -80,8 +80,7 @@ absl::Status ValidateAbsentOrNull(simdjson::dom::object object, std::string_view
   auto field = Optional(object, key);
   if (!field.ok()) return field.status();
   if (field->present && !field->value.is_null()) {
-    return absl::UnimplementedError(
-        absl::StrCat("/", key, ": recognized feature is unsupported in M3"));
+    return absl::UnimplementedError(absl::StrCat("/", key, ": recognized feature is unsupported"));
   }
   return absl::OkStatus();
 }
@@ -92,8 +91,8 @@ ParameterSpec MakeParameter(std::string name, ParameterRole role, artifacts::Art
                        std::move(name),
                        role,
                        std::move(shape),
-                       {artifacts::ArtifactDType::kF16, artifacts::ArtifactDType::kBf16,
-                        artifacts::ArtifactDType::kF32},
+                       {artifacts::ArtifactDtype::kF16, artifacts::ArtifactDtype::kBf16,
+                        artifacts::ArtifactDtype::kF32},
                        layer,
                        std::nullopt};
 }
@@ -212,7 +211,7 @@ absl::StatusOr<ModelSpec> LlamaModelFactory::ParseConfig(
   if (*hidden_size > kMaxModelDimension || *intermediate_size > kMaxModelDimension ||
       *layer_count > kMaxModelLayers || *attention_heads > kMaxAttentionHeads ||
       *kv_heads > kMaxAttentionHeads) {
-    return absl::ResourceExhaustedError("Llama dimensions exceed the M3 model resource limits");
+    return absl::ResourceExhaustedError("Llama dimensions exceed the model resource limits");
   }
   if (*vocab_size > static_cast<uint64_t>(std::numeric_limits<int32_t>::max()) ||
       *layer_count > std::numeric_limits<uint32_t>::max() ||
@@ -236,8 +235,7 @@ absl::StatusOr<ModelSpec> LlamaModelFactory::ParseConfig(
   auto max_positions = RequiredPositive(*root, "max_position_embeddings");
   if (!max_positions.ok()) return max_positions.status();
   if (*max_positions > kMaxModelContext) {
-    return absl::ResourceExhaustedError(
-        "max_position_embeddings exceeds the M3 model context limit");
+    return absl::ResourceExhaustedError("max_position_embeddings exceeds the model context limit");
   }
 
   auto eps_value = artifacts::internal::Required(*root, "rms_norm_eps", "");
@@ -337,18 +335,18 @@ absl::StatusOr<ModelSpec> LlamaModelFactory::ParseConfig(
   std::sort(eos.begin(), eos.end());
   eos.erase(std::unique(eos.begin(), eos.end()), eos.end());
 
-  std::optional<artifacts::ArtifactDType> dtype_hint;
+  std::optional<artifacts::ArtifactDtype> dtype_hint;
   auto torch_dtype = Optional(*root, "torch_dtype");
   if (!torch_dtype.ok()) return torch_dtype.status();
   if (torch_dtype->present && !torch_dtype->value.is_null()) {
     auto value = artifacts::internal::String(torch_dtype->value, "/torch_dtype");
     if (!value.ok()) return value.status();
     if (*value == "float16" || *value == "half" || *value == "torch.float16") {
-      dtype_hint = artifacts::ArtifactDType::kF16;
+      dtype_hint = artifacts::ArtifactDtype::kF16;
     } else if (*value == "bfloat16" || *value == "torch.bfloat16") {
-      dtype_hint = artifacts::ArtifactDType::kBf16;
+      dtype_hint = artifacts::ArtifactDtype::kBf16;
     } else if (*value == "float32" || *value == "float" || *value == "torch.float32") {
-      dtype_hint = artifacts::ArtifactDType::kF32;
+      dtype_hint = artifacts::ArtifactDtype::kF32;
     } else {
       return absl::UnimplementedError("unsupported torch_dtype hint");
     }

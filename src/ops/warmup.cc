@@ -44,7 +44,7 @@ void AddGemm(std::vector<KernelKey>* keys, const OperatorEnvelope& envelope, uin
 }  // namespace
 
 absl::Status RegisterReferenceCapabilities(KernelRegistry& registry) {
-  auto add = [&](OpKind op, uint8_t rank, DType input_dtype, LayoutId input_layout,
+  auto add = [&](OpKind op, uint8_t rank, Dtype input_dtype, LayoutId input_layout,
                  LayoutId weight_layout, LayoutId output_layout, uint8_t phase_mask,
                  uint8_t alias_mask) -> absl::Status {
     BackendCapability capability;
@@ -54,9 +54,9 @@ absl::Status RegisterReferenceCapabilities(KernelRegistry& registry) {
     capability.op = op;
     capability.device_kind = DeviceKind::kHost;
     capability.phase_mask = phase_mask;
-    capability.input_dtype_mask = DTypeMask(input_dtype);
-    capability.weight_dtype_mask = DTypeMask(DType::kFloat32);
-    capability.output_dtype_mask = DTypeMask(DType::kFloat32);
+    capability.input_dtype_mask = DtypeMask(input_dtype);
+    capability.weight_dtype_mask = DtypeMask(Dtype::kFloat32);
+    capability.output_dtype_mask = DtypeMask(Dtype::kFloat32);
     capability.input_layout = input_layout;
     capability.weight_layout = weight_layout;
     capability.output_layout = output_layout;
@@ -84,27 +84,27 @@ absl::Status RegisterReferenceCapabilities(KernelRegistry& registry) {
       kDisjoint | AliasMask(AliasMode::kExactLeft) | AliasMask(AliasMode::kExactRight);
 
   absl::Status status =
-      add(OpKind::kEmbedding, 2, DType::kInt32, LayoutId::kRowMajorDense, LayoutId::kRowMajorDense,
+      add(OpKind::kEmbedding, 2, Dtype::kInt32, LayoutId::kRowMajorDense, LayoutId::kRowMajorDense,
           LayoutId::kRowMajorDense, kAllPhases, kDisjoint);
   if (!status.ok()) return status;
   for (OpKind op : {OpKind::kGemm, OpKind::kRmsNorm, OpKind::kLogits}) {
     const uint8_t rank = op == OpKind::kRmsNorm ? 2 : 3;
-    status = add(op, rank, DType::kFloat32, LayoutId::kRowMajorDense, LayoutId::kRowMajorDense,
+    status = add(op, rank, Dtype::kFloat32, LayoutId::kRowMajorDense, LayoutId::kRowMajorDense,
                  LayoutId::kRowMajorDense, kAllPhases, kDisjoint);
     if (!status.ok()) return status;
   }
   status =
-      add(OpKind::kRope, 4, DType::kFloat32, LayoutId::kQkvTokenHeadDim, LayoutId::kRowMajorDense,
+      add(OpKind::kRope, 4, Dtype::kFloat32, LayoutId::kQkvTokenHeadDim, LayoutId::kRowMajorDense,
           LayoutId::kQkvTokenHeadDim, kAllPhases, kDisjoint | kUnaryAliases);
   if (!status.ok()) return status;
   for (OpKind op : {OpKind::kSilu, OpKind::kMultiply, OpKind::kSiluMultiply, OpKind::kResidual}) {
     const uint8_t aliases = op == OpKind::kSilu ? kUnaryAliases : kBinaryAliases;
-    status = add(op, 2, DType::kFloat32, LayoutId::kRowMajorDense, LayoutId::kRowMajorDense,
+    status = add(op, 2, Dtype::kFloat32, LayoutId::kRowMajorDense, LayoutId::kRowMajorDense,
                  LayoutId::kRowMajorDense, kAllPhases, aliases);
     if (!status.ok()) return status;
   }
   status =
-      add(OpKind::kAttention, 4, DType::kFloat32, LayoutId::kQkvTokenHeadDim,
+      add(OpKind::kAttention, 4, Dtype::kFloat32, LayoutId::kQkvTokenHeadDim,
           LayoutId::kContiguousKvBshd, LayoutId::kQkvTokenHeadDim, kAttentionPhases, kDisjoint);
   if (!status.ok()) return status;
   return absl::OkStatus();
@@ -123,11 +123,11 @@ absl::StatusOr<std::vector<KernelKey>> BuildRequiredKernelSet(const LlamaOperato
       llama.head_dim == 0 || llama.num_attention_heads % llama.num_key_value_heads != 0) {
     return absl::InvalidArgumentError("operator_envelope: invalid model or finite envelope");
   }
-  if (envelope.device_kind == DeviceKind::kHost && envelope.storage_dtype != DType::kFloat32) {
+  if (envelope.device_kind == DeviceKind::kHost && envelope.storage_dtype != Dtype::kFloat32) {
     return absl::UnimplementedError("operator_envelope: CPU reference accepts FP32 storage only");
   }
-  if (envelope.device_kind == DeviceKind::kCuda && envelope.storage_dtype != DType::kFloat32 &&
-      envelope.storage_dtype != DType::kFloat16 && envelope.storage_dtype != DType::kBFloat16) {
+  if (envelope.device_kind == DeviceKind::kCuda && envelope.storage_dtype != Dtype::kFloat32 &&
+      envelope.storage_dtype != Dtype::kFloat16 && envelope.storage_dtype != Dtype::kBFloat16) {
     return absl::UnimplementedError("operator_envelope: CUDA accepts FP32, FP16, or BF16 storage");
   }
   std::vector<KernelKey> keys;
@@ -137,7 +137,7 @@ absl::StatusOr<std::vector<KernelKey>> BuildRequiredKernelSet(const LlamaOperato
       return absl::InvalidArgumentError("operator_envelope.token_buckets: bucket exceeds maximum");
     }
     KernelKey embedding = BaseKey(OpKind::kEmbedding, envelope, 2);
-    embedding.input_dtype = DType::kInt32;
+    embedding.input_dtype = Dtype::kInt32;
     embedding.dimensions[0] = tokens;
     embedding.dimensions[1] = llama.hidden_size;
     keys.push_back(embedding);
@@ -192,7 +192,7 @@ absl::StatusOr<std::vector<KernelKey>> BuildRequiredKernelSet(const LlamaOperato
     keys.push_back(attention);
 
     KernelKey logits = BaseKey(OpKind::kLogits, envelope, 3);
-    logits.output_dtype = DType::kFloat32;
+    logits.output_dtype = Dtype::kFloat32;
     logits.dimensions[0] = tokens;
     logits.dimensions[1] = llama.hidden_size;
     logits.dimensions[2] = llama.vocab_size;

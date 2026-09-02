@@ -54,13 +54,13 @@ simulator. Folly was rejected at M0; the queue is small project code.
 
 - The simulator does not use this channel (it never blocks); the channel is
   the tested future engine boundary.
-- TSan stress (label `m1-channel`) is a CI requirement from M1 on.
+- TSan stress (label `core-channel`) is a CI requirement from M1 on.
 - Semantics changes (precedence, drain, results) are breaking: they alter the
   transition-observable behavior of M7 and require a superseding ADR.
 
 ## Validation evidence
 
-- `tests/unit/base/m1_channel_test.cc` (labels `m1-channel`): capacity 1/N,
+- `tests/unit/base/channel_test.cc` (labels `core-channel`): capacity 1/N,
   FIFO, full/empty, close/drain, expired deadline, stop-without-transfer,
   move-only payloads with untouched-on-failure checks, and a
   multi-producer/multi-consumer stress run; the TSan lane runs the label.

@@ -45,6 +45,6 @@ Not available on this machine, and therefore not claimed complete: CUDA 13 linki
 FP32/FP16/BF16 CPU-oracle sweeps, canary and two-stream tests, memcheck/racecheck/initcheck/synccheck,
 100,000-cycle stress, direct cuBLASLt overhead, and retained performance JSON. Those are mandatory
 supported-GPU CI evidence before a model using these capabilities is marked ready for production.
-The CUDA CMake lane exposes `inferx_m4_compute_sanitizer`; it runs the M4 GPU binary under all four
-tools and writes a machine-readable manifest, but only retained output from the owned CUDA 13 runner
-counts as qualification evidence.
+The CUDA CI lane invokes `tools/ci/run_compute_sanitizer.sh`; it runs the platform GPU suite under
+all four tools and writes a machine-readable manifest, but only retained output from the owned CUDA
+13 runner counts as qualification evidence.

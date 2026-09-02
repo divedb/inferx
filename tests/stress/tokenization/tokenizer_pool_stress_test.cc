@@ -1,4 +1,4 @@
-// Tokenizer pool stress (m3.md section 14.4; ADR 0024 TSan gate):
+// Tokenizer pool stress (ADR 0024 TSan gate):
 // concurrent submitters and completion consumers plus parallel streaming
 // decoders borrowing pool instances. Every accepted job observes exactly one
 // completion, byte accounting returns to zero, and the run must be clean

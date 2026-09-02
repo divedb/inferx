@@ -1,4 +1,4 @@
-// Execution ticket/completion values (m1.md sections 11.2, 13). IDs and
+// Execution ticket/completion values. IDs and
 // epochs only — never a context pointer or owning view.
 
 #ifndef INFERX_ENGINE_EXECUTION_COMPLETION_H_
@@ -24,7 +24,7 @@ struct ExecutionTicket {
 };
 
 // One completion item echoes every identity/range needed to reject stale or
-// wrong-request work without touching newer state (m1.md section 13.3).
+// wrong-request work without touching newer state.
 struct ExecutionCompletion {
   ExecutionTicketId ticket{0};
   StepId step{0};

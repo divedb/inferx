@@ -49,7 +49,7 @@ struct Tensor {
 };
 
 template <typename T>
-absl::StatusOr<Tensor<T>> MakeTensor(std::span<const uint64_t> dimensions, DType dtype,
+absl::StatusOr<Tensor<T>> MakeTensor(std::span<const uint64_t> dimensions, Dtype dtype,
                                      std::span<const T> values, bool device) {
   auto shape = Shape::Create(dimensions);
   if (!shape.ok()) return shape.status();
@@ -97,7 +97,7 @@ absl::StatusOr<Tensor<T>> MakeTensor(std::span<const uint64_t> dimensions, DType
 }
 
 template <typename T>
-Tensor<T> Required(std::initializer_list<uint64_t> dimensions, DType dtype,
+Tensor<T> Required(std::initializer_list<uint64_t> dimensions, Dtype dtype,
                    std::span<const T> values, bool device) {
   const std::vector<uint64_t> dims(dimensions);
   auto tensor = MakeTensor<T>(std::span<const uint64_t>(dims), dtype, values, device);
@@ -172,13 +172,13 @@ TEST_F(NewOpsFixture, FlashInferActMulSiluMatchesReference) {
   constexpr uint64_t kHalf = 96;
   const std::vector<float> fused_input = RandomFloats(kTokens * 2 * kHalf, 5);
   const std::vector<float> zeros(kTokens * kHalf, 0.0F);
-  auto device_input = Required<float>({kTokens, 2 * kHalf}, DType::kFloat32, fused_input, true);
-  auto device_output = Required<float>({kTokens, kHalf}, DType::kFloat32, zeros, true);
+  auto device_input = Required<float>({kTokens, 2 * kHalf}, Dtype::kFloat32, fused_input, true);
+  auto device_output = Required<float>({kTokens, kHalf}, Dtype::kFloat32, zeros, true);
   ASSERT_TRUE(
       LaunchActMul({device_input.view, device_output.mutable_view, ActMulKind::kSilu}, Ctx()).ok());
   ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
-  auto host_input = Required<float>({kTokens, 2 * kHalf}, DType::kFloat32, fused_input, false);
-  auto host_output = Required<float>({kTokens, kHalf}, DType::kFloat32, zeros, false);
+  auto host_input = Required<float>({kTokens, 2 * kHalf}, Dtype::kFloat32, fused_input, false);
+  auto host_output = Required<float>({kTokens, kHalf}, Dtype::kFloat32, zeros, false);
   ASSERT_TRUE(ReferenceActMul({host_input.view, host_output.mutable_view, ActMulKind::kSilu}).ok());
   const std::vector<float> actual = ReadBack<float>(device_output.view);
   const std::span<const float> expected = HostValues(host_output);
@@ -193,16 +193,16 @@ TEST_F(NewOpsFixture, FlashInferFusedAddRmsNormMatchesReference) {
   const std::vector<float> input = RandomFloats(kTokens * kHidden, 6);
   const std::vector<float> residual = RandomFloats(kTokens * kHidden, 7);
   const std::vector<float> weight = RandomFloats(kHidden, 8);
-  auto device_input = Required<float>({kTokens, kHidden}, DType::kFloat32, input, true);
-  auto device_residual = Required<float>({kTokens, kHidden}, DType::kFloat32, residual, true);
-  auto device_weight = Required<float>({kHidden}, DType::kFloat32, weight, true);
+  auto device_input = Required<float>({kTokens, kHidden}, Dtype::kFloat32, input, true);
+  auto device_residual = Required<float>({kTokens, kHidden}, Dtype::kFloat32, residual, true);
+  auto device_weight = Required<float>({kHidden}, Dtype::kFloat32, weight, true);
   FusedAddRmsNormRequest request{device_input.mutable_view, device_residual.mutable_view,
                                  device_weight.view, 1.0e-5F};
   ASSERT_TRUE(LaunchFusedAddRmsNorm(request, Ctx()).ok());
   ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
-  auto host_input = Required<float>({kTokens, kHidden}, DType::kFloat32, input, false);
-  auto host_residual = Required<float>({kTokens, kHidden}, DType::kFloat32, residual, false);
-  auto host_weight = Required<float>({kHidden}, DType::kFloat32, weight, false);
+  auto host_input = Required<float>({kTokens, kHidden}, Dtype::kFloat32, input, false);
+  auto host_residual = Required<float>({kTokens, kHidden}, Dtype::kFloat32, residual, false);
+  auto host_weight = Required<float>({kHidden}, Dtype::kFloat32, weight, false);
   FusedAddRmsNormRequest host_request{host_input.mutable_view, host_residual.mutable_view,
                                       host_weight.view, 1.0e-5F};
   ASSERT_TRUE(ReferenceFusedAddRmsNorm(host_request).ok());
@@ -227,18 +227,18 @@ TEST_F(NewOpsFixture, FlashInferQkRmsNormMatchesReference) {
   const std::vector<float> key = RandomFloats(kTokens * kKvHeads * kHeadDim, 10);
   const std::vector<float> q_weight = RandomFloats(kHeadDim, 11, 0.5F, 1.5F);
   const std::vector<float> k_weight = RandomFloats(kHeadDim, 12, 0.5F, 1.5F);
-  auto device_q = Required<float>({kTokens, kQueryHeads, kHeadDim}, DType::kFloat32, query, true);
-  auto device_k = Required<float>({kTokens, kKvHeads, kHeadDim}, DType::kFloat32, key, true);
-  auto device_qw = Required<float>({kHeadDim}, DType::kFloat32, q_weight, true);
-  auto device_kw = Required<float>({kHeadDim}, DType::kFloat32, k_weight, true);
+  auto device_q = Required<float>({kTokens, kQueryHeads, kHeadDim}, Dtype::kFloat32, query, true);
+  auto device_k = Required<float>({kTokens, kKvHeads, kHeadDim}, Dtype::kFloat32, key, true);
+  auto device_qw = Required<float>({kHeadDim}, Dtype::kFloat32, q_weight, true);
+  auto device_kw = Required<float>({kHeadDim}, Dtype::kFloat32, k_weight, true);
   QkRmsNormRequest request{device_q.mutable_view, device_k.mutable_view, device_qw.view,
                            device_kw.view, 1.0e-5F};
   ASSERT_TRUE(LaunchQkRmsNorm(request, Ctx()).ok());
   ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
-  auto host_q = Required<float>({kTokens, kQueryHeads, kHeadDim}, DType::kFloat32, query, false);
-  auto host_k = Required<float>({kTokens, kKvHeads, kHeadDim}, DType::kFloat32, key, false);
-  auto host_qw = Required<float>({kHeadDim}, DType::kFloat32, q_weight, false);
-  auto host_kw = Required<float>({kHeadDim}, DType::kFloat32, k_weight, false);
+  auto host_q = Required<float>({kTokens, kQueryHeads, kHeadDim}, Dtype::kFloat32, query, false);
+  auto host_k = Required<float>({kTokens, kKvHeads, kHeadDim}, Dtype::kFloat32, key, false);
+  auto host_qw = Required<float>({kHeadDim}, Dtype::kFloat32, q_weight, false);
+  auto host_kw = Required<float>({kHeadDim}, Dtype::kFloat32, k_weight, false);
   QkRmsNormRequest host_request{host_q.mutable_view, host_k.mutable_view, host_qw.view,
                                 host_kw.view, 1.0e-5F};
   ASSERT_TRUE(ReferenceQkRmsNorm(host_request).ok());
@@ -258,11 +258,11 @@ TEST_F(NewOpsFixture, ArgmaxAndTopKRenormMatchReference) {
   std::vector<float> logits = RandomFloats(kRows * kVocab, 13, -8.0F, 8.0F);
   logits[0] = std::numeric_limits<float>::quiet_NaN();  // NaN row -> -1
   logits[1] = std::numeric_limits<float>::quiet_NaN();
-  auto device_logits = Required<float>({kRows, kVocab}, DType::kFloat32, logits, true);
-  auto device_ids = Required<int32_t>({kRows}, DType::kInt32, std::span<const int32_t>{}, true);
+  auto device_logits = Required<float>({kRows, kVocab}, Dtype::kFloat32, logits, true);
+  auto device_ids = Required<int32_t>({kRows}, Dtype::kInt32, std::span<const int32_t>{}, true);
   ASSERT_TRUE(LaunchArgmax({device_logits.view, device_ids.mutable_view}, Ctx()).ok());
-  auto host_logits = Required<float>({kRows, kVocab}, DType::kFloat32, logits, false);
-  auto host_ids = Required<int32_t>({kRows}, DType::kInt32, std::vector<int32_t>(kRows), false);
+  auto host_logits = Required<float>({kRows, kVocab}, Dtype::kFloat32, logits, false);
+  auto host_ids = Required<int32_t>({kRows}, Dtype::kInt32, std::vector<int32_t>(kRows), false);
   ASSERT_TRUE(ReferenceArgmax({host_logits.view, host_ids.mutable_view}).ok());
   const std::vector<int32_t> actual = ReadBack<int32_t>(device_ids.view);
   const std::span<const int32_t> expected = HostValues(host_ids);
@@ -272,10 +272,10 @@ TEST_F(NewOpsFixture, ArgmaxAndTopKRenormMatchReference) {
 
   // top-k renorm on a fresh probability tensor
   std::vector<float> probs_raw = RandomFloats(kRows * kVocab, 14, 0.0F, 0.01F);
-  auto device_probs = Required<float>({kRows, kVocab}, DType::kFloat32, probs_raw, true);
+  auto device_probs = Required<float>({kRows, kVocab}, Dtype::kFloat32, probs_raw, true);
   ASSERT_TRUE(LaunchTopKRenorm({device_probs.mutable_view, 8}, Ctx()).ok());
   ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
-  auto host_probs = Required<float>({kRows, kVocab}, DType::kFloat32, probs_raw, false);
+  auto host_probs = Required<float>({kRows, kVocab}, Dtype::kFloat32, probs_raw, false);
   ASSERT_TRUE(ReferenceTopKRenorm({host_probs.mutable_view, 8}).ok());
   const std::vector<float> actual_p = ReadBack<float>(device_probs.view);
   const std::span<const float> expected_p = HostValues(host_probs);
@@ -288,10 +288,10 @@ TEST_F(NewOpsFixture, Fp8QuantQuantizesWithinHalfUlp) {
   constexpr uint64_t kTokens = 5;
   constexpr uint64_t kDim = 256;
   const std::vector<float> input = RandomFloats(kTokens * kDim, 15, -3.0F, 3.0F);
-  auto device_input = Required<float>({kTokens, kDim}, DType::kFloat32, input, true);
+  auto device_input = Required<float>({kTokens, kDim}, Dtype::kFloat32, input, true);
   auto device_output =
-      Required<uint8_t>({kTokens, kDim}, DType::kUInt8, std::span<const uint8_t>{}, true);
-  auto device_scales = Required<float>({kTokens}, DType::kFloat32, std::span<const float>{}, true);
+      Required<uint8_t>({kTokens, kDim}, Dtype::kUInt8, std::span<const uint8_t>{}, true);
+  auto device_scales = Required<float>({kTokens}, Dtype::kFloat32, std::span<const float>{}, true);
   Fp8QuantRequest request{device_input.view, device_output.mutable_view, device_scales.mutable_view,
                           QuantGranularity::kToken, 128};
   ASSERT_TRUE(LaunchFp8Quant(request, Ctx()).ok());
@@ -326,19 +326,19 @@ TEST_F(NewOpsFixture, SoftmaxTopKMatchesReference) {
   constexpr uint64_t kExperts = 64;
   constexpr uint32_t kTopK = 8;
   const std::vector<float> logits = RandomFloats(kTokens * kExperts, 16, -6.0F, 6.0F);
-  auto device_logits = Required<float>({kTokens, kExperts}, DType::kFloat32, logits, true);
+  auto device_logits = Required<float>({kTokens, kExperts}, Dtype::kFloat32, logits, true);
   auto device_weights =
-      Required<float>({kTokens, kTopK}, DType::kFloat32, std::span<const float>{}, true);
+      Required<float>({kTokens, kTopK}, Dtype::kFloat32, std::span<const float>{}, true);
   auto device_ids =
-      Required<int32_t>({kTokens, kTopK}, DType::kInt32, std::span<const int32_t>{}, true);
+      Required<int32_t>({kTokens, kTopK}, Dtype::kInt32, std::span<const int32_t>{}, true);
   SoftmaxTopKRequest request{device_logits.view, device_weights.mutable_view,
                              device_ids.mutable_view, true};
   ASSERT_TRUE(LaunchSoftmaxTopK(request, Ctx()).ok());
   ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
-  auto host_logits = Required<float>({kTokens, kExperts}, DType::kFloat32, logits, false);
-  auto host_weights = Required<float>({kTokens, kTopK}, DType::kFloat32,
+  auto host_logits = Required<float>({kTokens, kExperts}, Dtype::kFloat32, logits, false);
+  auto host_weights = Required<float>({kTokens, kTopK}, Dtype::kFloat32,
                                       std::vector<float>(kTokens * kTopK), false);
-  auto host_ids = Required<int32_t>({kTokens, kTopK}, DType::kInt32,
+  auto host_ids = Required<int32_t>({kTokens, kTopK}, Dtype::kInt32,
                                     std::vector<int32_t>(kTokens * kTopK), false);
   ASSERT_TRUE(ReferenceSoftmaxTopK(
                   {host_logits.view, host_weights.mutable_view, host_ids.mutable_view, true})
@@ -357,14 +357,14 @@ TEST_F(NewOpsFixture, HadamardTransformMatchesReference) {
   constexpr uint64_t kRows = 24;
   const std::vector<float> input = RandomFloats(kRows * 128, 17);
   const std::vector<float> zeros(kRows * 128, 0.0F);
-  auto device_input = Required<float>({kRows, 128}, DType::kFloat32, input, true);
-  auto device_output = Required<float>({kRows, 128}, DType::kFloat32, zeros, true);
+  auto device_input = Required<float>({kRows, 128}, Dtype::kFloat32, input, true);
+  auto device_output = Required<float>({kRows, 128}, Dtype::kFloat32, zeros, true);
   const absl::Status hadamard_status =
       LaunchHadamardTransform({device_input.view, device_output.mutable_view, 0.05F}, Ctx());
   ASSERT_TRUE(hadamard_status.ok()) << hadamard_status;
   ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
-  auto host_input = Required<float>({kRows, 128}, DType::kFloat32, input, false);
-  auto host_output = Required<float>({kRows, 128}, DType::kFloat32, zeros, false);
+  auto host_input = Required<float>({kRows, 128}, Dtype::kFloat32, input, false);
+  auto host_output = Required<float>({kRows, 128}, Dtype::kFloat32, zeros, false);
   ASSERT_TRUE(ReferenceHadamardTransform({host_input.view, host_output.mutable_view, 0.05F}).ok());
   const std::vector<float> actual = ReadBack<float>(device_output.view);
   const std::span<const float> expected = HostValues(host_output);
@@ -381,10 +381,10 @@ TEST_F(NewOpsFixture, AttnResMatchesReference) {
   const std::vector<float> blocks = RandomFloats(kBlocks * kTokens * kHidden, 19);
   const std::vector<float> res_w = RandomFloats(kHidden, 20, 0.5F, 1.5F);
   const std::vector<float> rms_w = RandomFloats(kHidden, 21, 0.5F, 1.5F);
-  auto device_layer = Required<float>({kTokens, kHidden}, DType::kFloat32, layer, true);
-  auto device_blocks = Required<float>({kBlocks, kTokens, kHidden}, DType::kFloat32, blocks, true);
-  auto device_res_w = Required<float>({kHidden}, DType::kFloat32, res_w, true);
-  auto device_rms_w = Required<float>({kHidden}, DType::kFloat32, rms_w, true);
+  auto device_layer = Required<float>({kTokens, kHidden}, Dtype::kFloat32, layer, true);
+  auto device_blocks = Required<float>({kBlocks, kTokens, kHidden}, Dtype::kFloat32, blocks, true);
+  auto device_res_w = Required<float>({kHidden}, Dtype::kFloat32, res_w, true);
+  auto device_rms_w = Required<float>({kHidden}, Dtype::kFloat32, rms_w, true);
   AttnResRequest request{device_layer.mutable_view,
                          device_blocks.view,
                          device_res_w.view,
@@ -395,10 +395,10 @@ TEST_F(NewOpsFixture, AttnResMatchesReference) {
   const absl::Status attn_res_status = LaunchAttnRes(request, Ctx());
   ASSERT_TRUE(attn_res_status.ok()) << attn_res_status;
   ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
-  auto host_layer = Required<float>({kTokens, kHidden}, DType::kFloat32, layer, false);
-  auto host_blocks = Required<float>({kBlocks, kTokens, kHidden}, DType::kFloat32, blocks, false);
-  auto host_res_w = Required<float>({kHidden}, DType::kFloat32, res_w, false);
-  auto host_rms_w = Required<float>({kHidden}, DType::kFloat32, rms_w, false);
+  auto host_layer = Required<float>({kTokens, kHidden}, Dtype::kFloat32, layer, false);
+  auto host_blocks = Required<float>({kBlocks, kTokens, kHidden}, Dtype::kFloat32, blocks, false);
+  auto host_res_w = Required<float>({kHidden}, Dtype::kFloat32, res_w, false);
+  auto host_rms_w = Required<float>({kHidden}, Dtype::kFloat32, rms_w, false);
   AttnResRequest host_request{host_layer.mutable_view,
                               host_blocks.view,
                               host_res_w.view,
@@ -425,13 +425,13 @@ TEST_F(NewOpsFixture, HcMixAndCombineMatchReference) {
   const std::vector<float> up_w = RandomFloats(kWide * kRank, 24, -0.05F, 0.05F);
   void* workspace = nullptr;
   cudaMalloc(&workspace, cuda::hc::HcMixWorkspaceBytes(kTokens, kRank, kHc, kHidden));
-  auto device_normalized = Required<float>({kTokens, kWide}, DType::kFloat32, normalized, true);
-  auto device_proj_w = Required<float>({kRank + kHc, kWide}, DType::kFloat32, proj_w, true);
-  auto device_up_w = Required<float>({kWide, kRank}, DType::kFloat32, up_w, true);
-  auto device_mixed = Required<float>({kTokens, kHidden}, DType::kFloat32,
+  auto device_normalized = Required<float>({kTokens, kWide}, Dtype::kFloat32, normalized, true);
+  auto device_proj_w = Required<float>({kRank + kHc, kWide}, Dtype::kFloat32, proj_w, true);
+  auto device_up_w = Required<float>({kWide, kRank}, Dtype::kFloat32, up_w, true);
+  auto device_mixed = Required<float>({kTokens, kHidden}, Dtype::kFloat32,
                                       std::vector<float>(kTokens * kHidden), true);
   auto device_inject =
-      Required<float>({kTokens, kHc}, DType::kFloat32, std::vector<float>(kTokens * kHc), true);
+      Required<float>({kTokens, kHc}, Dtype::kFloat32, std::vector<float>(kTokens * kHc), true);
   HcMixRequest mix_request{device_normalized.view,
                            device_proj_w.view,
                            device_up_w.view,
@@ -446,13 +446,13 @@ TEST_F(NewOpsFixture, HcMixAndCombineMatchReference) {
   ASSERT_TRUE(hc_status.ok()) << hc_status;
   ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
 
-  auto host_normalized = Required<float>({kTokens, kWide}, DType::kFloat32, normalized, false);
-  auto host_proj_w = Required<float>({kRank + kHc, kWide}, DType::kFloat32, proj_w, false);
-  auto host_up_w = Required<float>({kWide, kRank}, DType::kFloat32, up_w, false);
-  auto host_mixed = Required<float>({kTokens, kHidden}, DType::kFloat32,
+  auto host_normalized = Required<float>({kTokens, kWide}, Dtype::kFloat32, normalized, false);
+  auto host_proj_w = Required<float>({kRank + kHc, kWide}, Dtype::kFloat32, proj_w, false);
+  auto host_up_w = Required<float>({kWide, kRank}, Dtype::kFloat32, up_w, false);
+  auto host_mixed = Required<float>({kTokens, kHidden}, Dtype::kFloat32,
                                     std::vector<float>(kTokens * kHidden), false);
   auto host_inject =
-      Required<float>({kTokens, kHc}, DType::kFloat32, std::vector<float>(kTokens * kHc), false);
+      Required<float>({kTokens, kHc}, Dtype::kFloat32, std::vector<float>(kTokens * kHc), false);
   HcMixRequest host_mix{host_normalized.view,
                         host_proj_w.view,
                         host_up_w.view,
@@ -490,15 +490,15 @@ TEST_F(NewOpsFixture, MhcPreAndPostMatchReference) {
   const uint64_t workspace_bytes = cuda::mhc::MhcPreWorkspaceBytes(kTokens, kStreams);
   cudaMalloc(&workspace, workspace_bytes);
   auto device_residual =
-      Required<float>({kTokens, kStreams, kHidden}, DType::kFloat32, residual, true);
-  auto device_fn = Required<float>({kMixRows, kWide}, DType::kFloat32, fn, true);
-  auto device_scale = Required<float>({3}, DType::kFloat32, hc_scale, true);
-  auto device_base = Required<float>({kMixRows}, DType::kFloat32, hc_base, true);
-  auto device_layer = Required<float>({kTokens, kHidden}, DType::kFloat32,
+      Required<float>({kTokens, kStreams, kHidden}, Dtype::kFloat32, residual, true);
+  auto device_fn = Required<float>({kMixRows, kWide}, Dtype::kFloat32, fn, true);
+  auto device_scale = Required<float>({3}, Dtype::kFloat32, hc_scale, true);
+  auto device_base = Required<float>({kMixRows}, Dtype::kFloat32, hc_base, true);
+  auto device_layer = Required<float>({kTokens, kHidden}, Dtype::kFloat32,
                                       std::vector<float>(kTokens * kHidden), true);
-  auto device_post = Required<float>({kTokens, kStreams}, DType::kFloat32,
+  auto device_post = Required<float>({kTokens, kStreams}, Dtype::kFloat32,
                                      std::vector<float>(kTokens * kStreams), true);
-  auto device_comb = Required<float>({kTokens, kStreams, kStreams}, DType::kFloat32,
+  auto device_comb = Required<float>({kTokens, kStreams, kStreams}, Dtype::kFloat32,
                                      std::vector<float>(kTokens * kStreams * kStreams), true);
   MhcPreRequest pre{device_residual.view,
                     device_fn.view,
@@ -514,15 +514,15 @@ TEST_F(NewOpsFixture, MhcPreAndPostMatchReference) {
   ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
 
   auto host_residual =
-      Required<float>({kTokens, kStreams, kHidden}, DType::kFloat32, residual, false);
-  auto host_fn = Required<float>({kMixRows, kWide}, DType::kFloat32, fn, false);
-  auto host_scale = Required<float>({3}, DType::kFloat32, hc_scale, false);
-  auto host_base = Required<float>({kMixRows}, DType::kFloat32, hc_base, false);
-  auto host_layer = Required<float>({kTokens, kHidden}, DType::kFloat32,
+      Required<float>({kTokens, kStreams, kHidden}, Dtype::kFloat32, residual, false);
+  auto host_fn = Required<float>({kMixRows, kWide}, Dtype::kFloat32, fn, false);
+  auto host_scale = Required<float>({3}, Dtype::kFloat32, hc_scale, false);
+  auto host_base = Required<float>({kMixRows}, Dtype::kFloat32, hc_base, false);
+  auto host_layer = Required<float>({kTokens, kHidden}, Dtype::kFloat32,
                                     std::vector<float>(kTokens * kHidden), false);
-  auto host_post = Required<float>({kTokens, kStreams}, DType::kFloat32,
+  auto host_post = Required<float>({kTokens, kStreams}, Dtype::kFloat32,
                                    std::vector<float>(kTokens * kStreams), false);
-  auto host_comb = Required<float>({kTokens, kStreams, kStreams}, DType::kFloat32,
+  auto host_comb = Required<float>({kTokens, kStreams, kStreams}, Dtype::kFloat32,
                                    std::vector<float>(kTokens * kStreams * kStreams), false);
   MhcPreRequest host_pre{host_residual.view,
                          host_fn.view,

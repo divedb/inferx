@@ -1,4 +1,4 @@
-// Engine clocks and deadlines (m1.md section 7.4; ADR 0008).
+// Engine clocks and deadlines (ADR 0008).
 //
 // All lifecycle and replay time is nanosecond-resolution monotonic time.
 // Wall time never appears in lifecycle or replay decisions.

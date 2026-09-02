@@ -1,4 +1,4 @@
-# inferx_api: request/response values and validation (m1.md section 9).
+# inferx_api: request/response values and validation.
 add_library(inferx_api STATIC
   generate_request.cc
   response_event.cc)

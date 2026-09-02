@@ -1,4 +1,4 @@
-# Fixture: a required core submodule is missing (m0.md 13.5 row 1). The
+# Fixture: a required core submodule is missing. The
 # dependency module must fail with the exact bootstrap remediation.
 cmake_minimum_required(VERSION 3.28)
 project(missing_core_submodule_fixture LANGUAGES CXX)

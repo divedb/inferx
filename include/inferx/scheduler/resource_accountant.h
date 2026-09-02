@@ -1,4 +1,4 @@
-// Coordinator-owned simulated capacity accounting (m1.md section 12.2).
+// Coordinator-owned simulated capacity accounting.
 
 #ifndef INFERX_SCHEDULER_RESOURCE_ACCOUNTANT_H_
 #define INFERX_SCHEDULER_RESOURCE_ACCOUNTANT_H_

@@ -1,5 +1,5 @@
 # inferx_scheduler: immutable scheduling views, capacity transactions, FCFS
-# policy, and leased plan buffers (m1.md section 12; ADR 0010).
+# policy, and leased plan buffers (ADR 0010).
 add_library(inferx_scheduler STATIC
   admission_controller.cc
   batch_planner.cc

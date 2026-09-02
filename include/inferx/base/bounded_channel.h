@@ -1,4 +1,4 @@
-// Reference bounded channel (m1.md section 7.5; ADR 0013).
+// Reference bounded channel (ADR 0013).
 //
 // Fixed-capacity ring allocated at construction, one mutex, two condition
 // variables. Multiple producers/consumer safe (initial engine use is

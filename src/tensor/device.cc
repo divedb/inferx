@@ -41,7 +41,7 @@ absl::Status ValidateMemoryKind(Device device, MemoryKind memory_kind) {
       }
       return absl::OkStatus();
     case MemoryKind::kManaged:
-      return absl::UnimplementedError("allocation.memory_kind: managed memory is reserved for M2");
+      return absl::UnimplementedError("allocation.memory_kind: managed memory is unsupported");
   }
   return absl::InvalidArgumentError("allocation.memory_kind: invalid memory kind");
 }

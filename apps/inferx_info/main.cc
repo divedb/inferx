@@ -1,7 +1,7 @@
-// inferx-info: build/toolchain metadata smoke CLI (m0.md section 7.1).
+// inferx-info: build/toolchain metadata smoke CLI.
 //
 // Proves target linkage and supplies diagnostics. Deliberately hand-rolled
-// argument handling — no general JSON or argument-parsing dependency in M0.
+// argument handling — no general JSON or argument-parsing dependency.
 
 #include <cstdio>
 #include <cstdlib>

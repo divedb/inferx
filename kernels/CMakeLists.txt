@@ -2,7 +2,7 @@
 #
 # The neutral dispatch target builds on every preset (strictly CUDA-free; the
 # CPU policy test enforces this). The CUDA backend and its operator categories
-# are wired only under INFERX_ENABLE_CUDA, next to the M2/M4 kernel targets
+# are wired only under INFERX_ENABLE_CUDA, next to the platform kernel targets
 # that remain untouched during the architecture transition.
 add_library(inferx_kernels STATIC
   src/kernel_dispatch.cc

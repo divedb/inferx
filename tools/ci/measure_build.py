@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build metrics capture (m0.md section 13.6).
+"""Capture build metrics.
 
 Runs a fresh configure -> clean build -> no-op build -> tests -> install ->
 consumer flow for a preset and records, as JSON:
@@ -11,7 +11,7 @@ consumer flow for a preset and records, as JSON:
   - `inferx_base` and `inferx-info` file sizes;
   - CUDA smoke compile time when the preset enables CUDA.
 
-M0 establishes the baseline; there is no absolute time gate. A missing or
+The first captured run establishes the baseline; there is no absolute time gate. A missing or
 invalid metrics artifact fails the CI metrics job, so this script writes the
 file even when a step reports zero, and validates it can be re-parsed before
 exiting successfully. All generated trees stay under out/metrics/.

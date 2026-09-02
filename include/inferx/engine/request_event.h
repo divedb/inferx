@@ -1,4 +1,4 @@
-// Request lifecycle events (m1.md section 11.2): one closed kind enum plus
+// Request lifecycle events: one closed kind enum plus
 // typed payload structs in a std::variant. Marker events use empty structs;
 // kind/payload mismatches cannot be constructed (KindOf is the one visitor).
 
@@ -91,7 +91,7 @@ struct ExecutionFailedPayload {
   ExecutionCompletion completion;
 };
 
-// Terminal cause shared by cancel/deadline/fatal events (m1.md section 11.2).
+// Terminal cause shared by cancel/deadline/fatal events.
 struct TerminalOutcomePayload {
   absl::Status status;
   std::optional<ErrorReason> reason;
@@ -130,7 +130,7 @@ struct RequestEvent {
 [[nodiscard]] RequestEventKind KindOf(const RequestEvent& event);
 
 // True when the event's kind is compatible with its active payload
-// alternative — the debug/test pairing check (m1.md section 11.2).
+// alternative — the debug/test pairing check.
 [[nodiscard]] bool KindMatchesPayload(RequestEventKind kind, const RequestEvent& event);
 
 }  // namespace inferx

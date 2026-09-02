@@ -16,8 +16,8 @@ while [[ $# -gt 0 ]]; do
 done
 if [[ -n "$preset" && -n "$build_dir" ]] ||
    [[ -z "$preset" && -z "$build_dir" ]] ||
-   [[ "$suite" != "m2" && "$suite" != "m4" ]] || [[ -z "$output" ]]; then
-  echo "usage: $0 (--preset PRESET | --build-dir DIR) --suite m2|m4 --output DIR" >&2
+   [[ "$suite" != "platform" && "$suite" != "operators" ]] || [[ -z "$output" ]]; then
+  echo "usage: $0 (--preset PRESET | --build-dir DIR) --suite platform|operators --output DIR" >&2
   exit 2
 fi
 if ! command -v compute-sanitizer >/dev/null 2>&1; then
@@ -30,20 +30,20 @@ if [[ -z "$build_dir" ]]; then
   build_dir="out/build/$preset"
 fi
 binary="$build_dir/inferx-device-info"
-if [[ "$suite" == "m4" ]]; then
-  binary="$build_dir/tests/inferx_m4_cuda_ops_test"
+if [[ "$suite" == "operators" ]]; then
+  binary="$build_dir/tests/inferx_kernels_ops_oracle_test"
   if [[ ! -x "$binary" ]]; then
-    echo "missing M4 CUDA test binary: $binary" >&2
+    echo "missing operator CUDA test binary: $binary" >&2
     exit 1
   fi
 else
 if [[ ! -x "$binary" ]]; then
-  echo "missing M2 diagnostic binary: $binary" >&2
+  echo "missing platform diagnostic binary: $binary" >&2
   exit 1
 fi
 correctness="$build_dir/tests/inferx_tensor_cuda_correctness"
 if [[ ! -x "$correctness" ]]; then
-  echo "missing M2 CUDA correctness binary: $correctness" >&2
+  echo "missing platform CUDA correctness binary: $correctness" >&2
   exit 1
 fi
 fi
@@ -70,9 +70,9 @@ run_case() {
   fi
 }
 
-if [[ "$suite" == "m2" ]]; then
+if [[ "$suite" == "platform" ]]; then
   run_case memcheck self-test "$binary" --self-test
-  INFERX_M2_CUDA_CORRECTNESS_CASES=1000 \
+  INFERX_CUDA_CORRECTNESS_CASES=1000 \
     run_case memcheck correctness "$correctness"
   run_case racecheck synchronization "$binary" --self-test
   run_case initcheck initialized-input "$binary" --self-test

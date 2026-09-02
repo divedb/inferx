@@ -47,7 +47,7 @@ struct LayoutAnalysis {
 };
 
 [[nodiscard]] absl::StatusOr<LayoutAnalysis> AnalyzeLayout(const Shape& shape,
-                                                           const Strides& strides, DType dtype);
+                                                           const Strides& strides, Dtype dtype);
 
 }  // namespace inferx
 

@@ -1,4 +1,4 @@
-// Checked integral arithmetic (m1.md section 7.3; ADR 0008).
+// Checked integral arithmetic (ADR 0008).
 //
 // Every parsed or resource-bearing sum/subtraction/product goes through these
 // helpers: no silent truncation, no reliance on wraparound, signedness is
@@ -143,7 +143,7 @@ absl::StatusOr<To> CheckedNarrow(From value, absl::string_view context = {}) {
   return static_cast<To>(value);
 }
 
-// Byte-size arithmetic shared with M2 shape/tensor code: every byte product
+// Byte-size arithmetic shared with shape/tensor code: every byte product
 // in the codebase routes through here.
 inline absl::StatusOr<ByteCount> CheckedByteSize(uint64_t element_count, uint64_t element_width,
                                                  absl::string_view context = {}) {

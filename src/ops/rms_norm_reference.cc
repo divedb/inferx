@@ -11,11 +11,11 @@ namespace inferx::ops {
 
 absl::Status ValidateRmsNorm(const RmsNormRequest& request) {
   absl::Status status =
-      internal::ValidateTensor(request.input, DType::kFloat32, 2, "rms_norm.input");
+      internal::ValidateTensor(request.input, Dtype::kFloat32, 2, "rms_norm.input");
   if (!status.ok()) return status;
-  status = internal::ValidateTensor(request.weight, DType::kFloat32, 1, "rms_norm.weight");
+  status = internal::ValidateTensor(request.weight, Dtype::kFloat32, 1, "rms_norm.weight");
   if (!status.ok()) return status;
-  status = internal::ValidateTensor(request.output, DType::kFloat32, 2, "rms_norm.output");
+  status = internal::ValidateTensor(request.output, Dtype::kFloat32, 2, "rms_norm.output");
   if (!status.ok()) return status;
   const uint64_t hidden = request.input.shape().dim(1);
   if (hidden == 0 || request.weight.shape().dim(0) != hidden ||

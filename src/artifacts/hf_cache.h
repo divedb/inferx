@@ -22,7 +22,7 @@ class HuggingFaceCache {
   [[nodiscard]] std::filesystem::path SnapshotDir(std::string_view revision) const;
   [[nodiscard]] std::filesystem::path BlobPath(std::string_view etag) const;
   [[nodiscard]] std::filesystem::path RefPath(std::string_view revision) const;
-  [[nodiscard]] std::filesystem::path InferXSnapshotDir(std::string_view revision) const;
+  [[nodiscard]] std::filesystem::path InferxSnapshotDir(std::string_view revision) const;
 
   [[nodiscard]] std::optional<std::string> ReadRef(std::string_view revision) const;
   [[nodiscard]] absl::Status WriteRef(std::string_view revision, std::string_view sha) const;

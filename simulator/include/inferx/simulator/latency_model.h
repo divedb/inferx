@@ -1,4 +1,4 @@
-// Deterministic checked fake-execution latency (m1.md section 13.2).
+// Deterministic checked fake-execution latency.
 
 #ifndef INFERX_SIMULATOR_LATENCY_MODEL_H_
 #define INFERX_SIMULATOR_LATENCY_MODEL_H_

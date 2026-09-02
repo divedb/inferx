@@ -1,4 +1,4 @@
-# inferx_config: strict configuration pipeline (m1.md section 8). simdjson
+# inferx_config: strict configuration pipeline. simdjson
 # is a PRIVATE adapter dependency; no simdjson type appears in public headers.
 add_library(inferx_config STATIC
   config_loader.cc

@@ -50,11 +50,11 @@ absl::StatusOr<Strides> Strides::Contiguous(const Shape& shape) {
 }
 
 absl::StatusOr<LayoutAnalysis> AnalyzeLayout(const Shape& shape, const Strides& strides,
-                                             DType dtype) {
+                                             Dtype dtype) {
   if (shape.rank() != strides.rank()) {
     return absl::InvalidArgumentError("tensor.rank: shape and stride ranks differ");
   }
-  absl::StatusOr<ByteCount> element_size = DTypeSize(dtype);
+  absl::StatusOr<ByteCount> element_size = DtypeSize(dtype);
   if (!element_size.ok()) {
     return element_size.status();
   }

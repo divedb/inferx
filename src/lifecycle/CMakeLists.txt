@@ -1,4 +1,4 @@
-# inferx_lifecycle: the shared closed state vocabulary (m1.md section 5).
+# inferx_lifecycle: the shared closed state vocabulary.
 add_library(inferx_lifecycle STATIC request_state.cc)
 add_library(inferx::lifecycle ALIAS inferx_lifecycle)
 set_target_properties(inferx_lifecycle PROPERTIES EXPORT_NAME lifecycle)

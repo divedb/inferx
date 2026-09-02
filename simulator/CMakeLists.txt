@@ -1,5 +1,5 @@
 # inferx_simulator is a CPU-only behavioral oracle and is deliberately not
-# installed as an SDK target (m1.md section 6).
+# installed as an SDK target.
 add_library(inferx_simulator STATIC
   src/engine_simulator.cc
   src/fake_executor.cc

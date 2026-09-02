@@ -27,15 +27,15 @@ absl::Status ValidateOutputAlias(const TensorView& input, const MutableTensorVie
 }  // namespace
 
 absl::Status ValidateRope(const RopeRequest& request) {
-  absl::Status status = internal::ValidateTensor(request.query, DType::kFloat32, 3, "rope.query");
+  absl::Status status = internal::ValidateTensor(request.query, Dtype::kFloat32, 3, "rope.query");
   if (!status.ok()) return status;
-  status = internal::ValidateTensor(request.key, DType::kFloat32, 3, "rope.key");
+  status = internal::ValidateTensor(request.key, Dtype::kFloat32, 3, "rope.key");
   if (!status.ok()) return status;
-  status = internal::ValidateTensor(request.positions, DType::kInt32, 1, "rope.positions");
+  status = internal::ValidateTensor(request.positions, Dtype::kInt32, 1, "rope.positions");
   if (!status.ok()) return status;
-  status = internal::ValidateTensor(request.query_output, DType::kFloat32, 3, "rope.query_output");
+  status = internal::ValidateTensor(request.query_output, Dtype::kFloat32, 3, "rope.query_output");
   if (!status.ok()) return status;
-  status = internal::ValidateTensor(request.key_output, DType::kFloat32, 3, "rope.key_output");
+  status = internal::ValidateTensor(request.key_output, Dtype::kFloat32, 3, "rope.key_output");
   if (!status.ok()) return status;
   const uint64_t tokens = request.query.shape().dim(0);
   const uint64_t head_dimension = request.query.shape().dim(2);

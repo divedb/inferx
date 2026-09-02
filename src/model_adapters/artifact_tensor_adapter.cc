@@ -52,14 +52,14 @@ class MappingDomain final : public AllocationDomain {
   bool released_ = false;
 };
 
-absl::StatusOr<DType> ExecutionDType(artifacts::ArtifactDType dtype) {
+absl::StatusOr<Dtype> ExecutionDtype(artifacts::ArtifactDtype dtype) {
   switch (dtype) {
-    case artifacts::ArtifactDType::kF16:
-      return DType::kFloat16;
-    case artifacts::ArtifactDType::kBf16:
-      return DType::kBFloat16;
-    case artifacts::ArtifactDType::kF32:
-      return DType::kFloat32;
+    case artifacts::ArtifactDtype::kF16:
+      return Dtype::kFloat16;
+    case artifacts::ArtifactDtype::kBf16:
+      return Dtype::kBFloat16;
+    case artifacts::ArtifactDtype::kF32:
+      return Dtype::kFloat32;
     default:
       return absl::UnimplementedError("artifact_tensor_adapter.dtype: artifact dtype unsupported");
   }
@@ -67,8 +67,8 @@ absl::StatusOr<DType> ExecutionDType(artifacts::ArtifactDType dtype) {
 
 bool IsPowerOfTwo(uint64_t value) noexcept { return value != 0 && (value & (value - 1)) == 0; }
 
-absl::StatusOr<AdaptedTensor> BuildAdapted(Buffer buffer, DType dtype,
-                                           artifacts::ArtifactDType source_dtype,
+absl::StatusOr<AdaptedTensor> BuildAdapted(Buffer buffer, Dtype dtype,
+                                           artifacts::ArtifactDtype source_dtype,
                                            const Shape& shape, bool staged) {
   absl::StatusOr<Strides> strides = Strides::Contiguous(shape);
   if (!strides.ok()) return strides.status();
@@ -128,13 +128,13 @@ absl::StatusOr<AdaptedTensor> ArtifactTensorAdapter::Adapt(const model::WeightPl
     return absl::InvalidArgumentError(
         "artifact_tensor_adapter.alignment: must be a nonzero power of two");
   }
-  absl::StatusOr<DType> dtype = ExecutionDType(plan.source.dtype);
+  absl::StatusOr<Dtype> dtype = ExecutionDtype(plan.source.dtype);
   if (!dtype.ok()) return dtype.status();
   absl::StatusOr<Shape> shape = Shape::Create(parameter.shape);
   if (!shape.ok()) return shape.status();
   absl::StatusOr<ByteCount> exact_bytes = shape->Bytes(*dtype);
   if (!exact_bytes.ok()) return exact_bytes.status();
-  absl::StatusOr<ByteCount> dtype_alignment = DTypeSize(*dtype);
+  absl::StatusOr<ByteCount> dtype_alignment = DtypeSize(*dtype);
   if (!dtype_alignment.ok()) return dtype_alignment.status();
   const ByteCount effective_alignment(
       std::max(required_alignment.value(), dtype_alignment->value()));
@@ -187,7 +187,7 @@ absl::StatusOr<AdaptedTensor> ReferenceTensorMaterializer::Materialize(
   if (*elements > maximum_elements) {
     return absl::ResourceExhaustedError("reference_materializer: element limit exceeded");
   }
-  absl::StatusOr<ByteCount> bytes = input.view().shape().Bytes(DType::kFloat32);
+  absl::StatusOr<ByteCount> bytes = input.view().shape().Bytes(Dtype::kFloat32);
   if (!bytes.ok()) return bytes.status();
   CpuAllocator allocator;
   absl::StatusOr<Buffer> output = allocator.Allocate(AllocationRequest{
@@ -197,7 +197,7 @@ absl::StatusOr<AdaptedTensor> ReferenceTensorMaterializer::Materialize(
       output->MutableView(ByteRange{ByteCount(0), *bytes});
   if (!output_view.ok()) return output_view.status();
   if (*elements == 0) {
-    return BuildAdapted(std::move(*output), DType::kFloat32, input.source_dtype(),
+    return BuildAdapted(std::move(*output), Dtype::kFloat32, input.source_dtype(),
                         input.view().shape(), true);
   }
   absl::StatusOr<std::span<std::byte>> output_bytes = output_view->HostBytes();
@@ -206,20 +206,20 @@ absl::StatusOr<AdaptedTensor> ReferenceTensorMaterializer::Materialize(
   absl::StatusOr<std::span<const std::byte>> source = input.view().buffer().HostBytes();
   if (!source.ok()) return source.status();
   const std::byte* source_data = source->data() + input.view().byte_offset().value();
-  if (input.view().dtype() == DType::kFloat32) {
+  if (input.view().dtype() == Dtype::kFloat32) {
     std::memcpy(floats, source_data, static_cast<size_t>(bytes->value()));
-  } else if (input.view().dtype() == DType::kFloat16 || input.view().dtype() == DType::kBFloat16) {
+  } else if (input.view().dtype() == Dtype::kFloat16 || input.view().dtype() == Dtype::kBFloat16) {
     for (size_t index = 0; index < static_cast<size_t>(*elements); ++index) {
       uint16_t word = 0;
       std::memcpy(&word, source_data + index * sizeof(word), sizeof(word));
-      floats[index] = input.view().dtype() == DType::kFloat16
+      floats[index] = input.view().dtype() == Dtype::kFloat16
                           ? HalfToFloat(word)
                           : std::bit_cast<float>(static_cast<uint32_t>(word) << 16U);
     }
   } else {
     return absl::UnimplementedError("reference_materializer: unsupported execution dtype");
   }
-  return BuildAdapted(std::move(*output), DType::kFloat32, input.source_dtype(),
+  return BuildAdapted(std::move(*output), Dtype::kFloat32, input.source_dtype(),
                       input.view().shape(), true);
 }
 

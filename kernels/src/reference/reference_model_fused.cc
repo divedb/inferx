@@ -14,7 +14,7 @@ namespace inferx::kernels {
 namespace {
 
 absl::Status RequireFp32(const TensorView& tensor) {
-  if (tensor.dtype() != DType::kFloat32) {
+  if (tensor.dtype() != Dtype::kFloat32) {
     return absl::UnimplementedError("model_fused reference: FP32 tensors required");
   }
   return absl::OkStatus();

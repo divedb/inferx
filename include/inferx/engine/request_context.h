@@ -1,5 +1,5 @@
 // Request context: mutable engine state owned by the registry, mutated only
-// by RequestController (m1.md section 10.1). Never part of the public
+// by RequestController. Never part of the public
 // request API; plans and completions carry IDs/epochs, never pointers here.
 
 #ifndef INFERX_ENGINE_REQUEST_CONTEXT_H_

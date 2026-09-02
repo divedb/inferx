@@ -1,5 +1,5 @@
-// Private simdjson adapter: simdjson types never leave this directory. M1
-// fields remain flat integers; M2 additionally permits one `cuda` object,
+// Private simdjson adapter: simdjson types never leave this directory. Base
+// fields remain flat integers; the schema additionally permits one `cuda` object,
 // booleans in that object, and null for its optional device budget.
 
 #ifndef INFERX_SRC_CONFIG_INTERNAL_SIMDJSON_READER_H_
@@ -14,7 +14,7 @@
 namespace inferx::config::internal {
 
 // Returns flattened field-name -> value (`cuda.enabled`, etc.); rejects
-// duplicate keys, unsupported scalar values, nesting > the M2 schema,
+// duplicate keys, unsupported scalar values, nesting beyond the schema,
 // more than kMaxObjectMembers members, and inputs whose byte size exceeds
 // the caller-provided limit. simdjson exceptions (if any escape the C API)
 // are caught here and translated.

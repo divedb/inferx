@@ -1,4 +1,4 @@
-# GPU lane (m0.md section 11.2; ADR 0006). Runs on an explicitly managed,
+# GPU lane (ADR 0006). Runs on an explicitly managed,
 # owned GPU runner: pull requests, protected main changes, nightly schedules,
 # and manual dispatch all use the same required job. A skipped GPU test, an
 # unsupported compute capability, or "no visible device" is a JOB FAILURE
@@ -23,8 +23,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  m2-qualification:
-    name: M2 CUDA qualification (owned GPU runner)
+  cuda-qualification:
+    name: CUDA qualification (owned GPU runner)
     runs-on: [self-hosted, gpu]
     timeout-minutes: 60
     steps:
@@ -32,23 +32,23 @@ jobs:
       - name: Record device and toolchain evidence
         run: |
           set -e
-          mkdir -p out/evidence/m2
+          mkdir -p out/evidence/cuda
           nvidia-smi --query-gpu=name,compute_cap,memory.total,driver_version \
-            --format=csv,noheader | tee out/evidence/m2/gpu-evidence.txt
+            --format=csv,noheader | tee out/evidence/cuda/gpu-evidence.txt
           # UUID-redacted topology summary: counts and links only.
           nvidia-smi topo -m | sed -E 's/[0-9A-Fa-f]{8}-[0-9A-Fa-f-]{27,}/<uuid-redacted>/g' \
-            >> out/evidence/m2/gpu-evidence.txt || true
-          nvcc --version | tail -2 >> out/evidence/m2/gpu-evidence.txt
-          g++ --version | head -1 >> out/evidence/m2/gpu-evidence.txt
-          cmake --version | head -1 >> out/evidence/m2/gpu-evidence.txt
-          ninja --version >> out/evidence/m2/gpu-evidence.txt
-          cat out/evidence/m2/gpu-evidence.txt
+            >> out/evidence/cuda/gpu-evidence.txt || true
+          nvcc --version | tail -2 >> out/evidence/cuda/gpu-evidence.txt
+          g++ --version | head -1 >> out/evidence/cuda/gpu-evidence.txt
+          cmake --version | head -1 >> out/evidence/cuda/gpu-evidence.txt
+          ninja --version >> out/evidence/cuda/gpu-evidence.txt
+          cat out/evidence/cuda/gpu-evidence.txt
       - name: Bootstrap core profile
         run: python3 tools/deps/bootstrap.py --profile core
-      - name: Configure, build, and require every M2 CUDA lane
+      - name: Configure, build, and require every CUDA lane
         id: cuda_tests
         env:
-          INFERX_M2_CUDA_CORRECTNESS_CASES: ${{ github.event_name == 'schedule' && '10000' || '1000' }}
+          INFERX_CUDA_CORRECTNESS_CASES: ${{ github.event_name == 'schedule' && '10000' || '1000' }}
         run: |
           set -e
           cmake --preset cuda-release -DINFERX_BUILD_COMPUTE_SANITIZER_TESTS=OFF
@@ -56,7 +56,7 @@ jobs:
           grep CMAKE_CUDA_ARCHITECTURES out/build/cuda-release/CMakeCache.txt
           cmake --build --preset cuda-release --parallel
           nvidia-smi --query-gpu=name,compute_cap,driver_version --format=csv | \
-            tee out/evidence/m2/gpu-device-info.json
+            tee out/evidence/cuda/gpu-device-info.json
           mapfile -t gpu_indices < <(nvidia-smi --query-gpu=index \
             --format=csv,noheader,nounits)
           test "${#gpu_indices[@]}" -gt 0
@@ -64,7 +64,7 @@ jobs:
           # isolation fixture exercises it whenever the owned runner has 2+ GPUs.
           for gpu_index in "${gpu_indices[@]}"; do
             export CUDA_VISIBLE_DEVICES="$gpu_index"
-            for label in m4-unit; do
+            for label in operators-unit; do
               test "$(ctest --test-dir out/build/cuda-release -N -L "$label" | \
                 sed -n 's/Total Tests: //p')" -gt 0
               ctest --test-dir out/build/cuda-release -L "$label" --output-on-failure
@@ -73,26 +73,26 @@ jobs:
       - name: All four Compute Sanitizer tools
         id: compute_sanitizer
         run: |
-          tools/ci/run_compute_sanitizer.sh --preset cuda-release --suite m2 \
-            --output out/sanitizer/m2
-      - name: M2 CUDA benchmark evidence
+          tools/ci/run_compute_sanitizer.sh --preset cuda-release --suite platform \
+            --output out/sanitizer/cuda
+      - name: CUDA benchmark evidence
         id: benchmarks
         run: |
           cmake --build --preset cuda-release --target inferx_kernels_benchmark || \
             echo "kernels benchmark requires the flashinfer/cutlass gitlinks; skipped"
           true
-      - name: Write exact M2 evidence manifest
+      - name: Write exact CUDA evidence manifest
         if: always()
         env:
-          INFERX_M2_TEST_OUTCOME: ${{ steps.cuda_tests.outcome }}
-          INFERX_M2_SANITIZER_OUTCOME: ${{ steps.compute_sanitizer.outcome }}
-          INFERX_M2_BENCHMARK_OUTCOME: ${{ steps.benchmarks.outcome }}
+          INFERX_CUDA_TEST_OUTCOME: ${{ steps.cuda_tests.outcome }}
+          INFERX_CUDA_SANITIZER_OUTCOME: ${{ steps.compute_sanitizer.outcome }}
+          INFERX_CUDA_BENCHMARK_OUTCOME: ${{ steps.benchmarks.outcome }}
         run: |
-          python3 tools/ci/write_m2_evidence_manifest.py \
-            --source-root . --output out/evidence/m2/manifest.json \
-            --artifact out/evidence/m2/gpu-evidence.txt \
-            --artifact out/evidence/m2/gpu-device-info.json \
-            --artifact out/sanitizer/m2 --artifact out/benchmarks/m2
+          python3 tools/ci/write_cuda_evidence_manifest.py \
+            --source-root . --output out/evidence/cuda/manifest.json \
+            --artifact out/evidence/cuda/gpu-evidence.txt \
+            --artifact out/evidence/cuda/gpu-device-info.json \
+            --artifact out/sanitizer/cuda --artifact out/benchmarks/cuda
       - name: Upload GPU evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -100,6 +100,6 @@ jobs:
           name: gpu-evidence
           if-no-files-found: error
           path: |
-            out/sanitizer/m2/
-            out/benchmarks/m2/
-            out/evidence/m2/
+            out/sanitizer/cuda/
+            out/benchmarks/cuda/
+            out/evidence/cuda/

@@ -1,5 +1,5 @@
-# Fixture: consumer without a required installed dependency (m0.md 13.5 row
-# 9). find_package must fail naming absl.
+# Fixture: consumer without a required installed dependency. find_package
+# must fail naming absl.
 cmake_minimum_required(VERSION 3.28)
 project(consumer_missing_dependency_fixture LANGUAGES CXX)
 

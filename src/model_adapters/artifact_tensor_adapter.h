@@ -22,11 +22,11 @@ class AdaptedTensor {
   AdaptedTensor& operator=(const AdaptedTensor&) = delete;
 
   [[nodiscard]] const TensorView& view() const noexcept { return view_; }
-  [[nodiscard]] artifacts::ArtifactDType source_dtype() const noexcept { return source_dtype_; }
+  [[nodiscard]] artifacts::ArtifactDtype source_dtype() const noexcept { return source_dtype_; }
   [[nodiscard]] bool staged() const noexcept { return staged_; }
   [[nodiscard]] absl::Status Release() { return buffer_.Release(); }
 
-  AdaptedTensor(Buffer buffer, TensorView view, artifacts::ArtifactDType source_dtype,
+  AdaptedTensor(Buffer buffer, TensorView view, artifacts::ArtifactDtype source_dtype,
                 bool staged) noexcept
       : buffer_(std::move(buffer)),
         view_(std::move(view)),
@@ -36,7 +36,7 @@ class AdaptedTensor {
  private:
   Buffer buffer_;
   TensorView view_;
-  artifacts::ArtifactDType source_dtype_ = artifacts::ArtifactDType::kF32;
+  artifacts::ArtifactDtype source_dtype_ = artifacts::ArtifactDtype::kF32;
   bool staged_ = false;
 };
 

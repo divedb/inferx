@@ -1,4 +1,4 @@
-// Immutable scheduler input values (m1.md section 12.1).
+// Immutable scheduler input values.
 
 #ifndef INFERX_SCHEDULER_SCHEDULING_SNAPSHOT_H_
 #define INFERX_SCHEDULER_SCHEDULING_SNAPSHOT_H_

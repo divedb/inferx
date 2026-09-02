@@ -327,8 +327,7 @@ void PrintUsage() {
 }
 
 int Main(int argc, char** argv) {
-  absl::SetProgramUsageMessage(
-      "Deterministic InferX M1 configuration, simulator, and replay tool.");
+  absl::SetProgramUsageMessage("Deterministic InferX configuration, simulator, and replay tool.");
   const absl::Status arguments = PrevalidateArguments(argc, argv);
   if (!arguments.ok()) return Fail(arguments, kValidationFailure);
   absl::DisableFlagfileAndEnvParsing();
