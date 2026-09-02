@@ -21,12 +21,13 @@ not discover or load CUDA, FlashInfer, or CUTLASS.
 - logits: the same prepared adapter with a distinct operation/capability and FP32 output.
 - embedding, RMSNorm, half-split RoPE, SwiGLU, and residual: contiguous FP32/FP16/BF16 storage,
   checked grid arithmetic, exact operation-specific alias capability, and zero-token no-op.
-- attention fallback: contiguous separate K/V, causal MHA/GQA, rotated-K cache, FP32 accumulation,
-  batch 1-8, heads up to 64, even head dimensions 2-256, context up to 4096, and prefill up to 512.
+- attention: FlashInfer paged decode/prefill mapped from the contiguous
+  BSHD cache (16-bit dtypes, head dims 64/128; ADR 0031/0032), plus the
+  remaining operator set in the table below.
 
-All host metadata is validated before attention/KV launch. Once a launch may have mutated output or
-KV, no alternate backend is attempted. Immediate errors use M2's CUDA status classifier; later
-completion/sticky failures are observed by the caller's final fence and poison rules.
+All host metadata is validated before launch. Once a launch may have mutated
+output, no alternate provider is attempted. Immediate errors use the kernels
+layer's status classifier; completion is the caller's fence concern.
 
 ## Evidence status (2026-09-01)
 

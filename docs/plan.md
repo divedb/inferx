@@ -138,7 +138,7 @@ include-what-you-use.
 | `runtime` | Model instances, workers, plan submission, tickets, workspace lifecycle | HTTP/JSON or scheduling policy |
 | `model` | Architecture validation, semantic modules, parameter mapping | Rank-specific communication calls or kernels |
 | `ops` | Hardware-neutral operation/layout/workspace contracts | Model names, scheduling, or server values |
-| `platform/cuda` | CUDA resources, memory, streams, backend dispatch, health | Request policy or HTTP/tokenizer behavior |
+| `kernels/` | Unified kernel dispatch, backends, provider chain (supersedes the removed `platform/cuda` substrate; ADR 0031) | Request policy or HTTP/tokenizer behavior |
 | `sampling` | Parameter semantics, RNG, logits processing, stop decisions | Model forward, sockets, KV allocation |
 | `distributed` | Topology/placement, process groups, worker protocol, KV transport | Model semantics or public API compatibility |
 | `server` | HTTP/SSE, limits, auth hooks, protocol mapping | Engine state mutation or GPU ownership |
@@ -169,7 +169,7 @@ include/inferx/
   server/           protocol-neutral server facade
   telemetry/        metrics/tracing/logging contracts
 src/                 implementations matching include/inferx/
-platform/cuda/       the only production code that includes CUDA/cuBLASLt/NCCL
+kernels/             the only production code that includes CUDA/CUTLASS (ADR 0031)
 kernels/cuda/        custom CUDA kernels and generated kernel registry
 apps/
   inferx_cli/
@@ -197,8 +197,8 @@ Allowed dependency direction:
 apps/server -> api -> engine -> scheduler/runtime -> model/ops -> tensor/base
                          |             |                |
                          +-----------> kv <-------------+
-runtime -> platform interface <- platform/cuda -> CUDA libraries and kernels
-distributed -> runtime/kv contracts; networking never depends on platform/cuda
+runtime -> kernels interface <- kernels/<backend> -> CUDA libraries
+distributed -> runtime/kv contracts; networking never depends on kernels/
 telemetry contracts may be used everywhere; exporters may not be used by core libraries
 ```
 
@@ -562,7 +562,10 @@ handles to device metadata and pointers.
 
 ### 9.4 CUDA implementation
 
-`platform/cuda` contains:
+(The original plan placed this under `platform/cuda`; the substrate was
+removed after the kernels architecture landed — ADR 0031. The equivalent
+future responsibilities live under `kernels/` and a future runtime
+backend:)
 
 - `CudaDevice`/`CudaDeviceGuard` and capability discovery;
 - move-only `CudaStream`, `CudaEvent`, `CudaGraph`, cuBLASLt and NCCL handle wrappers;
@@ -997,7 +1000,7 @@ when the deadline and capacity permit.
 | Dependency | Intended use | Decision/gate |
 |---|---|---|
 | Abseil | `Status`/`StatusOr`, flags, logging, strings, hashing utilities | Baseline. Verify selected pin supports the chosen compiler/C++23 mode |
-| `divedb/tokenizer` | Native tokenizer JSON encode/decode; contained a useful Hub downloader | Rejected and removed in M3. Retain only attributed MIT Hub resolver code; select a qualified tokenizer replacement through ADR 0025 |
+| `divedb/tokenizer` | Native tokenizer JSON encode/decode; contained a useful Hub downloader | Rejected and removed in M3. Retain only attributed MIT Hub resolver code; select a qualified tokenizer replacement through ADR 0024 |
 | Boost.Beast submodule | HTTP/SSE over Boost.Asio | Baseline candidate. Its required Boost.Asio/System headers and build strategy must be pinned explicitly; Beast alone is not a complete dependency story |
 | Folly | Possible bounded queues/futures/executors | Deferred. Prefer C++23 + Asio for the initial runtime; remove if no measured need because its transitive/build cost is high |
 | CUTLASS | C++ CUDA templates for specialized GEMM/fusions and reference tuning tools | Baseline header dependency after CUDA compatibility qualification; cuBLASLt remains default GEMM |

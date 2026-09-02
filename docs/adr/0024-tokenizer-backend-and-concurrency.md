@@ -6,7 +6,7 @@
 
 ## Context and audit result
 
-The pinned `divedb/tokenizer` revision is
+The removed `divedb/tokenizer` revision was
 `f109b7aef148dd4866a3dae7a8e5a6d221f95c75`. Its logical ownership model is suitable—one
 thread-affine handle per worker—but its build unconditionally adds duplicate dependencies and a
 network/OpenSSL closure. Its Rust shim has `unwrap()` paths reachable from malformed bytes and it
@@ -14,7 +14,8 @@ does not expose upstream streaming decode state.
 
 ## Decision
 
-Reject that revision unchanged. `INFERX_ENABLE_TOKENIZATION` defaults off and fails configuration
+Reject and remove that revision. Its useful MIT-licensed Hub resolver/transport code is adapted into
+the artifact layer under ADR 0033; no tokenizer implementation is retained. `INFERX_ENABLE_TOKENIZATION` defaults off and fails configuration
 when enabled, naming the missing qualifications. InferX will not implement BPE, Unigram,
 SentencePiece, Unicode normalization, byte fallback, or incremental suffix heuristics itself.
 

@@ -27,7 +27,9 @@ requires `ValidateBaseline()` success.
 `MemoryTracker` implements the tensor layer's device-neutral
 `AllocationAccounting` hook. `CpuAllocator(tracker)` therefore follows the
 same reserve/commit/release transaction without making the tensor target
-depend on runtime. CUDA allocators use the tracker transactions directly.
+depend on runtime. (The M2 CUDA allocators used these transactions
+directly; they were removed with the platform substrate, and a future
+runtime backend reintroduces device allocators the same way.)
 
 ## Fixed buffer pools
 

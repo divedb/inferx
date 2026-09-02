@@ -32,12 +32,13 @@ tokenization, including checked prompt-plus-output context arithmetic.
 ## Consequences
 
 The implementation must consume M1's IDs, request, deadline, bounded channel, epoch, and lifecycle
-types. The M0-only tree intentionally does not create temporary competing types.
+types. Those interfaces are now present on the integrated branch; the artifact/model foundation
+intentionally does not create temporary competing types while the tokenizer backend remains blocked.
 
 ## Validation evidence
 
-The contract is currently documentation-only. Its acceptance tests activate after M1 types and the
-ADR 0024 backend are available; until then no input target or readiness path is published.
+The contract is currently documentation-only. Its acceptance tests activate after the ADR 0024
+backend is available; until then no input target or readiness path is published.
 
 ## Supersession
 
