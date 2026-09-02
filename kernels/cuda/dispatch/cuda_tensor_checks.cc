@@ -3,7 +3,7 @@
 #include <cstddef>
 
 #include "absl/strings/str_cat.h"
-#include "inferx/platform/cuda/cuda_buffer_access.h"
+#include "inferx/kernels/cuda/buffer_access.h"
 
 namespace inferx::kernels::cuda {
 
@@ -40,12 +40,12 @@ absl::Status ValidateBinaryAlias(const TensorView& left, const TensorView& right
 
 const void* Address(const TensorView& tensor) noexcept {
   const auto* base =
-      static_cast<const std::byte*>(::inferx::cuda::BufferAccess::Address(tensor.buffer()));
+      static_cast<const std::byte*>(::inferx::kernels::BufferAccess::Address(tensor.buffer()));
   return base == nullptr ? nullptr : base + tensor.byte_offset().value();
 }
 
 void* Address(const MutableTensorView& tensor) noexcept {
-  auto* base = static_cast<std::byte*>(::inferx::cuda::BufferAccess::Address(tensor.buffer()));
+  auto* base = static_cast<std::byte*>(::inferx::kernels::BufferAccess::Address(tensor.buffer()));
   return base == nullptr ? nullptr : base + tensor.byte_offset().value();
 }
 

@@ -13,7 +13,7 @@
 #include "inferx/tensor/allocator.h"
 #include "inferx/tensor/device.h"
 
-namespace inferx::cuda {
+namespace inferx::kernels {
 class BufferAccess;
 }
 
@@ -98,7 +98,7 @@ class BufferView {
  private:
   friend class Buffer;
   friend class MutableBufferView;
-  friend class cuda::BufferAccess;
+  friend class kernels::BufferAccess;
   BufferView(const std::byte* address, ByteRange range, ByteCount alignment, Device device,
              MemoryKind memory_kind, MemoryCategory category, AllocationId allocation_id) noexcept;
 
@@ -126,7 +126,7 @@ class MutableBufferView {
 
  private:
   friend class Buffer;
-  friend class cuda::BufferAccess;
+  friend class kernels::BufferAccess;
   MutableBufferView(std::byte* address, ByteRange range, ByteCount alignment, Device device,
                     MemoryKind memory_kind, MemoryCategory category,
                     AllocationId allocation_id) noexcept;

@@ -87,8 +87,8 @@ A developer without CUDA can complete every CPU task. With a toolkit:
 ```bash
 cmake --preset cuda-release
 cmake --build --preset cuda-release --parallel
-out/build/cuda-release/inferx-device-info --json
-out/build/cuda-release/inferx-device-info --self-test
+nvidia-smi --query-gpu=name,compute_cap,driver_version --format=csv
+# (the M2 inferx-device-info tool was removed with the platform substrate)
 ctest --preset cuda-release -L m2 --output-on-failure
 tools/ci/run_compute_sanitizer.sh --preset cuda-release --suite m2 \
   --output out/sanitizer/m2

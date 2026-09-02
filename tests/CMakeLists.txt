@@ -67,7 +67,7 @@ if(INFERX_ENABLE_CUDA AND INFERX_BUILD_M4_GPU_TESTS)
   add_executable(inferx_kernels_cuda_test unit/cuda/kernels_cuda_test.cc)
   inferx_apply_project_options(inferx_kernels_cuda_test)
   target_include_directories(inferx_kernels_cuda_test PRIVATE
-    ${CMAKE_SOURCE_DIR}/kernels/cuda/dispatch ${CMAKE_SOURCE_DIR}/platform/cuda/include)
+    ${CMAKE_SOURCE_DIR}/kernels/cuda/dispatch ${CMAKE_SOURCE_DIR}/kernels/cuda/include)
   target_link_libraries(inferx_kernels_cuda_test PRIVATE
     inferx_kernels inferx_kernels_cuda inferx::ops inferx::tensor
     GTest::gtest_main CUDA::cudart absl::status absl::statusor absl::strings
@@ -81,7 +81,7 @@ if(INFERX_ENABLE_CUDA AND INFERX_BUILD_M4_GPU_TESTS)
   target_include_directories(inferx_kernels_ops_oracle_test PRIVATE
     ${CMAKE_SOURCE_DIR}/kernels/cuda/dispatch ${CMAKE_SOURCE_DIR}/kernels/cuda/include/inferx/kernels/cuda
     ${CMAKE_SOURCE_DIR}/kernels/cuda/include
-    ${CMAKE_SOURCE_DIR}/platform/cuda/include)
+    ${CMAKE_SOURCE_DIR}/kernels/cuda/include)
   target_link_libraries(inferx_kernels_ops_oracle_test PRIVATE
     inferx_kernels inferx_kernels_cuda inferx::ops inferx::tensor
     GTest::gtest_main CUDA::cudart absl::status absl::statusor absl::strings
@@ -263,71 +263,6 @@ if(INFERX_ENABLE_TSAN)
 endif()
 gtest_discover_tests(inferx_m2_runtime_stress_test
   PROPERTIES TIMEOUT 180)
-
-if(INFERX_ENABLE_CUDA AND INFERX_BUILD_GPU_TESTS)
-  add_executable(inferx_m2_cuda_unit_test
-    unit/cuda/m2_cuda_unit_test.cc
-    fakes/fake_allocator.cc)
-  inferx_apply_project_options(inferx_m2_cuda_unit_test)
-  target_include_directories(inferx_m2_cuda_unit_test PRIVATE
-    ${CMAKE_SOURCE_DIR})
-  target_link_libraries(inferx_m2_cuda_unit_test PRIVATE
-    inferx_cuda GTest::gtest_main CUDA::cudart
-    absl::status absl::statusor absl::strings)
-  target_compile_definitions(inferx_m2_cuda_unit_test PRIVATE
-    INFERX_CUDA_DEBUG_POINTERS=1)
-  gtest_discover_tests(inferx_m2_cuda_unit_test
-    PROPERTIES TIMEOUT 120)
-
-  add_executable(inferx_cuda_integration_test
-    integration/cuda/cuda_test_pipeline.cc
-    integration/cuda/m2_cuda_integration_test.cc)
-  inferx_apply_project_options(inferx_cuda_integration_test)
-  target_include_directories(inferx_cuda_integration_test PRIVATE
-    ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/kernels/cuda/test)
-  target_link_libraries(inferx_cuda_integration_test PRIVATE
-    inferx_cuda inferx_cuda_test_kernels GTest::gtest_main CUDA::cudart
-    absl::status absl::statusor absl::strings)
-  gtest_discover_tests(inferx_cuda_integration_test
-    PROPERTIES TIMEOUT 600)
-
-  add_executable(inferx_cuda_failure_child
-    failure/cuda/m2_cuda_failure_child.cc)
-  inferx_apply_project_options(inferx_cuda_failure_child)
-  target_link_libraries(inferx_cuda_failure_child PRIVATE
-    inferx_cuda CUDA::cudart absl::status absl::statusor)
-  target_include_directories(inferx_cuda_failure_child PRIVATE
-    ${CMAKE_SOURCE_DIR}/kernels/cuda/test)
-  target_link_libraries(inferx_cuda_failure_child PRIVATE
-    inferx_cuda_test_kernels)
-  add_test(NAME m2_cuda_illegal_address_child
-    COMMAND inferx_cuda_failure_child --illegal-address)
-  set_tests_properties(m2_cuda_illegal_address_child PROPERTIES
-    LABELS "m2;m2-failure" TIMEOUT 60)
-  add_test(NAME m2_cuda_assert_child
-    COMMAND inferx_cuda_failure_child --assert)
-  set_tests_properties(m2_cuda_assert_child PROPERTIES
-    LABELS "m2;m2-failure" TIMEOUT 60)
-  add_test(NAME m2_cuda_timeout_classification_child
-    COMMAND inferx_cuda_failure_child --classify-timeout)
-  set_tests_properties(m2_cuda_timeout_classification_child PROPERTIES
-    LABELS "m2;m2-failure" TIMEOUT 60)
-  add_test(NAME m2_cuda_device_lost_classification_child
-    COMMAND inferx_cuda_failure_child --classify-device-lost)
-  set_tests_properties(m2_cuda_device_lost_classification_child PROPERTIES
-    LABELS "m2;m2-failure" TIMEOUT 60)
-
-  add_executable(inferx_tensor_cuda_correctness
-    correctness/tensor_cuda/m2_tensor_cuda_correctness.cc)
-  inferx_apply_project_options(inferx_tensor_cuda_correctness)
-  target_include_directories(inferx_tensor_cuda_correctness PRIVATE
-    ${CMAKE_SOURCE_DIR}/kernels/cuda/test)
-  target_link_libraries(inferx_tensor_cuda_correctness PRIVATE
-    inferx_cuda inferx_cuda_test_kernels GTest::gtest_main CUDA::cudart
-    absl::status absl::statusor)
-  gtest_discover_tests(inferx_tensor_cuda_correctness
-    PROPERTIES TIMEOUT 900)
-endif()
 
 # GoogleTest discovers individual cases after build. Assign both the general
 # M2 label and the required category at CTest time; passing a semicolon list

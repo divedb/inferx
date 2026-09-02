@@ -50,11 +50,6 @@ endif()
 
 if(INFERX_ENABLE_CUDA)
   include(cmake/InferXCuda.cmake)
-  add_subdirectory(platform/cuda)
-  add_subdirectory(kernels/cuda/test)
-  if(INFERX_BUILD_TOOLS)
-    add_subdirectory(apps/inferx_device_info)
-  endif()
 endif()
 
 # Unified kernels layer (ADR 0031): the neutral dispatch target builds on

@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "cuda_kernel_backend.h"
+#include "inferx/kernels/cuda/buffer_access.h"
 #include "inferx/kernels/kernel_dispatch.h"
 #include "inferx/kernels/ops/activation.h"
 #include "inferx/kernels/ops/attention.h"
@@ -24,7 +25,6 @@
 #include "inferx/kernels/ops/model_fused.h"
 #include "inferx/kernels/ops/sampling.h"
 #include "inferx/kernels/ops/transform.h"
-#include "inferx/platform/cuda/cuda_buffer_access.h"
 #include "inferx/tensor/allocator.h"
 #include "inferx/tensor/buffer.h"
 #include "inferx/tensor/shape.h"
@@ -261,7 +261,7 @@ int main(int argc, char** argv) {
     for (uint64_t t = 0; t < 4096; ++t) positions[t] = static_cast<int32_t>(t);
     auto pos = MakeTensor({4096}, inferx::DType::kInt32, 17, false);
     cudaMemcpy(
-        const_cast<void*>(inferx::cuda::BufferAccess::Address(pos.view().AsConst().buffer())),
+        const_cast<void*>(inferx::kernels::BufferAccess::Address(pos.view().AsConst().buffer())),
         positions.data(), 4096 * 4, cudaMemcpyHostToDevice);
     std::vector<int32_t> host_positions = positions;
     inferx::ops::RopeRequest request{q.view().AsConst(),
@@ -312,8 +312,8 @@ int main(int argc, char** argv) {
     auto d_lengths = MakeTensor({batch}, inferx::DType::kInt32, 0, false);
     auto upload = [&](DevTensor& t, const void* data, size_t bytes) {
       cudaMemcpy(
-          const_cast<void*>(inferx::cuda::BufferAccess::Address(t.view().AsConst().buffer())), data,
-          bytes, cudaMemcpyHostToDevice);
+          const_cast<void*>(inferx::kernels::BufferAccess::Address(t.view().AsConst().buffer())),
+          data, bytes, cudaMemcpyHostToDevice);
     };
     upload(d_q_indptr, q_indptr.data(), q_indptr.size() * 4);
     upload(d_kv_indptr, kv_indptr.data(), kv_indptr.size() * 4);
@@ -321,13 +321,13 @@ int main(int argc, char** argv) {
     upload(d_lengths, lengths.data(), lengths.size() * 4);
     inferx::kernels::DeviceAttentionMetadata metadata{
         reinterpret_cast<const int32_t*>(
-            inferx::cuda::BufferAccess::Address(d_q_indptr.view().AsConst().buffer())),
+            inferx::kernels::BufferAccess::Address(d_q_indptr.view().AsConst().buffer())),
         reinterpret_cast<const int32_t*>(
-            inferx::cuda::BufferAccess::Address(d_kv_indptr.view().AsConst().buffer())),
+            inferx::kernels::BufferAccess::Address(d_kv_indptr.view().AsConst().buffer())),
         reinterpret_cast<const int32_t*>(
-            inferx::cuda::BufferAccess::Address(d_positions.view().AsConst().buffer())),
+            inferx::kernels::BufferAccess::Address(d_positions.view().AsConst().buffer())),
         reinterpret_cast<const int32_t*>(
-            inferx::cuda::BufferAccess::Address(d_lengths.view().AsConst().buffer()))};
+            inferx::kernels::BufferAccess::Address(d_lengths.view().AsConst().buffer()))};
     inferx::ops::AttentionRequest request{q.view().AsConst(),
                                           new_k.view().AsConst(),
                                           new_v.view().AsConst(),

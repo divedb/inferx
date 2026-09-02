@@ -13,13 +13,13 @@
 
 #include "cuda_kernel_backend.h"
 #include "gtest/gtest.h"
+#include "inferx/kernels/cuda/buffer_access.h"
 #include "inferx/kernels/kernel_dispatch.h"
 #include "inferx/kernels/ops/activation.h"
 #include "inferx/kernels/ops/layernorm.h"
 #include "inferx/kernels/ops/model_fused.h"
 #include "inferx/kernels/ops/sampling.h"
 #include "inferx/kernels/ops/transform.h"
-#include "inferx/platform/cuda/cuda_buffer_access.h"
 #include "inferx/tensor/allocator.h"
 #include "inferx/tensor/buffer.h"
 #include "inferx/tensor/shape.h"
@@ -110,7 +110,7 @@ Tensor<T> Required(std::initializer_list<uint64_t> dimensions, DType dtype,
 
 template <typename T>
 std::vector<T> ReadBack(const TensorView& view) {
-  const void* address = ::inferx::cuda::BufferAccess::Address(view.buffer());
+  const void* address = ::inferx::kernels::BufferAccess::Address(view.buffer());
   const size_t count = view.buffer().size().value() / sizeof(T);
   std::vector<T> result(count);
   if (address != nullptr && count != 0) {
