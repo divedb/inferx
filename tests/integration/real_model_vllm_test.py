@@ -32,6 +32,8 @@ def parse_args() -> argparse.Namespace:
 def run_inferx(args: argparse.Namespace) -> dict[str, object]:
     command = [
         str(args.inferx_binary),
+        "run",
+        "--model",
         args.model,
         "--revision",
         args.revision,

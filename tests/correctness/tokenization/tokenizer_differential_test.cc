@@ -32,9 +32,7 @@ std::vector<Case> LoadCases(const char* path) {
   }
   simdjson::ondemand::parser parser;
   std::string line;
-  size_t lineno = 0;
   while (std::getline(stream, line)) {
-    ++lineno;
     simdjson::ondemand::document doc = parser.iterate(line);
     simdjson::ondemand::object obj = doc.get_object();
     Case record;

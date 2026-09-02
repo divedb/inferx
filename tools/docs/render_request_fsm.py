@@ -57,7 +57,10 @@ def main() -> int:
     args = parser.parse_args()
 
     completed = subprocess.run(
-        [str(args.binary)], text=True, capture_output=True, check=False
+        [str(args.binary), "inspect", "--fsm-schema"],
+        text=True,
+        capture_output=True,
+        check=False,
     )
     if completed.returncode != 0:
         sys.stderr.write(completed.stderr)

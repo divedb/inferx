@@ -8,7 +8,7 @@ consumer flow for a preset and records, as JSON:
   - core dependency revisions (gitlinks);
   - wall/user/system time and peak RSS of configure and clean build;
   - no-op build time, unit-test time, install and consumer-build time;
-  - `inferx_base` and `inferx-info` file sizes;
+  - `inferx_base` and unified `inferx` file sizes;
   - CUDA smoke compile time when the preset enables CUDA.
 
 The first captured run establishes the baseline; there is no absolute time gate. A missing or
@@ -143,7 +143,7 @@ def main() -> int:
     artifacts = {}
     for name, path in {
         "inferx_base": build / "src" / "base" / "libinferx_base.a",
-        "inferx_info": build / "apps" / "inferx_info" / "inferx-info",
+        "inferx": build / "inferx",
     }.items():
         artifacts[name] = path.stat().st_size if path.is_file() else -1
     metrics["artifact_bytes"] = artifacts

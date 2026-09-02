@@ -4,6 +4,7 @@
   "core": [
    "simdjson",
    "abseil-cpp",
+   "cli11",
    "blake3",
    "curl",
    "googletest",
@@ -70,6 +71,23 @@
    "default_enabled": true,
    "status": "approved",
    "qualification": "docs/dependencies/abseil-cpp.md"
+  },
+  {
+   "name": "cli11",
+   "source_kind": "git-submodule",
+   "path": "third_party/CLI11",
+   "url": "https://github.com/CLIUtils/CLI11.git",
+   "revision": "37bb6edc5317e99af72ef48405e65d9ca5218861",
+   "license": "BSD-3-Clause",
+   "license_file": "third_party/CLI11/LICENSE",
+   "owner": "cli",
+   "features": [
+    "core"
+   ],
+   "default_enabled": true,
+   "status": "approved",
+   "qualification": "docs/dependencies/cli11.md",
+   "notes": "Pinned to release tag v2.6.2; sole parser for the inferx executable and private to inferx_cli."
   },
   {
    "name": "googletest",

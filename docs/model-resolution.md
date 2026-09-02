@@ -5,18 +5,19 @@ or a case-preserving Hugging Face model ID such as `Qwen/Qwen2.5-0.5B-Instruct`.
 tool exposes the contract now; the server entry point will consume the same `ModelResolver` API.
 
 ```sh
-inferx-model-inspect Qwen/Qwen2.5-0.5B-Instruct
-inferx-model-inspect Qwen/Qwen2.5-0.5B-Instruct --revision REVISION
-inferx-model-inspect ./models/tiny-llama --offline
-inferx-model-inspect Qwen/Qwen2.5-0.5B-Instruct --download-dir /models/hf-cache
+inferx inspect --model Qwen/Qwen2.5-0.5B-Instruct
+inferx inspect --model Qwen/Qwen2.5-0.5B-Instruct --revision REVISION
+inferx inspect --model ./models/tiny-llama --offline
+inferx inspect --model Qwen/Qwen2.5-0.5B-Instruct --download-dir /models/hf-cache
+inferx download --model Qwen/Qwen2.5-0.5B-Instruct --download-dir /models/hf-cache
 ```
 
-For a supported dense Llama checkpoint, `inferx-generate` resolves and downloads the model through
+For a supported dense Llama checkpoint, `inferx run` resolves and downloads the model through
 the same path, executes the CPU reference backend, and writes the prompt and generated token IDs as
 JSON:
 
 ```sh
-inferx-generate amakhov/tiny-random-llama \
+inferx run --model amakhov/tiny-random-llama \
   --revision fbf68d33cf68a9d1d4b71b3d098ae82c8c14443b \
   --download-dir /models/hf-cache \
   --prompt 'The capital of France is' \
@@ -32,7 +33,7 @@ Python interpreter that has vLLM installed, then run the registered test:
 cmake --preset dev-gcc \
   -DINFERX_BUILD_VLLM_DIFFERENTIAL_TESTS=ON \
   -DPython3_EXECUTABLE=/path/to/vllm/python
-cmake --build --preset dev-gcc --target inferx-generate
+cmake --build --preset dev-gcc --target inferx
 ctest --test-dir out/build/dev-gcc --output-on-failure \
   -R '^real_model_vllm_differential$'
 ```
@@ -82,6 +83,6 @@ parser still accepts only M3's dense Llama capability. Resolution succeeding doe
 Qwen2 or another architecture is executable yet. `INFERX_ENABLE_HF_HUB=OFF` keeps local and cached
 resolution but returns `Unimplemented` for a cache miss instead of linking an HTTP/TLS transport.
 
-The positional model convention, `--revision`, and `--download-dir` intentionally track the
+The `--model`, `--revision`, and `--download-dir` conventions intentionally track the
 [vLLM serve interface](https://docs.vllm.ai/en/latest/cli/serve/). InferX does not claim behavioral
 compatibility for vLLM features outside this model-source contract.

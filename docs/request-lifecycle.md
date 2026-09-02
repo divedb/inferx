@@ -4,7 +4,7 @@ The closed transition table (ADR 0009; `m1.md` section 11). The executable
 authority is `TransitionRules()` in
 `src/engine/request_state_machine.cc`; this table explains the conditional
 guards, while the generated inventory at the end of this file comes directly
-from `inferx_fsm_schema` and is checked by CTest.
+from `inferx inspect --fsm-schema` and is checked by CTest.
 
 States: `received tokenizing queued reserving prefill_ready prefilling
 decode_ready decoding preempted cancelling finishing finished cancelled

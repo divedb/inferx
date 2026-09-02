@@ -1,6 +1,6 @@
 # Deterministic M1 simulator
 
-`inferx-sim` is the CPU-only lifecycle oracle. The simulator owns immutable
+`inferx simulate` is the CPU-only lifecycle oracle. The simulator owns immutable
 configuration, a `ManualClock`, registry/controller, resource accountant,
 plan pool, scheduler, fake executor, workload, response/replay buffers,
 lifecycle coordinator, and invariant checker in dependency order.
@@ -22,11 +22,11 @@ then emits one terminal response and releases capacity.
 ## Commands
 
 ```text
-inferx-sim validate-config --config <file>
-inferx-sim explain-config --config <file> [schema overlay flags]
-inferx-sim run --config <file> --workload <jsonl> --trace <jsonl>
-inferx-sim replay --trace <jsonl> --output <new-jsonl>
-inferx-sim check-trace --trace <jsonl>
+inferx simulate validate-config --config <file>
+inferx simulate explain-config --config <file> [schema overlay flags]
+inferx simulate run --config <file> --workload <jsonl> --trace <jsonl>
+inferx simulate replay --trace <jsonl> --output <new-jsonl>
+inferx simulate check-trace --trace <jsonl>
 ```
 
 Outputs are not overwritten without `--overwrite`. Exit codes are 0 success,

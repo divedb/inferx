@@ -23,6 +23,14 @@ include(GoogleTest)
 gtest_discover_tests(inferx_base_test
   PROPERTIES LABELS "unit" TIMEOUT 60)
 
+if(INFERX_BUILD_CLI)
+  add_executable(inferx_cli_test unit/cli/app_test.cc)
+  inferx_apply_project_options(inferx_cli_test)
+  target_link_libraries(inferx_cli_test PRIVATE inferx_cli GTest::gtest_main)
+  gtest_discover_tests(inferx_cli_test
+    PROPERTIES LABELS "unit;integration" TIMEOUT 60)
+endif()
+
 # model artifact/model contract: rooted path safety, official digest vectors,
 # safetensors layout checks, mapping accounting, and complete Llama coverage.
 add_executable(inferx_artifacts_test
@@ -236,20 +244,20 @@ add_test(NAME simulator_stress_50000
 set_tests_properties(simulator_stress_50000 PROPERTIES
   LABELS "core;core-stress" TIMEOUT 300)
 
-if(TARGET inferx-sim)
+if(TARGET inferx)
   add_test(NAME simulator_cli
     COMMAND Python3::Interpreter ${CMAKE_CURRENT_SOURCE_DIR}/integration/simulator_cli_test.py
-            --binary $<TARGET_FILE:inferx-sim>
+            --binary $<TARGET_FILE:inferx>
             --config ${CMAKE_CURRENT_SOURCE_DIR}/integration/simulator/data/basic_config.json
             --workload ${CMAKE_CURRENT_SOURCE_DIR}/integration/simulator/data/basic_workload.json)
   set_tests_properties(simulator_cli PROPERTIES
     LABELS "core;core-integration" TIMEOUT 120)
 endif()
 
-if(TARGET inferx_fsm_schema)
+if(TARGET inferx)
   add_test(NAME fsm_docs_current
     COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/docs/render_request_fsm.py
-            --binary $<TARGET_FILE:inferx_fsm_schema>
+            --binary $<TARGET_FILE:inferx>
             --output ${CMAKE_SOURCE_DIR}/docs/request-lifecycle.md
             --check)
   set_tests_properties(fsm_docs_current PROPERTIES
@@ -378,10 +386,10 @@ gtest_discover_tests(inferx_absl_qualification_test
 # under tests/consumer* are separate CMake projects driven by Python drivers
 # so they cannot see the source tree or build tree by accident.
 # ---------------------------------------------------------------------------
-if(INFERX_BUILD_TOOLS)
+if(INFERX_BUILD_CLI)
   add_test(NAME cli
     COMMAND Python3::Interpreter ${CMAKE_CURRENT_SOURCE_DIR}/integration/cli_test.py
-            --binary $<TARGET_FILE:inferx-info>
+            --binary $<TARGET_FILE:inferx>
             --expected-version ${PROJECT_VERSION})
   set_tests_properties(cli PROPERTIES LABELS "integration" TIMEOUT 120)
   set(_INFERX_MODEL_INSPECT_TEST_OPTIONS "")
@@ -391,7 +399,7 @@ if(INFERX_BUILD_TOOLS)
   add_test(NAME model_inspect_cli
     COMMAND Python3::Interpreter
             ${CMAKE_CURRENT_SOURCE_DIR}/integration/model_inspect_cli_test.py
-            --binary $<TARGET_FILE:inferx-model-inspect>
+            --binary $<TARGET_FILE:inferx>
             --fixture ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/model/tiny_llama
             ${_INFERX_MODEL_INSPECT_TEST_OPTIONS})
   set_tests_properties(model_inspect_cli PROPERTIES LABELS "integration;model" TIMEOUT 120)
@@ -400,7 +408,7 @@ if(INFERX_BUILD_TOOLS)
     add_test(NAME real_model_vllm_differential
       COMMAND Python3::Interpreter
               ${CMAKE_CURRENT_SOURCE_DIR}/integration/real_model_vllm_test.py
-              --inferx-binary $<TARGET_FILE:inferx-generate>
+              --inferx-binary $<TARGET_FILE:inferx>
               --download-dir ${CMAKE_BINARY_DIR}/real-model-cache)
     set_tests_properties(real_model_vllm_differential PROPERTIES
       LABELS "integration;model;external"

@@ -39,3 +39,8 @@ if(INFERX_ENABLE_HF_HUB AND INFERX_DEPENDENCY_PROVIDER STREQUAL "submodule")
           DESTINATION "${CMAKE_INSTALL_DOCDIR}/third-party-notices"
           RENAME curl-COPYING)
 endif()
+if(INFERX_BUILD_CLI AND INFERX_DEPENDENCY_PROVIDER STREQUAL "submodule")
+  install(FILES "${CMAKE_CURRENT_LIST_DIR}/../third_party/CLI11/LICENSE"
+          DESTINATION "${CMAKE_INSTALL_DOCDIR}/third-party-notices"
+          RENAME CLI11-BSD-3-Clause.txt)
+endif()

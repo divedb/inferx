@@ -29,7 +29,7 @@ decision records both the floor and the isolation rule.
    qualified NVCC supports it; if the qualified NVCC requires lower, isolate the CUDA
    subset at C++20 via a per-target standard instead of lowering the host project.
    The CMake CUDA module selects automatically and records the choice in
-   `inferx-info --build`.
+   `inferx version`.
 5. **Explicit architectures:** `CMAKE_CUDA_ARCHITECTURES` must be an explicit accepted
    list (seed: 89 for the owned RTX 4080 runner); `native` is forbidden in release/CI
    presets. Developers override via `CMakeUserPresets.json`.

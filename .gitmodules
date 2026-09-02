@@ -34,3 +34,6 @@
 [submodule "third_party/minja"]
 	path = third_party/minja
 	url = https://github.com/google/minja.git
+[submodule "third_party/CLI11"]
+	path = third_party/CLI11
+	url = https://github.com/CLIUtils/CLI11.git

@@ -72,7 +72,7 @@ vendored—the owned shim replaces it entirely.
 
 M3's tokenizer gate is closed: `ValidatedModelPackage` publishes a qualified tokenizer with
 metadata, the model/tokenizer cross-check, and the fingerprint `tokenizer_capability` record;
-`inferx-model-inspect` reports `tokenizer_qualified=true` and the real BLAKE3 fingerprint.
+`inferx inspect` reports `tokenizer_qualified=true` and the real BLAKE3 fingerprint.
 `INFERX_ENABLE_TOKENIZATION` defaults ON and requires `cargo` plus the two submodules; the
 configure error carries the exact remediation.
 

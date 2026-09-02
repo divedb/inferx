@@ -105,17 +105,18 @@ tools/bench/run_cuda_benchmarks.sh --preset cuda-release --output out/benchmarks
 ## CLI diagnostics
 
 ```bash
-out/build/dev-clang/apps/inferx_info/inferx-info --version   # stable single line
-out/build/dev-clang/apps/inferx_info/inferx-info --build     # compiler/std/features/architectures
+out/build/dev-clang/inferx --version  # stable single line
+out/build/dev-clang/inferx version    # compiler/std/features/revision/architectures
+out/build/dev-clang/inferx env        # compiled backends and detected runtime/devices
 ```
 
 M1 simulator/replay checks:
 
 ```bash
-out/build/dev-clang/inferx-sim validate-config --config tests/integration/simulator/data/basic_config.json
-out/build/dev-clang/inferx-sim run --config tests/integration/simulator/data/basic_config.json \
+out/build/dev-clang/inferx simulate validate-config --config tests/integration/simulator/data/basic_config.json
+out/build/dev-clang/inferx simulate run --config tests/integration/simulator/data/basic_config.json \
   --workload tests/integration/simulator/data/basic_workload.json --trace out/traces/basic.jsonl
-out/build/dev-clang/inferx-sim replay --trace out/traces/basic.jsonl \
+out/build/dev-clang/inferx simulate replay --trace out/traces/basic.jsonl \
   --output out/traces/basic.replayed.jsonl
 ctest --preset dev-clang -L 'core-unit|core-integration|core-correctness|core-failure|core-stress'
 ```

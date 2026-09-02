@@ -75,6 +75,17 @@ def main() -> int:
 
     if kind == "inferx":
         run(["cmake", "--install", str(args.build_dir), "--prefix", str(prefix)])
+        bin_dir = prefix / "bin"
+        user_executables = sorted(
+            path.name
+            for path in bin_dir.iterdir()
+            if path.is_file() and os.access(path, os.X_OK)
+        )
+        if user_executables != ["inferx"]:
+            sys.exit(
+                "error: installed user-facing executables must be exactly "
+                f"['inferx']; found {user_executables!r}"
+            )
 
     consumer_build = work / "consumer-build"
     configure_cmd = [

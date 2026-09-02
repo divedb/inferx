@@ -50,7 +50,7 @@ endif()
 
 option(INFERX_BUILD_BENCHMARKS "Build InferX benchmarks."
        ${_INFERX_TOP_LEVEL_DEFAULT})
-option(INFERX_BUILD_TOOLS "Build InferX developer tools such as inferx-info."
+option(INFERX_BUILD_CLI "Build the single InferX command-line executable."
        ${_INFERX_TOP_LEVEL_DEFAULT})
 option(INFERX_ENABLE_TOKENIZATION
        "Build the tokenizer backend (owned local-only adaptation of divedb/tokenizer; ADR 0024)."
@@ -78,9 +78,9 @@ option(INFERX_BUILD_OPERATOR_BENCHMARKS "Build operator/dispatch benchmarks."
 option(INFERX_BUILD_VLLM_DIFFERENTIAL_TESTS
        "Register the opt-in real-model differential test against vLLM."
        OFF)
-if(INFERX_BUILD_VLLM_DIFFERENTIAL_TESTS AND NOT INFERX_BUILD_TOOLS)
+if(INFERX_BUILD_VLLM_DIFFERENTIAL_TESTS AND NOT INFERX_BUILD_CLI)
   message(FATAL_ERROR
-    "INFERX_BUILD_VLLM_DIFFERENTIAL_TESTS=ON requires INFERX_BUILD_TOOLS=ON")
+    "INFERX_BUILD_VLLM_DIFFERENTIAL_TESTS=ON requires INFERX_BUILD_CLI=ON")
 endif()
 if(INFERX_BUILD_VLLM_DIFFERENTIAL_TESTS AND NOT INFERX_ENABLE_HF_HUB)
   message(FATAL_ERROR

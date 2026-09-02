@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""End-to-end inferx-sim command and stable exit-code coverage."""
+"""End-to-end inferx simulate command and stable exit-code coverage."""
 
 import argparse
 import pathlib
@@ -32,21 +32,22 @@ def main() -> int:
         invalid = root / "invalid.json"
         invalid.write_text('{"unknown_field":1}\n', encoding="utf-8")
 
-        run([str(binary), "validate-config", f"--config={args.config}"], 0)
-        run([str(binary), "validate-config", f"--config={invalid}"], 2)
-        run([str(binary), "validate-config", "--unknown=1"], 2)
+        prefix = [str(binary), "simulate"]
+        run([*prefix, "validate-config", f"--config={args.config}"], 0)
+        run([*prefix, "validate-config", f"--config={invalid}"], 2)
+        run([*prefix, "validate-config", "--unknown=1"], 2)
         run(
             [
-                str(binary),
+                *prefix,
                 "validate-config",
                 f"--config={args.config}",
-                "--max_active_sequences=not-a-number",
+                "--max-active-sequences=not-a-number",
             ],
             2,
         )
         run(
             [
-                str(binary),
+                *prefix,
                 "run",
                 f"--config={args.config}",
                 f"--workload={args.workload}",
@@ -54,22 +55,22 @@ def main() -> int:
             ],
             0,
         )
-        run([str(binary), "check-trace", f"--trace={trace}"], 0)
+        run([*prefix, "check-trace", f"--trace={trace}"], 0)
         run(
-            [str(binary), "replay", f"--trace={trace}", f"--output={replayed}"],
+            [*prefix, "replay", f"--trace={trace}", f"--output={replayed}"],
             0,
         )
         if trace.read_bytes() != replayed.read_bytes():
             raise AssertionError("replayed trace is not byte-identical")
         run(
             [
-                str(binary),
+                *prefix,
                 "run",
                 f"--config={args.config}",
                 f"--workload={args.workload}",
                 f"--trace={trace}",
             ],
-            5,
+            4,
         )
     return 0
 

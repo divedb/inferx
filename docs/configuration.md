@@ -45,7 +45,7 @@ negation aliases.
 - M1 reserves `prompt_tokens + max_output_tokens` KV tokens at admission
   (conservative oracle; M8 owns utilization changes).
 
-`inferx-sim validate-config` / `explain-config` (M1.6) print effective values
+`inferx simulate validate-config` / `explain-config` (M1.6) print effective values
 plus per-field provenance (`default`/`file`/`environment`/`command line`) in
 stable field order.
 

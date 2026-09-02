@@ -43,14 +43,6 @@ add_subdirectory(src/ops)
 add_subdirectory(src/model_adapters)
 add_subdirectory(simulator)
 
-if(INFERX_BUILD_TOOLS)
-  add_subdirectory(apps/inferx_info)
-  add_subdirectory(apps/inferx_model_inspect)
-  add_subdirectory(apps/inferx_generate)
-  add_subdirectory(apps/inferx_sim)
-  add_subdirectory(apps/inferx_fsm_schema)
-endif()
-
 if(INFERX_ENABLE_CUDA)
   include(cmake/InferXCuda.cmake)
 endif()
@@ -59,6 +51,12 @@ endif()
 # every preset; CUDA categories register only under INFERX_ENABLE_CUDA and
 # after InferXCuda.cmake has set the CUDA language variables.
 add_subdirectory(kernels)
+
+if(INFERX_BUILD_CLI)
+  add_subdirectory(src/command)
+  add_subdirectory(src/cli)
+  add_subdirectory(apps/inferx)
+endif()
 
 if(BUILD_TESTING)
   add_subdirectory(tests)
