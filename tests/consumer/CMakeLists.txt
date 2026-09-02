@@ -13,4 +13,5 @@ find_package(InferX CONFIG REQUIRED)
 add_executable(inferx_consumer main.cc)
 target_link_libraries(inferx_consumer PRIVATE
   inferx::base inferx::config inferx::api inferx::lifecycle
-  inferx::scheduler inferx::engine inferx::tensor inferx::runtime inferx::ops)
+  inferx::scheduler inferx::engine inferx::tensor inferx::runtime
+  inferx::artifacts inferx::model)

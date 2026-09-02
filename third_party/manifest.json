@@ -4,8 +4,8 @@
     "core": [
       "simdjson",
       "abseil-cpp",
-      "simdjson",
       "blake3",
+      "curl",
       "googletest",
       "benchmark"
     ],
@@ -152,23 +152,6 @@
       "notes": "Deferred to M4. Not approved for production use without the M4 native C++ spike; transitive closure includes Python-facing tooling that must not enter the runtime."
     },
     {
-      "name": "tokenizer",
-      "source_kind": "git-submodule",
-      "path": "third_party/tokenizer",
-      "url": "https://github.com/divedb/tokenizer.git",
-      "revision": "f109b7aef148dd4866a3dae7a8e5a6d221f95c75",
-      "license": "MIT",
-      "license_file": "third_party/notices/divedb-tokenizer-MIT.txt",
-      "owner": "tokenization",
-      "features": [
-        "tokenization"
-      ],
-      "default_enabled": false,
-      "status": "rejected",
-      "qualification": "docs/dependencies/tokenizer.md",
-      "notes": "M3.0 rejects this pin unchanged: forced duplicate dependencies, unconditional Hub/curl/OpenSSL closure, aborting Rust parse paths, and no upstream streaming decode ABI. Gitlink retained as audit evidence; production target disabled."
-    },
-    {
       "name": "hpc-ops",
       "source_kind": "git-submodule",
       "path": "third_party/hpc-ops",
@@ -200,6 +183,23 @@
       "qualification": "docs/dependencies/folly.md",
       "removed": true,
       "notes": "No approved use case; the C++23 host plus Asio lane covers the roadmap need at a fraction of the build/dependency cost. Gitlink removed in M0; report retained for the audit trail."
+    },
+    {
+      "name": "curl",
+      "source_kind": "git-submodule",
+      "path": "third_party/curl",
+      "url": "https://github.com/curl/curl.git",
+      "revision": "68720b4837284335b2d63cb358f8f6ce65f5bc55",
+      "license": "curl",
+      "license_file": "third_party/curl/COPYING",
+      "owner": "artifacts-model-resolution",
+      "features": [
+        "core"
+      ],
+      "default_enabled": true,
+      "status": "approved",
+      "qualification": "docs/dependencies/curl.md",
+      "notes": "Promoted from divedb/tokenizer's transitive transport to signed stable release 8.21.0. Built static, HTTP(S)-only, with system OpenSSL; CLI/tests/examples and optional protocol dependencies are disabled."
     }
   ]
 }

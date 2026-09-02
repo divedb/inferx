@@ -482,7 +482,7 @@ inferx_add_failure_test(consumer_missing_dependency
 inferx_add_failure_test(tokenizer_unqualified
   --fixture ${CMAKE_CURRENT_SOURCE_DIR}/failure/tokenizer_unqualified.cmake
   --arg INFERX_ROOT=${CMAKE_SOURCE_DIR}
-  EXPECT "INFERX_ENABLE_TOKENIZATION" "candidate-only" "streaming decode ABI")
+  EXPECT "INFERX_ENABLE_TOKENIZATION" "was removed" "streaming decode state")
 
 inferx_add_failure_test(manifest_gitlink_drift
   --script ${CMAKE_CURRENT_SOURCE_DIR}/failure/manifest_drift.py
