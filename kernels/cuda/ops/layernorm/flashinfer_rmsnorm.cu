@@ -35,13 +35,12 @@ cudaError_t LaunchTyped(const void* input, const void* weight, void* output, uin
   const dim3 grid(static_cast<uint32_t>(tokens));
   const dim3 block(kWarpSize, num_warps);
   const size_t shared_bytes = num_warps * sizeof(float);
-  flashinfer::norm::RMSNormKernel<kVecSize, T>
-      <<<grid, block, shared_bytes, stream>>>(
-          static_cast<T*>(const_cast<void*>(input)), static_cast<T*>(const_cast<void*>(weight)),
-          static_cast<T*>(output), static_cast<uint32_t>(hidden),
-          static_cast<uint32_t>(hidden), static_cast<uint32_t>(hidden),
-          /*weight_bias=*/0.0F, epsilon);
-  return cudaPeekAtLastError();
+  flashinfer::norm::RMSNormKernel<kVecSize, T><<<grid, block, shared_bytes, stream>>>(
+      static_cast<T*>(const_cast<void*>(input)), static_cast<T*>(const_cast<void*>(weight)),
+      static_cast<T*>(output), static_cast<uint32_t>(hidden), static_cast<uint32_t>(hidden),
+      static_cast<uint32_t>(hidden),
+      /*weight_bias=*/0.0F, epsilon);
+  return cudaGetLastError();
 }
 
 }  // namespace

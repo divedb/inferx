@@ -13,7 +13,7 @@ if(NOT EXISTS "${inferx_flashinfer_root}/include/flashinfer/norm.cuh")
   return()
 endif()
 
-add_library(inferx_kernels_cuda_layernorm STATIC flashinfer_rmsnorm.cu)
+add_library(inferx_kernels_cuda_layernorm STATIC flashinfer_rmsnorm.cu flashinfer_norm_variants.cu)
 target_include_directories(inferx_kernels_cuda_layernorm
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include
   PRIVATE ${inferx_flashinfer_root}/include

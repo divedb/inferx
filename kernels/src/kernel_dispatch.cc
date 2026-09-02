@@ -11,6 +11,8 @@
 #include "inferx/kernels/ops/embedding.h"
 #include "inferx/kernels/ops/gemm.h"
 #include "inferx/kernels/ops/layernorm.h"
+#include "inferx/kernels/ops/model_fused.h"
+#include "inferx/kernels/ops/sampling.h"
 #include "inferx/kernels/ops/transform.h"
 
 namespace inferx::kernels {
@@ -24,21 +26,20 @@ std::array<std::unique_ptr<KernelBackend>, kBackendSlotCount>& Backends() noexce
 }
 
 constexpr ProviderId kPreferenceChain[] = {
-    ProviderId::kHpcOps, ProviderId::kFlashInfer, ProviderId::kCutlass,
+    ProviderId::kHpcOps,   ProviderId::kFlashInfer,  ProviderId::kCutlass,
     ProviderId::kCublasLt, ProviderId::kInferxOwned,
 };
 
 absl::StatusOr<KernelBackend*> BackendFor(const KernelExecutionContext& context) {
   const auto kind = static_cast<uint8_t>(context.device.kind);
   if (kind >= kBackendSlotCount) {
-    return absl::InvalidArgumentError(
-        "kernels: device kind out of range for kernel dispatch");
+    return absl::InvalidArgumentError("kernels: device kind out of range for kernel dispatch");
   }
   KernelBackend* backend = Backends()[kind].get();
   if (backend == nullptr) {
-    return absl::UnimplementedError(absl::StrCat(
-        "kernels: no backend registered for device kind ", kind,
-        " (register one via RegisterKernelBackend before dispatching)"));
+    return absl::UnimplementedError(
+        absl::StrCat("kernels: no backend registered for device kind ", kind,
+                     " (register one via RegisterKernelBackend before dispatching)"));
   }
   return backend;
 }
@@ -74,8 +75,8 @@ absl::Status RegisterKernelBackend(std::unique_ptr<KernelBackend> backend) {
     return absl::InvalidArgumentError("kernels: backend device kind out of range");
   }
   if (Backends()[kind] != nullptr) {
-    return absl::AlreadyExistsError(absl::StrCat(
-        "kernels: backend already registered for device kind ", kind));
+    return absl::AlreadyExistsError(
+        absl::StrCat("kernels: backend already registered for device kind ", kind));
   }
   Backends()[kind] = std::move(backend);
   return absl::OkStatus();
@@ -168,6 +169,122 @@ absl::Status LaunchAttention(const ops::AttentionRequest& request,
     return backend.status();
   }
   return (*backend)->LaunchAttention(request, metadata, context, forced);
+}
+
+absl::Status LaunchActMul(const ActMulRequest& request, const KernelExecutionContext& context,
+                          std::optional<ProviderId> forced) {
+  absl::StatusOr<KernelBackend*> backend = BackendFor(context);
+  if (!backend.ok()) return backend.status();
+  return (*backend)->LaunchActMul(request, context, forced);
+}
+absl::Status LaunchAdd3(const Add3Request& request, const KernelExecutionContext& context,
+                        std::optional<ProviderId> forced) {
+  absl::StatusOr<KernelBackend*> backend = BackendFor(context);
+  if (!backend.ok()) return backend.status();
+  return (*backend)->LaunchAdd3(request, context, forced);
+}
+absl::Status LaunchFusedAddRmsNorm(const FusedAddRmsNormRequest& request,
+                                   const KernelExecutionContext& context,
+                                   std::optional<ProviderId> forced) {
+  absl::StatusOr<KernelBackend*> backend = BackendFor(context);
+  if (!backend.ok()) return backend.status();
+  return (*backend)->LaunchFusedAddRmsNorm(request, context, forced);
+}
+absl::Status LaunchGemmaRmsNorm(const GemmaRmsNormRequest& request,
+                                const KernelExecutionContext& context,
+                                std::optional<ProviderId> forced) {
+  absl::StatusOr<KernelBackend*> backend = BackendFor(context);
+  if (!backend.ok()) return backend.status();
+  return (*backend)->LaunchGemmaRmsNorm(request, context, forced);
+}
+absl::Status LaunchQkRmsNorm(const QkRmsNormRequest& request, const KernelExecutionContext& context,
+                             std::optional<ProviderId> forced) {
+  absl::StatusOr<KernelBackend*> backend = BackendFor(context);
+  if (!backend.ok()) return backend.status();
+  return (*backend)->LaunchQkRmsNorm(request, context, forced);
+}
+absl::Status LaunchHadamardTransform(const HadamardTransformRequest& request,
+                                     const KernelExecutionContext& context,
+                                     std::optional<ProviderId> forced) {
+  absl::StatusOr<KernelBackend*> backend = BackendFor(context);
+  if (!backend.ok()) return backend.status();
+  return (*backend)->LaunchHadamardTransform(request, context, forced);
+}
+absl::Status LaunchArgmax(const ArgmaxRequest& request, const KernelExecutionContext& context,
+                          std::optional<ProviderId> forced) {
+  absl::StatusOr<KernelBackend*> backend = BackendFor(context);
+  if (!backend.ok()) return backend.status();
+  return (*backend)->LaunchArgmax(request, context, forced);
+}
+absl::Status LaunchTopPRenorm(const TopPRenormRequest& request,
+                              const KernelExecutionContext& context,
+                              std::optional<ProviderId> forced) {
+  absl::StatusOr<KernelBackend*> backend = BackendFor(context);
+  if (!backend.ok()) return backend.status();
+  return (*backend)->LaunchTopPRenorm(request, context, forced);
+}
+absl::Status LaunchTopKRenorm(const TopKRenormRequest& request,
+                              const KernelExecutionContext& context,
+                              std::optional<ProviderId> forced) {
+  absl::StatusOr<KernelBackend*> backend = BackendFor(context);
+  if (!backend.ok()) return backend.status();
+  return (*backend)->LaunchTopKRenorm(request, context, forced);
+}
+absl::Status LaunchFp8Quant(const Fp8QuantRequest& request, const KernelExecutionContext& context,
+                            std::optional<ProviderId> forced) {
+  absl::StatusOr<KernelBackend*> backend = BackendFor(context);
+  if (!backend.ok()) return backend.status();
+  return (*backend)->LaunchFp8Quant(request, context, forced);
+}
+absl::Status LaunchSoftmaxTopK(const SoftmaxTopKRequest& request,
+                               const KernelExecutionContext& context,
+                               std::optional<ProviderId> forced) {
+  absl::StatusOr<KernelBackend*> backend = BackendFor(context);
+  if (!backend.ok()) return backend.status();
+  return (*backend)->LaunchSoftmaxTopK(request, context, forced);
+}
+absl::Status LaunchSigmoidBiasTopK(const SigmoidBiasTopKRequest& request,
+                                   const KernelExecutionContext& context,
+                                   std::optional<ProviderId> forced) {
+  absl::StatusOr<KernelBackend*> backend = BackendFor(context);
+  if (!backend.ok()) return backend.status();
+  return (*backend)->LaunchSigmoidBiasTopK(request, context, forced);
+}
+absl::Status LaunchAttnRes(const AttnResRequest& request, const KernelExecutionContext& context,
+                           std::optional<ProviderId> forced) {
+  absl::StatusOr<KernelBackend*> backend = BackendFor(context);
+  if (!backend.ok()) return backend.status();
+  return (*backend)->LaunchAttnRes(request, context, forced);
+}
+absl::Status LaunchHcMix(const HcMixRequest& request, const KernelExecutionContext& context,
+                         std::optional<ProviderId> forced) {
+  absl::StatusOr<KernelBackend*> backend = BackendFor(context);
+  if (!backend.ok()) return backend.status();
+  return (*backend)->LaunchHcMix(request, context, forced);
+}
+absl::Status LaunchHcCombine(const HcCombineRequest& request, const KernelExecutionContext& context,
+                             std::optional<ProviderId> forced) {
+  absl::StatusOr<KernelBackend*> backend = BackendFor(context);
+  if (!backend.ok()) return backend.status();
+  return (*backend)->LaunchHcCombine(request, context, forced);
+}
+absl::Status LaunchMhcPre(const MhcPreRequest& request, const KernelExecutionContext& context,
+                          std::optional<ProviderId> forced) {
+  absl::StatusOr<KernelBackend*> backend = BackendFor(context);
+  if (!backend.ok()) return backend.status();
+  return (*backend)->LaunchMhcPre(request, context, forced);
+}
+absl::Status LaunchMhcPost(const MhcPostRequest& request, const KernelExecutionContext& context,
+                           std::optional<ProviderId> forced) {
+  absl::StatusOr<KernelBackend*> backend = BackendFor(context);
+  if (!backend.ok()) return backend.status();
+  return (*backend)->LaunchMhcPost(request, context, forced);
+}
+absl::Status LaunchRingSconv(const RingSconvRequest& request, const KernelExecutionContext& context,
+                             std::optional<ProviderId> forced) {
+  absl::StatusOr<KernelBackend*> backend = BackendFor(context);
+  if (!backend.ok()) return backend.status();
+  return (*backend)->LaunchRingSconv(request, context, forced);
 }
 
 }  // namespace inferx::kernels

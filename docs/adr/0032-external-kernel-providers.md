@@ -69,3 +69,39 @@ embedding/silu_multiply/residual → owned.
   kernels — exactly the maintenance cost this architecture exists to avoid.
 - Vendoring patched copies of provider sources was rejected: dependency
   policy forbids local patches; integration happens at the recorded pins.
+
+## Addendum 2026-09-02: TokenSpeed gap closure and head-to-head benchmark
+
+The operator set was extended against the TokenSpeed reference inventory
+(`tokenspeed-kernel/python/tokenspeed_kernel/ops`), following the same
+hpc-ops -> flashinfer -> custom hierarchy:
+
+| operator | provider integrated | status |
+|---|---|---|
+| silu_and_mul / gelu(_tanh)_and_mul (fused [T,2D]) | flashinfer `act_and_mul_kernel` | oracle-verified |
+| fused_add_rmsnorm | flashinfer `FusedAddRMSNormKernel` | oracle-verified |
+| gemma_rmsnorm | flashinfer `RMSNormKernel` (weight_bias=1) | oracle-verified |
+| qk_rmsnorm | flashinfer `QKRMSNormKernel` | oracle-verified |
+| attention decode/prefill | flashinfer `BatchDecodeWithPagedKVCacheDispatched` / paged prefill (contiguous-BSHD mapped onto `paged_kv_t`, workspace-marshalled) | GPU-verified (16-bit only) |
+| top_p_renorm | flashinfer `TopPRenormProbKernel` (FP32 only at the pin) | oracle-verified |
+| argmax, top_k_renorm, fp8 quant (tensor/token/group), moe softmax-topk, sigmoid-bias-topk, hadamard-128, add3, attn_res, hyperconnection mix/combine, mhc pre/post, ring sconv | owned (no external provider at the pins) | oracle-verified |
+
+Benchmark harnesses (same CUDA-event methodology and workload matrix):
+`benchmarks/kernels/kernels_benchmark.cc` and
+`tools/bench/run_tokenspeed_bench.py`; results and plots under
+`docs/benchmarks/`. Representative SM89 medians (TokenSpeed/InferX ratio,
+>1 means InferX faster): shared flashinfer kernels sit at parity (1.01-1.11
+— validates the AOT-instantiation approach); attention decode via the
+flashinfer kernel beats TokenSpeed's Triton fallback 1.2-1.9x; qk_rmsnorm
+3.8x (Triton fallback vs flashinfer kernel); moe softmax-topk 1.4x and
+hadamard 21x vs Triton fallbacks. Regressions recorded honestly: dense gemm
+vs cuBLASLt 0.78x (large) / 0.17x (skinny M=8; no GEMV path yet), owned
+argmax 0.26x vs torch's vectorized reduction, owned fp8 quant 0.70x vs
+Triton, rope 0.93x vs Triton's fused cache path.
+
+Environment notes: the flashinfer wheel's sampling JIT cannot compile under
+CUDA 13 (bundled CCCL removed `BlockAdjacentDifference::FlagHeads`), so
+TokenSpeed's top_p_renorm comparator could not run; deep_gemm and
+fast_hadamard_transform wheels do not build on this platform and are
+import-stubbed (never on measured paths). Full NCU metric exports live in
+`docs/benchmarks/ncu/`.

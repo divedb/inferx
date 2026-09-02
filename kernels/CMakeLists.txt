@@ -4,7 +4,11 @@
 # CPU policy test enforces this). The CUDA backend and its operator categories
 # are wired only under INFERX_ENABLE_CUDA, next to the M2/M4 kernel targets
 # that remain untouched during the architecture transition.
-add_library(inferx_kernels STATIC src/kernel_dispatch.cc)
+add_library(inferx_kernels STATIC
+  src/kernel_dispatch.cc
+  src/reference/reference_elementwise.cc
+  src/reference/reference_model_fused.cc
+  src/reference/reference_select.cc)
 add_library(inferx::kernels ALIAS inferx_kernels)
 
 set_target_properties(inferx_kernels PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -23,7 +27,9 @@ inferx_apply_project_options(inferx_kernels)
 # Build-only during the transition (no install/export surface yet); see ADR 0031.
 
 if(INFERX_ENABLE_CUDA)
-  foreach(category IN ITEMS activation embedding gemm layernorm transform)
+  foreach(category IN ITEMS activation attention attn_res conv embedding gemm
+                            hyperconnection layernorm mhc moe quantization
+                            sampling transform)
     add_subdirectory(cuda/ops/${category})
   endforeach()
   add_subdirectory(cuda/dispatch)

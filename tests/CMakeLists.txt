@@ -76,6 +76,18 @@ if(INFERX_ENABLE_CUDA AND INFERX_BUILD_M4_GPU_TESTS)
 endif()
 
 if(INFERX_ENABLE_CUDA AND INFERX_BUILD_M4_GPU_TESTS)
+  add_executable(inferx_kernels_ops_oracle_test unit/cuda/kernels_ops_oracle_test.cc)
+  inferx_apply_project_options(inferx_kernels_ops_oracle_test)
+  target_include_directories(inferx_kernels_ops_oracle_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/kernels/cuda/dispatch ${CMAKE_SOURCE_DIR}/kernels/cuda/include/inferx/kernels/cuda
+    ${CMAKE_SOURCE_DIR}/kernels/cuda/include
+    ${CMAKE_SOURCE_DIR}/platform/cuda/include)
+  target_link_libraries(inferx_kernels_ops_oracle_test PRIVATE
+    inferx_kernels inferx_kernels_cuda inferx::ops inferx::tensor
+    GTest::gtest_main CUDA::cudart absl::status absl::statusor absl::strings
+    absl::synchronization)
+  gtest_discover_tests(inferx_kernels_ops_oracle_test PROPERTIES TIMEOUT 120)
+
   add_executable(inferx_m4_cuda_ops_test unit/cuda/m4_cuda_ops_test.cc)
   inferx_apply_project_options(inferx_m4_cuda_ops_test)
   target_link_libraries(inferx_m4_cuda_ops_test PRIVATE

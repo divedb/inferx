@@ -12,9 +12,9 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "cuda_launch_context.h"
 #include "inferx/base/checked_math.h"
 #include "inferx/base/id.h"
-#include "cuda_launch_context.h"
 #include "inferx/kernels/cuda/storage_type.h"
 #include "inferx/tensor/dtype.h"
 #include "inferx/tensor/tensor_view.h"

@@ -48,8 +48,8 @@ cudaError_t LaunchEmbeddingKernel(const int32_t* ids, const void* weight, void* 
       break;
     case StorageType::kFloat16:
       EmbeddingKernel<__half><<<blocks, kKernelThreads, 0, stream>>>(
-          ids, static_cast<const __half*>(weight), static_cast<__half*>(output), tokens,
-          vocabulary, hidden);
+          ids, static_cast<const __half*>(weight), static_cast<__half*>(output), tokens, vocabulary,
+          hidden);
       break;
     case StorageType::kBFloat16:
       EmbeddingKernel<__nv_bfloat16><<<blocks, kKernelThreads, 0, stream>>>(

@@ -1,19 +1,20 @@
 // CPU tests for the neutral kernels dispatch surface (ADR 0031): preference
 // chain order, backend registration, forced-provider semantics, and
 // Unimplemented behavior when no backend is registered.
+#include "inferx/kernels/kernel_dispatch.h"
+
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <initializer_list>
 #include <istream>
 #include <memory>
 #include <optional>
 #include <string>
 #include <utility>
 #include <vector>
-#include <initializer_list>
 
 #include "gtest/gtest.h"
-#include "inferx/kernels/kernel_dispatch.h"
 #include "inferx/kernels/ops/activation.h"
 #include "inferx/kernels/ops/embedding.h"
 #include "inferx/kernels/provider.h"
@@ -67,8 +68,8 @@ CpuTensor MakeCpuTensor(std::span<const uint64_t> dimensions, DType dtype) {
   const auto strides = Strides::Contiguous(*shape);
   const auto bytes = shape->Bytes(dtype);
   CpuAllocator allocator;
-  auto buffer = allocator.Allocate(AllocationRequest{
-      Device::Host(), MemoryKind::kHost, *bytes, ByteCount(4), MemoryCategory::kTest});
+  auto buffer = allocator.Allocate(AllocationRequest{Device::Host(), MemoryKind::kHost, *bytes,
+                                                     ByteCount(4), MemoryCategory::kTest});
   auto view = buffer->MutableView(ByteRange{ByteCount(0), *bytes});
   auto tensor = MutableTensorView::Create(*view, dtype, *shape, *strides);
   return CpuTensor{std::move(*buffer), *tensor, tensor->AsConst()};
@@ -134,8 +135,7 @@ TEST_F(DispatchFixture, RegisterAndDispatchToBackend) {
 }
 
 TEST_F(DispatchFixture, DuplicateRegistrationIsRejected) {
-  ASSERT_TRUE(
-      RegisterKernelBackend(std::make_unique<RecordingBackend>()).ok());
+  ASSERT_TRUE(RegisterKernelBackend(std::make_unique<RecordingBackend>()).ok());
   EXPECT_EQ(RegisterKernelBackend(std::make_unique<RecordingBackend>()).code(),
             absl::StatusCode::kAlreadyExists);
 }
@@ -158,8 +158,8 @@ TEST_F(DispatchFixture, HostDeviceStaysUndispatched) {
 // ADR 0031 layering rule: everything under kernels/include must stay free of
 // backend types so CPU presets can build the unified dispatch surface.
 TEST(KernelsContainmentTest, UnifiedHeadersStayCudaFree) {
-  const std::filesystem::path roots[] = {
-      std::filesystem::path(INFERX_KERNELS_SOURCE_DIR) / "include/inferx/kernels"};
+  const std::filesystem::path roots[] = {std::filesystem::path(INFERX_KERNELS_SOURCE_DIR) /
+                                         "include/inferx/kernels"};
   size_t checked = 0;
   for (const auto& root : roots) {
     for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {

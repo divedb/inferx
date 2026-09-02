@@ -21,14 +21,12 @@ absl::Status ValidateEmbeddingForCuda(const ops::EmbeddingRequest& request,
                                       const CudaLaunchContext& context);
 absl::Status ValidateRmsNormForCuda(const ops::RmsNormRequest& request,
                                     const CudaLaunchContext& context);
-absl::Status ValidateRopeForCuda(const ops::RopeRequest& request,
-                                 const CudaLaunchContext& context);
+absl::Status ValidateRopeForCuda(const ops::RopeRequest& request, const CudaLaunchContext& context);
 absl::Status ValidateSwiGluForCuda(const ops::SwiGluRequest& request,
                                    const CudaLaunchContext& context);
 absl::Status ValidateResidualForCuda(const ops::ResidualRequest& request,
                                      const CudaLaunchContext& context);
-absl::Status ValidateGemmForCuda(const ops::GemmRequest& request,
-                                 const CudaLaunchContext& context);
+absl::Status ValidateGemmForCuda(const ops::GemmRequest& request, const CudaLaunchContext& context);
 absl::Status ValidateLogitsForCuda(const ops::LogitsRequest& request,
                                    const CudaLaunchContext& context);
 absl::Status ValidateAttentionForCuda(const ops::AttentionRequest& request,

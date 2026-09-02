@@ -13,10 +13,10 @@
 
 #include <cstdint>
 
+#include "cutlass/epilogue/thread/linear_combination.h"
 #include "cutlass/gemm/device/gemm.h"
 #include "cutlass/layout/matrix.h"
 #include "cutlass/numeric_types.h"
-
 #include "inferx/kernels/cuda/gemm_kernels.h"
 
 namespace inferx::kernels::cuda::gemm {
@@ -30,9 +30,20 @@ using cutlass::layout::RowMajor;
 // column-major [K, N] operand; C/D row-major [M, N].
 template <typename T, typename OpClass, typename ArchTag, typename Accum>
 struct GemmConfig {
-  using Gemm = cutlass::gemm::device::Gemm<T, RowMajor, T, ColumnMajor, T, RowMajor, Accum,
-                                           OpClass, ArchTag>;
+  using Gemm = cutlass::gemm::device::Gemm<T, RowMajor, T, ColumnMajor, T, RowMajor, Accum, OpClass,
+                                           ArchTag>;
 };
+
+// The default tensorop configuration (128x256x64, 3 stages) needs more
+// shared memory than SM89 exposes; pin an SM89-safe 128x128x64/2-stage
+// tile for the 16-bit tensor-op instantiations.
+template <typename T>
+using TensorOpGemm = cutlass::gemm::device::Gemm<
+    T, RowMajor, T, ColumnMajor, T, RowMajor, float, cutlass::arch::OpClassTensorOp,
+    cutlass::arch::Sm80, cutlass::gemm::GemmShape<128, 128, 64>,
+    cutlass::gemm::GemmShape<64, 64, 64>, cutlass::gemm::GemmShape<16, 8, 16>,
+    cutlass::epilogue::thread::LinearCombination<T, 8, float, float>,
+    cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<>, 2>;
 
 template <typename Gemm, typename Element>
 cudaError_t RunGemm(const void* input, const void* weight, const void* addend, void* output,
@@ -45,18 +56,14 @@ cudaError_t RunGemm(const void* input, const void* weight, const void* addend, v
   const int n = static_cast<int>(out_dim);
   const int k = static_cast<int>(in_dim);
   const float used_beta = addend != nullptr ? beta : 0.0F;
-  const Arguments args(
-      {m, n, k},
-      {static_cast<const Element*>(input), k},
-      {static_cast<const Element*>(weight), k},
-      {c_ptr, n},
-      {static_cast<Element*>(output), n},
-      {alpha, used_beta});
+  const Arguments args({m, n, k}, {static_cast<const Element*>(input), k},
+                       {static_cast<const Element*>(weight), k}, {c_ptr, n},
+                       {static_cast<Element*>(output), n}, {alpha, used_beta});
   Gemm op;
   if (op.can_implement(args) != cutlass::Status::kSuccess) return cudaErrorInvalidValue;
   if (op.initialize(args) != cutlass::Status::kSuccess) return cudaErrorInvalidValue;
   if (op(stream) != cutlass::Status::kSuccess) return cudaErrorUnknown;
-  return cudaPeekAtLastError();
+  return cudaGetLastError();
 }
 
 }  // namespace
@@ -70,20 +77,18 @@ cudaError_t LaunchCutlassGemm(const void* input, const void* weight, const void*
   }
   switch (dtype) {
     case StorageType::kFloat32: {
-      using Fp32Gemm = typename GemmConfig<float, cutlass::arch::OpClassSimt, cutlass::arch::Sm80,
-                                           float>::Gemm;
-      return RunGemm<Fp32Gemm, float>(input, weight, addend, output, tokens, in_dim, out_dim,
-                                      alpha, beta, stream);
+      using Fp32Gemm =
+          typename GemmConfig<float, cutlass::arch::OpClassSimt, cutlass::arch::Sm80, float>::Gemm;
+      return RunGemm<Fp32Gemm, float>(input, weight, addend, output, tokens, in_dim, out_dim, alpha,
+                                      beta, stream);
     }
     case StorageType::kFloat16: {
-      using Fp16Gemm = typename GemmConfig<cutlass::half_t, cutlass::arch::OpClassTensorOp,
-                                           cutlass::arch::Sm80, float>::Gemm;
+      using Fp16Gemm = TensorOpGemm<cutlass::half_t>;
       return RunGemm<Fp16Gemm, cutlass::half_t>(input, weight, addend, output, tokens, in_dim,
                                                 out_dim, alpha, beta, stream);
     }
     case StorageType::kBFloat16: {
-      using Bf16Gemm = typename GemmConfig<cutlass::bfloat16_t, cutlass::arch::OpClassTensorOp,
-                                           cutlass::arch::Sm80, float>::Gemm;
+      using Bf16Gemm = TensorOpGemm<cutlass::bfloat16_t>;
       return RunGemm<Bf16Gemm, cutlass::bfloat16_t>(input, weight, addend, output, tokens, in_dim,
                                                     out_dim, alpha, beta, stream);
     }

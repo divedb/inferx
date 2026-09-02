@@ -1,10 +1,10 @@
 #include "custom_providers.h"
 
 #include "absl/status/statusor.h"
-#include "inferx/kernels/cuda/activation_kernels.h"
 #include "cuda_tensor_checks.h"
-#include "op_validation.h"
+#include "inferx/kernels/cuda/activation_kernels.h"
 #include "inferx/kernels/cuda/embedding_kernels.h"
+#include "op_validation.h"
 
 namespace inferx::kernels::cuda {
 namespace {
@@ -12,9 +12,7 @@ namespace {
 class OwnedEmbeddingProvider final : public EmbeddingProvider {
  public:
   ProviderId provider_id() const noexcept override { return ProviderId::kInferxOwned; }
-  bool Available(const ops::EmbeddingRequest*, uint16_t) const noexcept override {
-    return true;
-  }
+  bool Available(const ops::EmbeddingRequest*, uint16_t) const noexcept override { return true; }
   absl::Status Launch(const ops::EmbeddingRequest& request,
                       const CudaLaunchContext& context) const override {
     absl::Status status = ValidateEmbeddingForCuda(request, context);
@@ -32,9 +30,7 @@ class OwnedEmbeddingProvider final : public EmbeddingProvider {
 class OwnedSwiGluProvider final : public SwiGluProvider {
  public:
   ProviderId provider_id() const noexcept override { return ProviderId::kInferxOwned; }
-  bool Available(const ops::SwiGluRequest*, uint16_t) const noexcept override {
-    return true;
-  }
+  bool Available(const ops::SwiGluRequest*, uint16_t) const noexcept override { return true; }
   absl::Status Launch(const ops::SwiGluRequest& request,
                       const CudaLaunchContext& context) const override {
     absl::Status status = ValidateSwiGluForCuda(request, context);
@@ -52,9 +48,7 @@ class OwnedSwiGluProvider final : public SwiGluProvider {
 class OwnedResidualProvider final : public ResidualProvider {
  public:
   ProviderId provider_id() const noexcept override { return ProviderId::kInferxOwned; }
-  bool Available(const ops::ResidualRequest*, uint16_t) const noexcept override {
-    return true;
-  }
+  bool Available(const ops::ResidualRequest*, uint16_t) const noexcept override { return true; }
   absl::Status Launch(const ops::ResidualRequest& request,
                       const CudaLaunchContext& context) const override {
     absl::Status status = ValidateResidualForCuda(request, context);
@@ -62,9 +56,9 @@ class OwnedResidualProvider final : public ResidualProvider {
     absl::StatusOr<uint64_t> elements = request.left.shape().NumElements();
     if (!elements.ok()) return elements.status();
     return CheckLaunchResult(
-        activation::LaunchResidualKernel(
-            Address(request.left), Address(request.right), Address(request.output), *elements,
-            ToKernelStorageType(request.left.dtype()), context.stream),
+        activation::LaunchResidualKernel(Address(request.left), Address(request.right),
+                                         Address(request.output), *elements,
+                                         ToKernelStorageType(request.left.dtype()), context.stream),
         "kernels_cuda.residual.launch", context);
   }
 };

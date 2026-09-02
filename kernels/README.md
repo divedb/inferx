@@ -38,11 +38,19 @@ Current state (SM89, ADR 0032):
 - **activation**, **embedding** — minimal last-resort owned kernels; no
   external provider matches the contracts (fused layouts / FP8-only /
   absent at both pins).
-- **attention**, **kvcache** — provider probes only; see the category READMEs
-  for the recorded gaps. Execution stays on the M4 platform layer during the
-  transition.
-- The remaining categories are README scaffolds until operator contracts for
-  them land in `include/inferx/ops`.
+- **attention** — FlashInfer paged decode/prefill mapped from the
+  contiguous BSHD cache (16-bit dtypes; FP32 unsupported by the pinned
+  kernels).
+- **sampling**/**quantization**/**moe** — flashinfer top_p_renorm plus owned
+  argmax, top_k_renorm, fp8 quantization, and routing kernels.
+- **attn_res**, **hyperconnection**, **mhc**, **conv** — owned
+  implementations of the TokenSpeed fused-residual and convolution ops.
+- **communication**, **kvcache** (transfers), **metadata** — README
+  scaffolds: multi-GPU or CUDA-graph infrastructure, out of scope on a
+  single-GPU runner.
+
+Head-to-head benchmark vs TokenSpeed on the same workloads:
+`docs/benchmarks/RESULTS.md`.
 
 ## Adding a backend (AMD/NPU later)
 

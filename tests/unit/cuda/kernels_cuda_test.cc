@@ -5,18 +5,18 @@
 #include <cuda_runtime_api.h>
 
 #include <cmath>
-#include <cstdlib>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
+#include <initializer_list>
 #include <memory>
 #include <optional>
 #include <random>
-#include <initializer_list>
 #include <span>
 #include <vector>
 
-#include "gtest/gtest.h"
 #include "cuda_kernel_backend.h"  // kernels/cuda/dispatch (public via target)
+#include "gtest/gtest.h"
 #include "inferx/kernels/kernel_dispatch.h"
 #include "inferx/kernels/ops/activation.h"
 #include "inferx/kernels/ops/gemm.h"
@@ -86,10 +86,12 @@ absl::StatusOr<OwnedTensor<T>> MakeTensor(std::span<const uint64_t> dimensions, 
     auto buffer = Buffer::Adopt(
         allocation,
         AllocationRequest{device, memory_kind, *bytes, ByteCount(256), MemoryCategory::kTest},
-        ByteCount(256), [] {
-        auto id = NextAllocationId();
-        return id.ok() ? *id : AllocationId(0);
-      }(), std::make_shared<CudaMallocDomain>());
+        ByteCount(256),
+        [] {
+          auto id = NextAllocationId();
+          return id.ok() ? *id : AllocationId(0);
+        }(),
+        std::make_shared<CudaMallocDomain>());
     if (!buffer.ok()) return buffer.status();
     auto view = buffer->MutableView(ByteRange{ByteCount(0), *bytes});
     if (!view.ok()) return view.status();
@@ -99,8 +101,8 @@ absl::StatusOr<OwnedTensor<T>> MakeTensor(std::span<const uint64_t> dimensions, 
   }
 
   CpuAllocator allocator;
-  auto buffer = allocator.Allocate(AllocationRequest{
-      Device::Host(), MemoryKind::kHost, *bytes, ByteCount(alignof(T)), MemoryCategory::kTest});
+  auto buffer = allocator.Allocate(AllocationRequest{Device::Host(), MemoryKind::kHost, *bytes,
+                                                     ByteCount(alignof(T)), MemoryCategory::kTest});
   if (!buffer.ok()) return buffer.status();
   auto view = buffer->MutableView(ByteRange{ByteCount(0), *bytes});
   if (!view.ok()) return view.status();
@@ -149,8 +151,7 @@ std::vector<T> ReadBack(const TensorView& view) {
 template <typename T>
 std::span<const T> HostValues(const OwnedTensor<T>& tensor) {
   auto bytes = tensor.view.buffer().HostBytes();
-  return std::span<const T>(reinterpret_cast<const T*>(bytes->data()),
-                            bytes->size() / sizeof(T));
+  return std::span<const T>(reinterpret_cast<const T*>(bytes->data()), bytes->size() / sizeof(T));
 }
 
 KernelExecutionContext Context89() {
@@ -192,10 +193,11 @@ TEST_F(KernelsCudaFixture, ChainSelectsReuseProvidersFirstOnSm89) {
   EXPECT_EQ(*swiglu, ProviderId::kInferxOwned);
 }
 
-TEST_F(KernelsCudaFixture, AttentionHasNoProviderOnSm89Yet) {
+TEST_F(KernelsCudaFixture, AttentionSelectsFlashInferOnSm89) {
   KernelBackend* backend = FindKernelBackend(DeviceKind::kCuda);
   const auto attention = backend->SelectProvider(ops::OpKind::kAttention, 89, std::nullopt);
-  EXPECT_EQ(attention.status().code(), absl::StatusCode::kUnimplemented);
+  ASSERT_TRUE(attention.ok()) << attention.status();
+  EXPECT_EQ(*attention, ProviderId::kFlashInfer);
 }
 
 TEST_F(KernelsCudaFixture, ForcedHpcOpsGemmIsUnimplemented) {
@@ -236,8 +238,9 @@ TEST_F(KernelsCudaFixture, FlashInferRmsNormMatchesReference) {
       Required<float>({kHidden}, DType::kFloat32, weight, Device::Host(), MemoryKind::kHost);
   auto host_output = Required<float>({kTokens, kHidden}, DType::kFloat32, zeros, Device::Host(),
                                      MemoryKind::kHost);
-  ASSERT_TRUE(ops::ReferenceRmsNorm(
-      {host_input.view, host_weight.view, host_output.mutable_view, 1.0e-5F}).ok());
+  ASSERT_TRUE(
+      ops::ReferenceRmsNorm({host_input.view, host_weight.view, host_output.mutable_view, 1.0e-5F})
+          .ok());
 
   const std::vector<float> actual = ReadBack<float>(device_output.view);
   const std::span<const float> expected = HostValues(host_output);
@@ -260,19 +263,18 @@ TEST_F(KernelsCudaFixture, CustomSwiGluMatchesReference) {
                                    MemoryKind::kDevice);
   auto device_output = Required<float>({kTokens, kHalf}, DType::kFloat32, zeros,
                                        Device::Cuda(DeviceId(0)), MemoryKind::kDevice);
-  ASSERT_TRUE(LaunchSwiGlu({device_gate.view, device_up.view, device_output.mutable_view},
-                          Context89())
-                  .ok());
+  ASSERT_TRUE(
+      LaunchSwiGlu({device_gate.view, device_up.view, device_output.mutable_view}, Context89())
+          .ok());
   ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
 
-  auto host_gate = Required<float>({kTokens, kHalf}, DType::kFloat32, gate, Device::Host(),
-                                   MemoryKind::kHost);
-  auto host_up = Required<float>({kTokens, kHalf}, DType::kFloat32, up, Device::Host(),
-                                 MemoryKind::kHost);
-  auto host_output = Required<float>({kTokens, kHalf}, DType::kFloat32, zeros, Device::Host(),
-                                     MemoryKind::kHost);
-  ASSERT_TRUE(ops::ReferenceSwiGlu(
-      {host_gate.view, host_up.view, host_output.mutable_view}).ok());
+  auto host_gate =
+      Required<float>({kTokens, kHalf}, DType::kFloat32, gate, Device::Host(), MemoryKind::kHost);
+  auto host_up =
+      Required<float>({kTokens, kHalf}, DType::kFloat32, up, Device::Host(), MemoryKind::kHost);
+  auto host_output =
+      Required<float>({kTokens, kHalf}, DType::kFloat32, zeros, Device::Host(), MemoryKind::kHost);
+  ASSERT_TRUE(ops::ReferenceSwiGlu({host_gate.view, host_up.view, host_output.mutable_view}).ok());
 
   const std::vector<float> actual = ReadBack<float>(device_output.view);
   const std::span<const float> expected = HostValues(host_output);
@@ -301,14 +303,15 @@ TEST_F(KernelsCudaFixture, CutlassGemmMatchesReference) {
   ASSERT_TRUE(LaunchGemm(request, Context89()).ok());
   ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
 
-  auto host_input = Required<float>({kTokens, kIn}, DType::kFloat32, input, Device::Host(),
-                                    MemoryKind::kHost);
-  auto host_weight = Required<float>({kOut, kIn}, DType::kFloat32, weight, Device::Host(),
-                                     MemoryKind::kHost);
-  auto host_output = Required<float>({kTokens, kOut}, DType::kFloat32, zeros, Device::Host(),
-                                     MemoryKind::kHost);
+  auto host_input =
+      Required<float>({kTokens, kIn}, DType::kFloat32, input, Device::Host(), MemoryKind::kHost);
+  auto host_weight =
+      Required<float>({kOut, kIn}, DType::kFloat32, weight, Device::Host(), MemoryKind::kHost);
+  auto host_output =
+      Required<float>({kTokens, kOut}, DType::kFloat32, zeros, Device::Host(), MemoryKind::kHost);
   ASSERT_TRUE(ops::ReferenceGemm(
-      {host_input.view, host_weight.view, std::nullopt, host_output.mutable_view}).ok());
+                  {host_input.view, host_weight.view, std::nullopt, host_output.mutable_view})
+                  .ok());
 
   const std::vector<float> actual = ReadBack<float>(device_output.view);
   const std::span<const float> expected = HostValues(host_output);
@@ -329,22 +332,28 @@ TEST_F(KernelsCudaFixture, FlashInferRopeMatchesReference) {
   const std::vector<float> zeros_q(kTokens * kQueryHeads * kHeadDim, 0.0F);
   const std::vector<float> zeros_k(kTokens * kKvHeads * kHeadDim, 0.0F);
   std::vector<int32_t> positions(kTokens);
-  for (uint64_t token = 0; token < kTokens; ++token) positions[token] = static_cast<int32_t>(7 + token);
+  for (uint64_t token = 0; token < kTokens; ++token)
+    positions[token] = static_cast<int32_t>(7 + token);
 
   const Device cuda = Device::Cuda(DeviceId(0));
   auto device_query = Required<float>({kTokens, kQueryHeads, kHeadDim}, DType::kFloat32, query,
                                       cuda, MemoryKind::kDevice);
   auto device_key = Required<float>({kTokens, kKvHeads, kHeadDim}, DType::kFloat32, key, cuda,
                                     MemoryKind::kDevice);
-  auto device_positions = Required<int32_t>({kTokens}, DType::kInt32, positions, cuda,
-                                            MemoryKind::kDevice);
+  auto device_positions =
+      Required<int32_t>({kTokens}, DType::kInt32, positions, cuda, MemoryKind::kDevice);
   auto device_query_out = Required<float>({kTokens, kQueryHeads, kHeadDim}, DType::kFloat32,
                                           zeros_q, cuda, MemoryKind::kDevice);
   auto device_key_out = Required<float>({kTokens, kKvHeads, kHeadDim}, DType::kFloat32, zeros_k,
                                         cuda, MemoryKind::kDevice);
-  ops::RopeRequest request{device_query.view,   device_key.view,      device_positions.view,
-                           device_query_out.mutable_view, device_key_out.mutable_view,
-                           10'000.0F,           kMaxPosition,          std::span(positions)};
+  ops::RopeRequest request{device_query.view,
+                           device_key.view,
+                           device_positions.view,
+                           device_query_out.mutable_view,
+                           device_key_out.mutable_view,
+                           10'000.0F,
+                           kMaxPosition,
+                           std::span(positions)};
   ASSERT_TRUE(LaunchRope(request, Context89()).ok());
   ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
 
@@ -352,15 +361,15 @@ TEST_F(KernelsCudaFixture, FlashInferRopeMatchesReference) {
                                     Device::Host(), MemoryKind::kHost);
   auto host_key = Required<float>({kTokens, kKvHeads, kHeadDim}, DType::kFloat32, key,
                                   Device::Host(), MemoryKind::kHost);
-  auto host_positions = Required<int32_t>({kTokens}, DType::kInt32, positions, Device::Host(),
-                                          MemoryKind::kHost);
-  auto host_query_out = Required<float>({kTokens, kQueryHeads, kHeadDim}, DType::kFloat32,
-                                        zeros_q, Device::Host(), MemoryKind::kHost);
+  auto host_positions =
+      Required<int32_t>({kTokens}, DType::kInt32, positions, Device::Host(), MemoryKind::kHost);
+  auto host_query_out = Required<float>({kTokens, kQueryHeads, kHeadDim}, DType::kFloat32, zeros_q,
+                                        Device::Host(), MemoryKind::kHost);
   auto host_key_out = Required<float>({kTokens, kKvHeads, kHeadDim}, DType::kFloat32, zeros_k,
                                       Device::Host(), MemoryKind::kHost);
   ASSERT_TRUE(ops::ReferenceRope({host_query.view, host_key.view, host_positions.view,
-                                  host_query_out.mutable_view, host_key_out.mutable_view,
-                                  10'000.0F, kMaxPosition, std::span(positions)})
+                                  host_query_out.mutable_view, host_key_out.mutable_view, 10'000.0F,
+                                  kMaxPosition, std::span(positions)})
                   .ok());
 
   const std::vector<float> actual_q = ReadBack<float>(device_query_out.view);

@@ -65,7 +65,8 @@ absl::Status ValidateRmsNormForCuda(const ops::RmsNormRequest& request,
       request.input.shape() != request.output.shape() || request.input.shape().dim(1) == 0 ||
       request.weight.shape().dim(0) != request.input.shape().dim(1) ||
       !std::isfinite(request.epsilon) || request.epsilon <= 0.0F) {
-    return absl::InvalidArgumentError("kernels_cuda.rms_norm: incompatible shape, dtype, or epsilon");
+    return absl::InvalidArgumentError(
+        "kernels_cuda.rms_norm: incompatible shape, dtype, or epsilon");
   }
   status = ValidateDeviceMatch(request.input, context.device);
   if (!status.ok()) return status;
@@ -139,8 +140,8 @@ absl::Status ValidateRopeForCuda(const ops::RopeRequest& request,
   status =
       RejectOverlap(request.query_output, request.key_output, "kernels_cuda.rope.query_key_alias");
   if (!status.ok()) return status;
-  status = RejectOverlap(request.positions, request.query_output,
-                         "kernels_cuda.rope.position_alias");
+  status =
+      RejectOverlap(request.positions, request.query_output, "kernels_cuda.rope.position_alias");
   if (!status.ok()) return status;
   return RejectOverlap(request.positions, request.key_output, "kernels_cuda.rope.position_alias");
 }
@@ -322,10 +323,8 @@ absl::Status ValidateAttentionForCuda(const ops::AttentionRequest& request,
   status = ValidateIndptr(request.new_kv_indptr, total_new);
   if (!status.ok()) return status;
   for (size_t sequence = 0; sequence < static_cast<size_t>(batch); ++sequence) {
-    const int32_t query_count =
-        request.query_indptr[sequence + 1] - request.query_indptr[sequence];
-    const int32_t new_count =
-        request.new_kv_indptr[sequence + 1] - request.new_kv_indptr[sequence];
+    const int32_t query_count = request.query_indptr[sequence + 1] - request.query_indptr[sequence];
+    const int32_t new_count = request.new_kv_indptr[sequence + 1] - request.new_kv_indptr[sequence];
     const int32_t before = request.kv_lengths_before[sequence];
     if (before < 0 || query_count != new_count ||
         (request.phase == ops::ExecutionPhase::kDecode && query_count > 1) ||
@@ -354,8 +353,7 @@ absl::Status ValidateAttentionForCuda(const ops::AttentionRequest& request,
         request.new_value.buffer().device(), request.key_cache.buffer().device(),
         request.value_cache.buffer().device(), request.output.buffer().device()}) {
     if (device.kind != DeviceKind::kCuda || device.ordinal != context.device) {
-      return absl::InvalidArgumentError(
-          "kernels_cuda.attention.device: operand/context mismatch");
+      return absl::InvalidArgumentError("kernels_cuda.attention.device: operand/context mismatch");
     }
   }
   if (request.query.buffer().memory_kind() != MemoryKind::kDevice ||
@@ -366,7 +364,8 @@ absl::Status ValidateAttentionForCuda(const ops::AttentionRequest& request,
       request.output.buffer().memory_kind() != MemoryKind::kDevice) {
     return absl::InvalidArgumentError("kernels_cuda.attention.memory: device memory is required");
   }
-  status = RejectOverlap(request.query, request.new_key, "kernels_cuda.attention.query_new_key_alias");
+  status =
+      RejectOverlap(request.query, request.new_key, "kernels_cuda.attention.query_new_key_alias");
   if (!status.ok()) return status;
   status = RejectOverlap(request.query, request.new_value,
                          "kernels_cuda.attention.query_new_value_alias");
@@ -376,8 +375,8 @@ absl::Status ValidateAttentionForCuda(const ops::AttentionRequest& request,
   status =
       RejectOverlap(request.query, request.key_cache, "kernels_cuda.attention.query_cache_alias");
   if (!status.ok()) return status;
-  status = RejectOverlap(request.query, request.value_cache,
-                         "kernels_cuda.attention.query_cache_alias");
+  status =
+      RejectOverlap(request.query, request.value_cache, "kernels_cuda.attention.query_cache_alias");
   if (!status.ok()) return status;
   status = RejectOverlap(request.new_key, request.key_cache,
                          "kernels_cuda.attention.new_key_cache_alias");

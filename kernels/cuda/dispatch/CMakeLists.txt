@@ -10,6 +10,8 @@ set(inferx_kernels_cuda_srcs
   cuda_tensor_checks.cc
   custom_providers.cc
   hpc_ops_providers.cc
+  op_launchers.cc
+  op_providers.cc
   op_validation.cc)
 
 set(inferx_kernels_cuda_private_includes ${CMAKE_SOURCE_DIR}/platform/cuda/include)
@@ -40,7 +42,16 @@ target_link_libraries(inferx_kernels_cuda
   PUBLIC inferx::kernels CUDA::cudart
   PRIVATE ${inferx_kernels_cuda_private_links}
           inferx_kernels_cuda_activation
+          inferx_kernels_cuda_attention
+          inferx_kernels_cuda_attn_res
+          inferx_kernels_cuda_conv
           inferx_kernels_cuda_embedding
+          inferx_kernels_cuda_hyperconnection
+          inferx_kernels_cuda_mhc
+          inferx_kernels_cuda_moe
+          inferx_kernels_cuda_quantization
+          inferx_kernels_cuda_sampling
+          inferx_kernels_cuda_transform
           $<BUILD_INTERFACE:absl::status>
           $<BUILD_INTERFACE:absl::statusor>
           $<BUILD_INTERFACE:absl::strings>)

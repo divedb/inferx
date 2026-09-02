@@ -15,9 +15,12 @@ namespace inferx::kernels::cuda::transform {
 // here and surface as Unimplemented from the provider layer.
 cudaError_t LaunchFlashInferRope(const void* query, const void* key, const int32_t* positions,
                                  void* query_output, void* key_output, uint64_t tokens,
-                                 uint64_t query_heads, uint64_t kv_heads,
-                                 uint64_t head_dimension, float theta, StorageType dtype,
-                                 cudaStream_t stream);
+                                 uint64_t query_heads, uint64_t kv_heads, uint64_t head_dimension,
+                                 float theta, StorageType dtype, cudaStream_t stream);
+
+// Length-128 Hadamard transform (owned kernel).
+cudaError_t LaunchHadamard128(const void* input, void* output, uint64_t rows, float scale,
+                              StorageType dtype, cudaStream_t stream);
 
 }  // namespace inferx::kernels::cuda::transform
 

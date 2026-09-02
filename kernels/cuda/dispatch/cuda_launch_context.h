@@ -16,6 +16,8 @@ struct CudaLaunchContext {
   DeviceId device{0};
   uint16_t compute_capability = 0;
   KernelFailureObserver* observer = nullptr;
+  void* workspace = nullptr;
+  uint64_t workspace_bytes = 0;
 };
 
 }  // namespace inferx::kernels::cuda

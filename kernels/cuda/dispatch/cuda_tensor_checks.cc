@@ -39,14 +39,13 @@ absl::Status ValidateBinaryAlias(const TensorView& left, const TensorView& right
 }
 
 const void* Address(const TensorView& tensor) noexcept {
-  const auto* base = static_cast<const std::byte*>(::inferx::cuda::BufferAccess::Address(
-      tensor.buffer()));
+  const auto* base =
+      static_cast<const std::byte*>(::inferx::cuda::BufferAccess::Address(tensor.buffer()));
   return base == nullptr ? nullptr : base + tensor.byte_offset().value();
 }
 
 void* Address(const MutableTensorView& tensor) noexcept {
-  auto* base =
-      static_cast<std::byte*>(::inferx::cuda::BufferAccess::Address(tensor.buffer()));
+  auto* base = static_cast<std::byte*>(::inferx::cuda::BufferAccess::Address(tensor.buffer()));
   return base == nullptr ? nullptr : base + tensor.byte_offset().value();
 }
 
@@ -113,9 +112,8 @@ absl::Status CheckLaunchResult(cudaError_t error, const char* operation,
       (IsStickyLaunchFault(error) || error == cudaErrorInvalidResourceHandle)) {
     context.observer->OnKernelFailure(operation, /*sticky=*/true);
   }
-  return absl::Status(
-      code, absl::StrCat(operation, ": cuda error ", static_cast<int>(error), " (",
-                         cudaGetErrorString(error), ")"));
+  return absl::Status(code, absl::StrCat(operation, ": cuda error ", static_cast<int>(error), " (",
+                                         cudaGetErrorString(error), ")"));
 }
 
 }  // namespace inferx::kernels::cuda

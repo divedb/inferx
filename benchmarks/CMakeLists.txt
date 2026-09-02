@@ -60,3 +60,16 @@ target_link_libraries(inferx_simulator_benchmark PRIVATE
   inferx::simulator benchmark::benchmark absl::status absl::strings)
 set_target_properties(inferx_simulator_benchmark PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+
+if(INFERX_ENABLE_CUDA AND INFERX_BUILD_BENCHMARKS)
+  add_executable(inferx_kernels_benchmark kernels/kernels_benchmark.cc)
+  inferx_apply_project_options(inferx_kernels_benchmark)
+  target_include_directories(inferx_kernels_benchmark PRIVATE
+    ${CMAKE_SOURCE_DIR}/kernels/cuda/dispatch
+    ${CMAKE_SOURCE_DIR}/kernels/cuda/include/inferx/kernels/cuda
+    ${CMAKE_SOURCE_DIR}/kernels/cuda/include
+    ${CMAKE_SOURCE_DIR}/platform/cuda/include)
+  target_link_libraries(inferx_kernels_benchmark PRIVATE
+    inferx_kernels inferx_kernels_cuda inferx::ops inferx::tensor CUDA::cudart
+    absl::status absl::statusor absl::strings absl::synchronization)
+endif()
