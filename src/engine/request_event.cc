@@ -46,12 +46,14 @@ absl::string_view ToString(RequestEventKind kind) {
       return "fatal_error";
     case RequestEventKind::kTerminalEmitted:
       return "terminal_emitted";
+    case RequestEventKind::kStopMatched:
+      return "stop_matched";
   }
   return "unknown";
 }
 
 std::optional<RequestEventKind> RequestEventKindFromName(absl::string_view name) {
-  for (uint32_t value = 0; value <= static_cast<uint32_t>(RequestEventKind::kTerminalEmitted);
+  for (uint32_t value = 0; value <= static_cast<uint32_t>(RequestEventKind::kStopMatched);
        ++value) {
     const auto kind = static_cast<RequestEventKind>(value);
     if (ToString(kind) == name) {
@@ -67,6 +69,8 @@ RequestEventKind KindOf(const RequestEvent& event) {
         using Payload = std::decay_t<decltype(payload)>;
         if constexpr (std::is_same_v<Payload, StartTokenizationPayload>) {
           return RequestEventKind::kStartTokenization;
+        } else if constexpr (std::is_same_v<Payload, StopMatchedPayload>) {
+          return RequestEventKind::kStopMatched;
         } else if constexpr (std::is_same_v<Payload, InputReadyPayload>) {
           return RequestEventKind::kInputReady;
         } else if constexpr (std::is_same_v<Payload, TokenizationSucceededPayload>) {

@@ -85,6 +85,9 @@ class Buffer {
 
 class BufferView {
  public:
+  // Inert empty view; created views come from Buffer/Subview. Used by
+  // structures that hold optional views and assign them before use.
+  BufferView() noexcept = default;
   [[nodiscard]] ByteCount size() const noexcept { return range_.size; }
   [[nodiscard]] ByteCount alignment() const noexcept { return alignment_; }
   [[nodiscard]] ByteRange range() const noexcept { return range_; }
@@ -113,6 +116,8 @@ class BufferView {
 
 class MutableBufferView {
  public:
+  // Inert empty view; created views come from Buffer/Subview.
+  MutableBufferView() noexcept = default;
   [[nodiscard]] ByteCount size() const noexcept { return range_.size; }
   [[nodiscard]] ByteCount alignment() const noexcept { return alignment_; }
   [[nodiscard]] ByteRange range() const noexcept { return range_; }

@@ -38,7 +38,7 @@ RequestState ResolveAfterCompletion(const RequestContext& context, const Request
 // --- The expanded declarative table -----------------------------------------
 // Wildcard rows are expanded; count kept explicit so a
 // drifted table fails to compile.
-inline constexpr size_t kRuleCount = 43;  // Finishing row was already counted
+inline constexpr size_t kRuleCount = 45;  // Finishing row was already counted
 
 constexpr std::array<TransitionRule, kRuleCount> kRules = {{
     {RequestState::kReceived, RequestEventKind::kStartTokenization, nullptr,
@@ -58,6 +58,12 @@ constexpr std::array<TransitionRule, kRuleCount> kRules = {{
     {RequestState::kPrefilling, RequestEventKind::kPrefillCompleted, ResolveAfterCompletion,
      RequestState::kReceived, TransitionEffect::kClearInFlight},
     {RequestState::kDecodeReady, RequestEventKind::kSubmitDecode, nullptr, RequestState::kDecoding},
+    // A committed output matched a stop id: finish successfully from a ready
+    // state (M5 schema extension, m5.md section 13.4). The reservation
+    // releases at terminal emission like every other finish.
+    {RequestState::kPrefillReady, RequestEventKind::kStopMatched, nullptr,
+     RequestState::kFinishing},
+    {RequestState::kDecodeReady, RequestEventKind::kStopMatched, nullptr, RequestState::kFinishing},
     {RequestState::kDecoding, RequestEventKind::kDecodeCompleted, ResolveAfterCompletion,
      RequestState::kReceived, TransitionEffect::kClearInFlight},
     {RequestState::kPrefillReady, RequestEventKind::kPreempt, nullptr, RequestState::kPreempted,

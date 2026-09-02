@@ -18,6 +18,8 @@ namespace inferx {
 
 class TensorView {
  public:
+  // Inert empty view; created views come from Create/Slice/Permute/Reshape.
+  TensorView() noexcept = default;
   [[nodiscard]] static absl::StatusOr<TensorView> Create(BufferView buffer, Dtype dtype,
                                                          Shape shape, Strides strides,
                                                          ByteCount byte_offset = ByteCount(0));
@@ -40,15 +42,17 @@ class TensorView {
              LayoutAnalysis layout) noexcept;
 
   BufferView buffer_;
-  Dtype dtype_;
+  Dtype dtype_ = Dtype::kFloat32;
   Shape shape_;
   Strides strides_;
-  ByteCount byte_offset_;
+  ByteCount byte_offset_ = ByteCount(0);
   LayoutAnalysis layout_;
 };
 
 class MutableTensorView {
  public:
+  // Inert empty view; created views come from Create.
+  MutableTensorView() noexcept = default;
   [[nodiscard]] static absl::StatusOr<MutableTensorView> Create(
       MutableBufferView buffer, Dtype dtype, Shape shape, Strides strides,
       ByteCount byte_offset = ByteCount(0));
@@ -66,10 +70,10 @@ class MutableTensorView {
                     ByteCount byte_offset, LayoutAnalysis layout) noexcept;
 
   MutableBufferView buffer_;
-  Dtype dtype_;
+  Dtype dtype_ = Dtype::kFloat32;
   Shape shape_;
   Strides strides_;
-  ByteCount byte_offset_;
+  ByteCount byte_offset_ = ByteCount(0);
   LayoutAnalysis layout_;
 };
 

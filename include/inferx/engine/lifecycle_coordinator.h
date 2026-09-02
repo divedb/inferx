@@ -40,6 +40,10 @@ class LifecycleCoordinator {
   [[nodiscard]] absl::Status Requeue(RequestId request, MonotonicTime now);
   [[nodiscard]] absl::Status EmitTerminal(RequestId request, FinishReason reason,
                                           MonotonicTime now);
+  // M5 schema extension: the committed output matched a stop id. Legal from
+  // kPrefillReady/kDecodeReady; the terminal emission follows with
+  // FinishReason::kEos (m5.md section 13.4).
+  [[nodiscard]] absl::Status Stop(RequestId request, MonotonicTime now);
 
  private:
   [[nodiscard]] absl::Status ObserveTransition(const RequestContext& request, RequestState from,

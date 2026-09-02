@@ -61,6 +61,8 @@ Generated from the compiled declarative table; do not edit this section manually
 | `prefill_ready` | `submit_prefill` | `prefilling` | none | no |
 | `prefilling` | `prefill_completed` | `conditional` | clear-in-flight | no |
 | `decode_ready` | `submit_decode` | `decoding` | none | no |
+| `prefill_ready` | `stop_matched` | `finishing` | none | no |
+| `decode_ready` | `stop_matched` | `finishing` | none | no |
 | `decoding` | `decode_completed` | `conditional` | clear-in-flight | no |
 | `prefill_ready` | `preempt` | `preempted` | release-reservation | no |
 | `decode_ready` | `preempt` | `preempted` | release-reservation | no |

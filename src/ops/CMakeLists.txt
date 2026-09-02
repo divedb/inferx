@@ -1,5 +1,6 @@
 add_library(inferx_ops STATIC
   attention_reference.cc
+  cpu_op_executor.cc
   cpu_reference_executor.cc
   embedding_reference.cc
   gemm_reference.cc

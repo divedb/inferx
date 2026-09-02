@@ -42,6 +42,10 @@ enum class RequestEventKind : uint8_t {
   kExecutionFailed,
   kFatalError,
   kTerminalEmitted,
+  // M5 schema extension: the committed output matched a stop id; the
+  // request finishes successfully from a ready state (m5.md section 13.4).
+  // Appended to preserve every earlier numeric value.
+  kStopMatched,
 };
 
 [[nodiscard]] absl::string_view ToString(RequestEventKind kind);
@@ -100,6 +104,7 @@ struct TerminalOutcomePayload {
 
 // Marker payloads.
 struct StartTokenizationPayload {};
+struct StopMatchedPayload {};
 struct BeginReservationPayload {};
 struct PreemptPayload {};
 struct RequeuePayload {};
@@ -120,7 +125,8 @@ struct RequestEvent {
                TokenizationFailedPayload, BeginReservationPayload, ReservationGrantedPayload,
                ReservationDeferredPayload, SubmitPayload, PrefillCompletedPayload,
                DecodeCompletedPayload, ExecutionFailedPayload, TerminalOutcomePayload,
-               PreemptPayload, RequeuePayload, InFlightDrainedPayload, TerminalEmittedPayload>
+               PreemptPayload, RequeuePayload, InFlightDrainedPayload, TerminalEmittedPayload,
+               StopMatchedPayload>
       payload;
 };
 

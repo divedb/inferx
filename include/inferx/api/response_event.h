@@ -30,6 +30,9 @@ enum class FinishReason : uint8_t {
   kDeadline,
   kExecutorError,
   kShutdown,
+  // Real EOS stop (M5 schema extension, m5.md section 13.4): the emitted
+  // token matched a stop id. Never kSimulatedEos.
+  kEos,
 };
 
 [[nodiscard]] absl::string_view ToString(FinishReason reason);

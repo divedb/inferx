@@ -283,6 +283,36 @@ target_link_libraries(inferx_runtime_test PRIVATE
 gtest_discover_tests(inferx_runtime_test
   PROPERTIES TIMEOUT 120)
 
+# M5: semantic layer, runtime contracts, and the CPU reference end-to-end.
+add_executable(inferx_m5_semantics_test unit/model/m5_semantics_test.cc)
+inferx_apply_project_options(inferx_m5_semantics_test)
+target_link_libraries(inferx_m5_semantics_test PRIVATE
+  inferx::model inferx::ops inferx::tensor GTest::gtest_main
+  absl::status absl::statusor absl::strings)
+gtest_discover_tests(inferx_m5_semantics_test
+  PROPERTIES TIMEOUT 120)
+
+add_executable(inferx_m5_runtime_test unit/runtime/m5_runtime_test.cc)
+inferx_apply_project_options(inferx_m5_runtime_test)
+target_link_libraries(inferx_m5_runtime_test PRIVATE
+  inferx::execution_runtime GTest::gtest_main
+  absl::status absl::statusor absl::strings)
+gtest_discover_tests(inferx_m5_runtime_test
+  PROPERTIES TIMEOUT 120)
+
+add_executable(inferx_m5_cpu_backend_test integration/m5/m5_cpu_backend_test.cc)
+inferx_apply_project_options(inferx_m5_cpu_backend_test)
+target_compile_definitions(inferx_m5_cpu_backend_test PRIVATE
+  M5_MODEL_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/model")
+target_link_libraries(inferx_m5_cpu_backend_test PRIVATE
+  inferx::execution_runtime inferx::input GTest::gtest_main
+  absl::status absl::statusor absl::strings)
+gtest_discover_tests(inferx_m5_cpu_backend_test
+  PROPERTIES TIMEOUT 300)
+
+set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/m5_test_labels.cmake")
+
 add_executable(inferx_cuda_config_test unit/config/cuda_config_test.cc)
 inferx_apply_project_options(inferx_cuda_config_test)
 target_link_libraries(inferx_cuda_config_test PRIVATE

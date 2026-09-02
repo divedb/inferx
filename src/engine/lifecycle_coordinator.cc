@@ -268,6 +268,24 @@ absl::Status LifecycleCoordinator::Complete(const ExecutionCompletion& completio
   return ObserveTransition(*request, from, event.kind, now);
 }
 
+absl::Status LifecycleCoordinator::Stop(RequestId request_id, MonotonicTime now) {
+  RequestContext* request = registry_.Find(request_id);
+  if (request == nullptr) {
+    return UnknownRequest(request_id);
+  }
+  // A committed output matched a stop id: finish successfully from a ready
+  // state (m5.md section 13.4). The reservation releases at terminal
+  // emission; no response is emitted by this transition itself.
+  RequestEvent event{RequestEventKind::kStopMatched, StopMatchedPayload{}};
+  absl::StatusOr<PreparedTransition> prepared = controller_.Prepare(*request, event);
+  if (!prepared.ok()) {
+    return prepared.status();
+  }
+  const RequestState from = request->state;
+  controller_.Commit(*request, std::move(*prepared));
+  return ObserveTransition(*request, from, event.kind, now);
+}
+
 absl::Status LifecycleCoordinator::Cancel(RequestId request_id, FinishReason finish,
                                           absl::Status status, ErrorReason reason,
                                           MonotonicTime now) {

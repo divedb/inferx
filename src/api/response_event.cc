@@ -16,12 +16,14 @@ absl::string_view ToString(FinishReason reason) {
       return "executor_error";
     case FinishReason::kShutdown:
       return "shutdown";
+    case FinishReason::kEos:
+      return "eos";
   }
   return "unknown";
 }
 
 std::optional<FinishReason> FinishReasonFromName(absl::string_view name) {
-  for (uint32_t value = 0; value <= static_cast<uint32_t>(FinishReason::kShutdown); ++value) {
+  for (uint32_t value = 0; value <= static_cast<uint32_t>(FinishReason::kEos); ++value) {
     const auto reason = static_cast<FinishReason>(value);
     if (ToString(reason) == name) {
       return reason;
