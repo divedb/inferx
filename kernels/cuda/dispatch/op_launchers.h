@@ -31,8 +31,7 @@ absl::Status QkRmsNorm(const QkRmsNormRequest& request, const CudaLaunchContext&
 bool QkRmsNormAvailable(const QkRmsNormRequest* probe, uint16_t compute_capability);
 absl::Status HadamardTransform(const HadamardTransformRequest& request,
                                const CudaLaunchContext& context);
-bool HadamardTransformAvailable(const HadamardTransformRequest* probe,
-                                uint16_t compute_capability);
+bool HadamardTransformAvailable(const HadamardTransformRequest* probe, uint16_t compute_capability);
 absl::Status Argmax(const ArgmaxRequest& request, const CudaLaunchContext& context);
 bool ArgmaxAvailable(const ArgmaxRequest* probe, uint16_t compute_capability);
 absl::Status TopPRenorm(const TopPRenormRequest& request, const CudaLaunchContext& context);

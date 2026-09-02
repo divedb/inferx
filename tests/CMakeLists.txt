@@ -88,11 +88,6 @@ if(INFERX_ENABLE_CUDA AND INFERX_BUILD_M4_GPU_TESTS)
     absl::synchronization)
   gtest_discover_tests(inferx_kernels_ops_oracle_test PROPERTIES TIMEOUT 120)
 
-  add_executable(inferx_m4_cuda_ops_test unit/cuda/m4_cuda_ops_test.cc)
-  inferx_apply_project_options(inferx_m4_cuda_ops_test)
-  target_link_libraries(inferx_m4_cuda_ops_test PRIVATE
-    inferx_cuda_ops GTest::gtest_main CUDA::cudart absl::status absl::statusor)
-  gtest_discover_tests(inferx_m4_cuda_ops_test PROPERTIES TIMEOUT 120)
 endif()
 
 if(INFERX_BUILD_M4_REFERENCE_TESTS OR

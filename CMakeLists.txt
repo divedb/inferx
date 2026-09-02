@@ -50,7 +50,6 @@ endif()
 
 if(INFERX_ENABLE_CUDA)
   include(cmake/InferXCuda.cmake)
-  add_subdirectory(kernels/cuda/ops)
   add_subdirectory(platform/cuda)
   add_subdirectory(kernels/cuda/test)
   if(INFERX_BUILD_TOOLS)

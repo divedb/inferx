@@ -17,11 +17,9 @@ namespace {
 constexpr uint32_t kDim = 128;
 
 template <typename T>
-__global__ void Hadamard128Kernel(const T* __restrict__ input,
-                                                        T* __restrict__ output, float scale,
-                                                        uint64_t rows) {
-  const uint64_t row = static_cast<uint64_t>(blockIdx.x) * (blockDim.x / 32) +
-                       threadIdx.x / 32;
+__global__ void Hadamard128Kernel(const T* __restrict__ input, T* __restrict__ output, float scale,
+                                  uint64_t rows) {
+  const uint64_t row = static_cast<uint64_t>(blockIdx.x) * (blockDim.x / 32) + threadIdx.x / 32;
   if (row >= rows) return;
   const uint32_t lane = threadIdx.x % 32;
   const T* src = input + row * kDim;

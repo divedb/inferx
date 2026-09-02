@@ -61,8 +61,8 @@ std::unique_ptr<QkRmsNormProvider> MakeFlashInferQkRmsNormProvider() {
                                                               QkRmsNormAvailable);
 }
 std::unique_ptr<TopPRenormProvider> MakeFlashInferTopPRenormProvider() {
-  return std::make_unique<SimpleOpProvider<TopPRenormRequest>>(ProviderId::kFlashInfer,
-                                                               TopPRenorm, TopPRenormAvailable);
+  return std::make_unique<SimpleOpProvider<TopPRenormRequest>>(ProviderId::kFlashInfer, TopPRenorm,
+                                                               TopPRenormAvailable);
 }
 
 std::unique_ptr<Add3Provider> MakeOwnedAdd3Provider() {
@@ -78,8 +78,8 @@ std::unique_ptr<ArgmaxProvider> MakeOwnedArgmaxProvider() {
                                                            ArgmaxAvailable);
 }
 std::unique_ptr<TopKRenormProvider> MakeOwnedTopKRenormProvider() {
-  return std::make_unique<SimpleOpProvider<TopKRenormRequest>>(ProviderId::kInferxOwned,
-                                                               TopKRenorm, TopKRenormAvailable);
+  return std::make_unique<SimpleOpProvider<TopKRenormRequest>>(ProviderId::kInferxOwned, TopKRenorm,
+                                                               TopKRenormAvailable);
 }
 std::unique_ptr<Fp8QuantProvider> MakeOwnedFp8QuantProvider() {
   return std::make_unique<SimpleOpProvider<Fp8QuantRequest>>(ProviderId::kInferxOwned, Fp8Quant,
@@ -87,8 +87,7 @@ std::unique_ptr<Fp8QuantProvider> MakeOwnedFp8QuantProvider() {
 }
 std::unique_ptr<SoftmaxTopKProvider> MakeOwnedSoftmaxTopKProvider() {
   return std::make_unique<SimpleOpProvider<SoftmaxTopKRequest>>(ProviderId::kInferxOwned,
-                                                                SoftmaxTopK,
-                                                                SoftmaxTopKAvailable);
+                                                                SoftmaxTopK, SoftmaxTopKAvailable);
 }
 std::unique_ptr<SigmoidBiasTopKProvider> MakeOwnedSigmoidBiasTopKProvider() {
   return std::make_unique<SimpleOpProvider<SigmoidBiasTopKRequest>>(

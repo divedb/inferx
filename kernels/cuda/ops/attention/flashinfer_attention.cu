@@ -23,11 +23,10 @@
 namespace inferx::kernels::cuda::attention {
 namespace {
 
-using AttentionVariant =
-    flashinfer::DefaultAttention</*use_custom_mask=*/false,
-                                  /*use_sliding_window=*/false,
-                                  /*use_logits_soft_cap=*/false,
-                                  /*use_alibi=*/false>;
+using AttentionVariant = flashinfer::DefaultAttention</*use_custom_mask=*/false,
+                                                      /*use_sliding_window=*/false,
+                                                      /*use_logits_soft_cap=*/false,
+                                                      /*use_alibi=*/false>;
 
 constexpr uint32_t kCtaTileQ = 64;
 
@@ -36,12 +35,14 @@ constexpr uint32_t kCtaTileQ = 64;
 //   index == batch:              kv_indptr terminator
 //   index in (batch, batch+1+tokens]: prefill tile enumeration via
 //                                 binary search over device tile offsets
-__global__ void AttentionMetadataKernel(
-    int32_t* kv_indices, int32_t* kv_indptr, int32_t* last_page_len, int32_t* request_indices,
-    int32_t* qo_tile_indices, int32_t* kv_tile_indices, int32_t* kv_chunk_size,
-    const int32_t* device_q_indptr, const int32_t* device_tile_offsets,
-    const int32_t* new_kv_indptr, const int32_t* kv_lengths_before, uint32_t batch,
-    uint32_t tiles) {
+__global__ void AttentionMetadataKernel(int32_t* kv_indices, int32_t* kv_indptr,
+                                        int32_t* last_page_len, int32_t* request_indices,
+                                        int32_t* qo_tile_indices, int32_t* kv_tile_indices,
+                                        int32_t* kv_chunk_size, const int32_t* device_q_indptr,
+                                        const int32_t* device_tile_offsets,
+                                        const int32_t* new_kv_indptr,
+                                        const int32_t* kv_lengths_before, uint32_t batch,
+                                        uint32_t tiles) {
   const uint32_t index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < batch) {
     kv_indices[index] = static_cast<int32_t>(index);
@@ -74,14 +75,14 @@ __global__ void AttentionMetadataKernel(
 }
 
 struct Workspace {
-  int32_t* kv_indices;      // [batch]
-  int32_t* kv_indptr;       // [batch + 1]
-  int32_t* last_page_len;   // [batch]
-  int32_t* request_indices; // [tiles]
-  int32_t* qo_tile_indices; // [tiles]
-  int32_t* kv_tile_indices; // [tiles]
-  int32_t* prefill_aux;     // q_indptr mirror + tile offsets ([batch+1] each)
-  int32_t* kv_chunk_size;   // scalar
+  int32_t* kv_indices;       // [batch]
+  int32_t* kv_indptr;        // [batch + 1]
+  int32_t* last_page_len;    // [batch]
+  int32_t* request_indices;  // [tiles]
+  int32_t* qo_tile_indices;  // [tiles]
+  int32_t* kv_tile_indices;  // [tiles]
+  int32_t* prefill_aux;      // q_indptr mirror + tile offsets ([batch+1] each)
+  int32_t* kv_chunk_size;    // scalar
 };
 
 Workspace SplitWorkspace(void* workspace, uint64_t batch, uint64_t tiles) {
@@ -105,8 +106,8 @@ flashinfer::paged_kv_t<DType, int32_t> MakePagedKv(const Workspace& w, const voi
                                                    uint64_t head_dim) {
   return flashinfer::paged_kv_t<DType, int32_t>(
       static_cast<uint32_t>(kv_heads), static_cast<uint32_t>(max_context),
-      static_cast<uint32_t>(head_dim), static_cast<uint32_t>(batch),
-      flashinfer::QKVLayout::kNHD, static_cast<DType*>(const_cast<void*>(key_cache)),
+      static_cast<uint32_t>(head_dim), static_cast<uint32_t>(batch), flashinfer::QKVLayout::kNHD,
+      static_cast<DType*>(const_cast<void*>(key_cache)),
       static_cast<DType*>(const_cast<void*>(value_cache)), w.kv_indices, w.kv_indptr,
       w.last_page_len);
 }
@@ -175,13 +176,11 @@ cudaError_t DispatchPrefill(const Workspace& w, const void* query, const void* k
     case 64:
       return flashinfer::BatchPrefillWithPagedKVCacheDispatched<
           kCtaTileQ, 64, 64, flashinfer::PosEncodingMode::kNone, kUseFp16QkReduction,
-          flashinfer::MaskMode::kCausal, AttentionVariant>(params, nullptr, nullptr, false,
-                                                           stream);
+          flashinfer::MaskMode::kCausal, AttentionVariant>(params, nullptr, nullptr, false, stream);
     case 128:
       return flashinfer::BatchPrefillWithPagedKVCacheDispatched<
           kCtaTileQ, 128, 128, flashinfer::PosEncodingMode::kNone, kUseFp16QkReduction,
-          flashinfer::MaskMode::kCausal, AttentionVariant>(params, nullptr, nullptr, false,
-                                                           stream);
+          flashinfer::MaskMode::kCausal, AttentionVariant>(params, nullptr, nullptr, false, stream);
     default:
       return cudaErrorInvalidValue;
   }
@@ -208,19 +207,18 @@ uint64_t AttentionWorkspaceWords(uint64_t batch, uint64_t padded_tiles) {
 
 cudaError_t LaunchFlashInferDecode(const void* query, const void* key_cache,
                                    const void* value_cache, const int32_t* new_kv_indptr,
-                                   const int32_t* kv_lengths_before, void* output,
-                                   void* workspace, uint64_t workspace_words, uint64_t batch,
-                                   uint64_t max_context, uint64_t query_heads,
-                                   uint64_t kv_heads, uint64_t head_dim, StorageType dtype,
-                                   cudaStream_t stream) {
+                                   const int32_t* kv_lengths_before, void* output, void* workspace,
+                                   uint64_t workspace_words, uint64_t batch, uint64_t max_context,
+                                   uint64_t query_heads, uint64_t kv_heads, uint64_t head_dim,
+                                   StorageType dtype, cudaStream_t stream) {
   if (batch == 0) return cudaSuccess;
   if (workspace == nullptr || workspace_words < AttentionWorkspaceWords(batch, batch)) {
     return cudaErrorInvalidValue;
   }
   Workspace w = SplitWorkspace(workspace, batch, batch);
   // q/kv tile metadata degenerates to iota/zeros; device_q_indptr unused.
-  cudaError_t status = LaunchMarshalling(w, w.prefill_aux, w.prefill_aux + batch + 1,
-                                         new_kv_indptr, kv_lengths_before, batch, batch, stream);
+  cudaError_t status = LaunchMarshalling(w, w.prefill_aux, w.prefill_aux + batch + 1, new_kv_indptr,
+                                         kv_lengths_before, batch, batch, stream);
   if (status != cudaSuccess) return status;
   if (dtype == StorageType::kFloat32) return cudaErrorInvalidValue;
   switch (dtype) {
@@ -237,20 +235,14 @@ cudaError_t LaunchFlashInferDecode(const void* query, const void* key_cache,
 
 // Prefill entry with host staging: host_q_indptr/host_tile_offsets are host
 // arrays of length batch+1; tile counts use kCtaTileQ.
-cudaError_t LaunchFlashInferPrefillStaged(const void* query, const void* key_cache,
-                                          const void* value_cache, const int32_t* host_q_indptr,
-                                          const int32_t* host_tile_offsets,
-                                          const int32_t* device_q_indptr,
-                                          const int32_t* new_kv_indptr,
-                                          const int32_t* kv_lengths_before, void* output,
-                                          void* workspace, uint64_t workspace_words,
-                                          uint64_t batch, uint64_t total_queries,
-                                          uint64_t max_context, uint64_t query_heads,
-                                          uint64_t kv_heads, uint64_t head_dim,
-                                          StorageType dtype, cudaStream_t stream) {
+cudaError_t LaunchFlashInferPrefillStaged(
+    const void* query, const void* key_cache, const void* value_cache, const int32_t* host_q_indptr,
+    const int32_t* host_tile_offsets, const int32_t* device_q_indptr, const int32_t* new_kv_indptr,
+    const int32_t* kv_lengths_before, void* output, void* workspace, uint64_t workspace_words,
+    uint64_t batch, uint64_t total_queries, uint64_t max_context, uint64_t query_heads,
+    uint64_t kv_heads, uint64_t head_dim, StorageType dtype, cudaStream_t stream) {
   if (batch == 0 || total_queries == 0) return cudaSuccess;
-  const uint64_t tiles =
-      static_cast<uint64_t>(host_tile_offsets[batch]);
+  const uint64_t tiles = static_cast<uint64_t>(host_tile_offsets[batch]);
   if (workspace == nullptr || workspace_words < AttentionWorkspaceWords(batch, tiles)) {
     return cudaErrorInvalidValue;
   }
@@ -267,8 +259,8 @@ cudaError_t LaunchFlashInferPrefillStaged(const void* query, const void* key_cac
   if (dtype == StorageType::kFloat32) return cudaErrorInvalidValue;
   switch (dtype) {
     case StorageType::kFloat16:
-      return DispatchPrefill<__half>(w, query, key_cache, value_cache, output, batch,
-                                     total_queries, max_context, query_heads, kv_heads, head_dim,
+      return DispatchPrefill<__half>(w, query, key_cache, value_cache, output, batch, total_queries,
+                                     max_context, query_heads, kv_heads, head_dim,
                                      static_cast<uint32_t>(tiles), stream);
     case StorageType::kBFloat16:
       return DispatchPrefill<__nv_bfloat16>(w, query, key_cache, value_cache, output, batch,

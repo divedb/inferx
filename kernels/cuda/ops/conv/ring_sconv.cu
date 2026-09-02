@@ -23,8 +23,8 @@ __global__ void RingSconvKernel(const T* __restrict__ x, const T* __restrict__ w
                                 T* __restrict__ conv_cache, const int32_t* __restrict__ seq_prefix,
                                 const int32_t* __restrict__ cache_indices, T* __restrict__ output,
                                 uint64_t width, uint32_t window, uint64_t ring) {
-  const uint64_t token_global = static_cast<uint64_t>(blockIdx.x) * kWarpsPerBlock +
-                                threadIdx.x / kWarpSize;
+  const uint64_t token_global =
+      static_cast<uint64_t>(blockIdx.x) * kWarpsPerBlock + threadIdx.x / kWarpSize;
   if (token_global >= gridDim.y) return;
   const uint32_t lane = threadIdx.x % kWarpSize;
   // gridDim.y carries the total token count (set via the launch below).
@@ -49,10 +49,10 @@ __global__ void RingSconvKernel(const T* __restrict__ x, const T* __restrict__ w
         Load(weight, channel * window + (window - 1)) * Load(x, token_global * width + channel);
     for (uint32_t lag = 1; lag < window; ++lag) {
       const int32_t history_step = local_step - static_cast<int32_t>(lag);
-      const float tap = history_step >= 0
-                            ? Load(ring_cache,
-                                   (static_cast<uint64_t>(history_step) % ring) * width + channel)
-                            : 0.0F;
+      const float tap =
+          history_step >= 0
+              ? Load(ring_cache, (static_cast<uint64_t>(history_step) % ring) * width + channel)
+              : 0.0F;
       sum += Load(weight, channel * window + (window - 1 - lag)) * tap;
     }
     Store(output, token_global * width + channel, sum);
@@ -79,14 +79,14 @@ cudaError_t LaunchRingSconv(const void* x, const void* weight, void* conv_cache,
     case StorageType::kFloat32:
       RingSconvKernel<float><<<grid, kWarpsPerBlock * kWarpSize, 0, stream>>>(
           static_cast<const float*>(x), static_cast<const float*>(weight),
-          static_cast<float*>(conv_cache), seq_prefix, cache_indices,
-          static_cast<float*>(output), width, window, ring);
+          static_cast<float*>(conv_cache), seq_prefix, cache_indices, static_cast<float*>(output),
+          width, window, ring);
       break;
     case StorageType::kFloat16:
       RingSconvKernel<__half><<<grid, kWarpsPerBlock * kWarpSize, 0, stream>>>(
           static_cast<const __half*>(x), static_cast<const __half*>(weight),
-          static_cast<__half*>(conv_cache), seq_prefix, cache_indices,
-          static_cast<__half*>(output), width, window, ring);
+          static_cast<__half*>(conv_cache), seq_prefix, cache_indices, static_cast<__half*>(output),
+          width, window, ring);
       break;
     case StorageType::kBFloat16:
       RingSconvKernel<__nv_bfloat16><<<grid, kWarpsPerBlock * kWarpSize, 0, stream>>>(

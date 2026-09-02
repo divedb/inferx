@@ -50,8 +50,7 @@ __global__ void MhcPreKernel(const T* __restrict__ residual, const float* __rest
     const float gate = 1.0F / (1.0F + __expf(-(mix_row[i] * rms * hc_scale[0] + hc_base[i])));
     shared_pre[i] = gate + hc_eps;
     post[token * streams + i] =
-        2.0F / (1.0F + __expf(-(mix_row[streams + i] * rms * hc_scale[1] +
-                                hc_base[streams + i])));
+        2.0F / (1.0F + __expf(-(mix_row[streams + i] * rms * hc_scale[1] + hc_base[streams + i])));
   }
   __syncthreads();
 
@@ -60,9 +59,8 @@ __global__ void MhcPreKernel(const T* __restrict__ residual, const float* __rest
     for (uint32_t i = 0; i < streams; ++i) {
       float maximum = -INFINITY;
       for (uint32_t j = 0; j < streams; ++j) {
-        const float raw =
-            mix_row[2 * streams + i * streams + j] * rms * hc_scale[2] +
-            hc_base[2 * streams + i * streams + j];
+        const float raw = mix_row[2 * streams + i * streams + j] * rms * hc_scale[2] +
+                          hc_base[2 * streams + i * streams + j];
         shared_comb[i * streams + j] = raw;
         maximum = fmaxf(maximum, raw);
       }
@@ -149,25 +147,22 @@ cudaError_t LaunchMhcPre(const void* residual, const void* fn, const void* hc_sc
       MhcPreKernel<float><<<static_cast<uint32_t>(tokens), kThreads, 0, stream>>>(
           static_cast<const float*>(residual), static_cast<const float*>(mix_workspace),
           static_cast<const float*>(hc_scale), static_cast<const float*>(hc_base),
-          static_cast<float*>(layer_input), static_cast<float*>(post),
-          static_cast<float*>(comb), tokens, streams, hidden, rms_eps, hc_eps,
-          sinkhorn_iters);
+          static_cast<float*>(layer_input), static_cast<float*>(post), static_cast<float*>(comb),
+          tokens, streams, hidden, rms_eps, hc_eps, sinkhorn_iters);
       break;
     case StorageType::kFloat16:
       MhcPreKernel<__half><<<static_cast<uint32_t>(tokens), kThreads, 0, stream>>>(
           static_cast<const __half*>(residual), static_cast<const float*>(mix_workspace),
           static_cast<const float*>(hc_scale), static_cast<const float*>(hc_base),
-          static_cast<__half*>(layer_input), static_cast<float*>(post),
-          static_cast<float*>(comb), tokens, streams, hidden, rms_eps, hc_eps,
-          sinkhorn_iters);
+          static_cast<__half*>(layer_input), static_cast<float*>(post), static_cast<float*>(comb),
+          tokens, streams, hidden, rms_eps, hc_eps, sinkhorn_iters);
       break;
     case StorageType::kBFloat16:
       MhcPreKernel<__nv_bfloat16><<<static_cast<uint32_t>(tokens), kThreads, 0, stream>>>(
           static_cast<const __nv_bfloat16*>(residual), static_cast<const float*>(mix_workspace),
           static_cast<const float*>(hc_scale), static_cast<const float*>(hc_base),
           static_cast<__nv_bfloat16*>(layer_input), static_cast<float*>(post),
-          static_cast<float*>(comb), tokens, streams, hidden, rms_eps, hc_eps,
-          sinkhorn_iters);
+          static_cast<float*>(comb), tokens, streams, hidden, rms_eps, hc_eps, sinkhorn_iters);
       break;
     default:
       return cudaErrorInvalidValue;
@@ -183,20 +178,19 @@ cudaError_t LaunchMhcPost(const void* hidden_states, void* residual, const void*
     case StorageType::kFloat32:
       MhcPostKernel<float><<<dim3(static_cast<uint32_t>(tokens), streams), kThreads, 0, stream>>>(
           static_cast<const float*>(hidden_states), static_cast<float*>(residual),
-          static_cast<const float*>(post), static_cast<const float*>(comb), streams,
-          hidden);
+          static_cast<const float*>(post), static_cast<const float*>(comb), streams, hidden);
       break;
     case StorageType::kFloat16:
       MhcPostKernel<__half><<<dim3(static_cast<uint32_t>(tokens), streams), kThreads, 0, stream>>>(
           static_cast<const __half*>(hidden_states), static_cast<__half*>(residual),
-          static_cast<const float*>(post), static_cast<const float*>(comb), streams,
-          hidden);
+          static_cast<const float*>(post), static_cast<const float*>(comb), streams, hidden);
       break;
     case StorageType::kBFloat16:
-      MhcPostKernel<__nv_bfloat16><<<dim3(static_cast<uint32_t>(tokens), streams), kThreads, 0, stream>>>(
-          static_cast<const __nv_bfloat16*>(hidden_states),
-          static_cast<__nv_bfloat16*>(residual), static_cast<const float*>(post),
-          static_cast<const float*>(comb), streams, hidden);
+      MhcPostKernel<__nv_bfloat16>
+          <<<dim3(static_cast<uint32_t>(tokens), streams), kThreads, 0, stream>>>(
+              static_cast<const __nv_bfloat16*>(hidden_states),
+              static_cast<__nv_bfloat16*>(residual), static_cast<const float*>(post),
+              static_cast<const float*>(comb), streams, hidden);
       break;
     default:
       return cudaErrorInvalidValue;

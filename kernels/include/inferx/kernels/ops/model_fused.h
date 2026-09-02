@@ -18,10 +18,10 @@ namespace inferx::kernels {
 // out = sum_n softmax(logits)_n * v_n (FP32 accumulate), then optional fused
 // output RMSNorm with out_norm_weight.
 struct AttnResRequest {
-  MutableTensorView layer_residual;   // in/out
-  TensorView block_residual;          // [blocks, tokens, hidden]
-  TensorView res_weight;              // [hidden]
-  TensorView rms_weight;              // [hidden]
+  MutableTensorView layer_residual;  // in/out
+  TensorView block_residual;         // [blocks, tokens, hidden]
+  TensorView res_weight;             // [hidden]
+  TensorView rms_weight;             // [hidden]
   std::optional<TensorView> out_norm_weight;
   float epsilon = 1.0e-5F;
   float out_norm_epsilon = 1.0e-5F;
@@ -29,11 +29,11 @@ struct AttnResRequest {
 
 // Qwen gated-residual hyperconnection.
 struct HcMixRequest {
-  TensorView normalized;              // [tokens, hc_count * hidden]
-  TensorView projection_weight;       // [lowrank + hc_count, hc_count * hidden]
-  TensorView up_weight;               // [hc_count * hidden, lowrank]
-  MutableTensorView mixed;            // [tokens, hidden]
-  MutableTensorView inject_logits;    // [tokens, hc_count]
+  TensorView normalized;            // [tokens, hc_count * hidden]
+  TensorView projection_weight;     // [lowrank + hc_count, hc_count * hidden]
+  TensorView up_weight;             // [hc_count * hidden, lowrank]
+  MutableTensorView mixed;          // [tokens, hidden]
+  MutableTensorView inject_logits;  // [tokens, hc_count]
   uint32_t hc_count = 4;
   uint32_t hidden_size = 2560;
   uint32_t lowrank = 320;
@@ -41,44 +41,44 @@ struct HcMixRequest {
 };
 
 struct HcCombineRequest {
-  TensorView block_output;            // [tokens, hidden]
-  MutableTensorView residual;         // [tokens, hc_count * hidden] in/out
-  TensorView inject_logits;           // [tokens, hc_count]
+  TensorView block_output;     // [tokens, hidden]
+  MutableTensorView residual;  // [tokens, hc_count * hidden] in/out
+  TensorView inject_logits;    // [tokens, hc_count]
   uint32_t hc_count = 4;
   uint32_t hidden_size = 2560;
 };
 
 // Matrix hyperconnection (generalized m-stream mixing).
 struct MhcPreRequest {
-  TensorView residual;                // [tokens, m, hidden] bf16
-  TensorView fn;                      // [2m + m*m, m * hidden] fp32
-  TensorView hc_scale;                // [3] fp32
-  TensorView hc_base;                 // [2m + m*m] fp32
-  MutableTensorView layer_input;      // [tokens, hidden] bf16
-  MutableTensorView post;             // [tokens, m] fp32
-  MutableTensorView comb;             // [tokens, m, m] fp32
+  TensorView residual;            // [tokens, m, hidden] bf16
+  TensorView fn;                  // [2m + m*m, m * hidden] fp32
+  TensorView hc_scale;            // [3] fp32
+  TensorView hc_base;             // [2m + m*m] fp32
+  MutableTensorView layer_input;  // [tokens, hidden] bf16
+  MutableTensorView post;         // [tokens, m] fp32
+  MutableTensorView comb;         // [tokens, m, m] fp32
   float rms_eps = 1.0e-5F;
   float hc_eps = 1.0e-5F;
   uint32_t sinkhorn_iters = 20;
 };
 
 struct MhcPostRequest {
-  TensorView hidden_states;           // [tokens, hidden]
-  MutableTensorView residual;         // [tokens, m, hidden] in/out
-  TensorView post;                    // [tokens, m]
-  TensorView comb;                    // [tokens, m, m]
+  TensorView hidden_states;    // [tokens, hidden]
+  MutableTensorView residual;  // [tokens, m, hidden] in/out
+  TensorView post;             // [tokens, m]
+  TensorView comb;             // [tokens, m, m]
 };
 
 // Depthwise causal short-FIR convolution with ring cache (TokenSpeed
 // inkling_ring_sconv): x [tokens, width] varlen, weight [width, window],
 // conv_cache [slots, ring, width] in-place ring updates.
 struct RingSconvRequest {
-  TensorView x;                       // [tokens, width]
-  TensorView weight;                  // [width, window]
-  MutableTensorView conv_cache;       // [slots, ring, width]
-  TensorView seq_lens;                // [batch] int32 tokens per sequence
-  TensorView cache_indices;           // [batch] int32 slot per sequence
-  MutableTensorView output;           // [tokens, width]
+  TensorView x;                  // [tokens, width]
+  TensorView weight;             // [width, window]
+  MutableTensorView conv_cache;  // [slots, ring, width]
+  TensorView seq_lens;           // [batch] int32 tokens per sequence
+  TensorView cache_indices;      // [batch] int32 slot per sequence
+  MutableTensorView output;      // [tokens, width]
   uint32_t window = 4;
 };
 

@@ -30,9 +30,8 @@ template <typename T, float (*Activation)(const float&)>
 cudaError_t LaunchTyped(void* output, const void* input, uint64_t tokens, uint64_t half_dim,
                         cudaStream_t stream) {
   const uint32_t blocks = static_cast<uint32_t>(tokens);
-  flashinfer::activation::act_and_mul_kernel<T, Activation>
-      <<<blocks, 256, 0, stream>>>(static_cast<T*>(output), static_cast<const T*>(input),
-                                   static_cast<int>(half_dim));
+  flashinfer::activation::act_and_mul_kernel<T, Activation><<<blocks, 256, 0, stream>>>(
+      static_cast<T*>(output), static_cast<const T*>(input), static_cast<int>(half_dim));
   return cudaGetLastError();
 }
 
@@ -53,9 +52,8 @@ cudaError_t DispatchKind(void* output, const void* input, uint64_t tokens, uint6
 
 }  // namespace
 
-cudaError_t LaunchActMulKernel(const void* input, void* output, uint64_t tokens,
-                               uint64_t half_dim, uint32_t kind, StorageType dtype,
-                               cudaStream_t stream) {
+cudaError_t LaunchActMulKernel(const void* input, void* output, uint64_t tokens, uint64_t half_dim,
+                               uint32_t kind, StorageType dtype, cudaStream_t stream) {
   if (tokens == 0 || half_dim == 0) return cudaSuccess;
   switch (dtype) {
     case StorageType::kFloat32:

@@ -18,8 +18,8 @@ constexpr float kFp8Max = 448.0F;
 
 // One block per token row: begin is derived from blockIdx.x.
 __global__ void Fp8QuantTokenKernel(const float* __restrict__ input,
-                                    __nv_fp8_e4m3* __restrict__ output,
-                                    float* __restrict__ scales, uint64_t dim) {
+                                    __nv_fp8_e4m3* __restrict__ output, float* __restrict__ scales,
+                                    uint64_t dim) {
   const uint64_t begin = static_cast<uint64_t>(blockIdx.x) * dim;
   const uint64_t count = dim;
   float local_amax = 0.0F;
@@ -50,8 +50,8 @@ __global__ void Fp8QuantTokenKernel(const float* __restrict__ input,
 
 // One block for the whole tensor (per-tensor granularity).
 __global__ void Fp8QuantTensorKernel(const float* __restrict__ input,
-                                     __nv_fp8_e4m3* __restrict__ output,
-                                     float* __restrict__ scales, uint64_t count) {
+                                     __nv_fp8_e4m3* __restrict__ output, float* __restrict__ scales,
+                                     uint64_t count) {
   float local_amax = 0.0F;
   for (uint64_t index = threadIdx.x; index < count; index += blockDim.x) {
     local_amax = fmaxf(local_amax, fabsf(input[index]));
@@ -80,11 +80,10 @@ __global__ void Fp8QuantTensorKernel(const float* __restrict__ input,
 
 // One block per (token, group).
 __global__ void Fp8QuantGroupKernel(const float* __restrict__ input,
-                                    __nv_fp8_e4m3* __restrict__ output,
-                                    float* __restrict__ scales, uint64_t dim, uint64_t groups,
-                                    uint32_t group_size) {
-  const uint64_t begin = static_cast<uint64_t>(blockIdx.x) * dim +
-                         static_cast<uint64_t>(blockIdx.y) * group_size;
+                                    __nv_fp8_e4m3* __restrict__ output, float* __restrict__ scales,
+                                    uint64_t dim, uint64_t groups, uint32_t group_size) {
+  const uint64_t begin =
+      static_cast<uint64_t>(blockIdx.x) * dim + static_cast<uint64_t>(blockIdx.y) * group_size;
   const uint64_t count =
       min(static_cast<uint64_t>(group_size), dim - static_cast<uint64_t>(blockIdx.y) * group_size);
   float local_amax = 0.0F;
@@ -120,9 +119,9 @@ cudaError_t LaunchFp8Quant(const void* input, void* output, float* scales, uint6
                            cudaStream_t stream) {
   if (tokens == 0 || dim == 0) return cudaSuccess;
   if (granularity == 0) {
-    Fp8QuantTensorKernel<<<1, kThreads, 0, stream>>>(
-        static_cast<const float*>(input), static_cast<__nv_fp8_e4m3*>(output), scales,
-        tokens * dim);
+    Fp8QuantTensorKernel<<<1, kThreads, 0, stream>>>(static_cast<const float*>(input),
+                                                     static_cast<__nv_fp8_e4m3*>(output), scales,
+                                                     tokens * dim);
     return cudaGetLastError();
   }
   if (granularity == 1) {
@@ -132,9 +131,9 @@ cudaError_t LaunchFp8Quant(const void* input, void* output, float* scales, uint6
   }
   const uint64_t groups = (dim + group_size - 1) / group_size;
   dim3 grid(static_cast<uint32_t>(tokens), static_cast<uint32_t>(groups));
-  Fp8QuantGroupKernel<<<grid, kThreads, 0, stream>>>(
-      static_cast<const float*>(input), static_cast<__nv_fp8_e4m3*>(output), scales, dim, groups,
-      group_size);
+  Fp8QuantGroupKernel<<<grid, kThreads, 0, stream>>>(static_cast<const float*>(input),
+                                                     static_cast<__nv_fp8_e4m3*>(output), scales,
+                                                     dim, groups, group_size);
   return cudaGetLastError();
 }
 

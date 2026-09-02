@@ -28,10 +28,10 @@ cudaError_t LaunchSoftmaxTopK(const void* logits, void* weights, int32_t* ids, u
                               cudaStream_t stream);
 
 // Sigmoid routing with additive selection bias (Kimi style).
-cudaError_t LaunchSigmoidBiasTopK(const void* logits, const void* bias, void* weights,
-                                  int32_t* ids, uint64_t tokens, uint64_t experts,
-                                  uint32_t top_k, float routed_scaling_factor,
-                                  bool renormalize, cudaStream_t stream);
+cudaError_t LaunchSigmoidBiasTopK(const void* logits, const void* bias, void* weights, int32_t* ids,
+                                  uint64_t tokens, uint64_t experts, uint32_t top_k,
+                                  float routed_scaling_factor, bool renormalize,
+                                  cudaStream_t stream);
 
 }  // namespace inferx::kernels::cuda::moe
 

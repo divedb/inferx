@@ -19,9 +19,8 @@ constexpr uint32_t kThreads = 256;
 constexpr uint32_t kMaxCandidates = 13;  // blocks <= 12 plus layer residual
 
 template <typename T>
-__global__ void AttnResKernel(const T* __restrict__ block_residual,
-                              T* __restrict__ layer_residual, const T* __restrict__ res_weight,
-                              const T* __restrict__ rms_weight,
+__global__ void AttnResKernel(const T* __restrict__ block_residual, T* __restrict__ layer_residual,
+                              const T* __restrict__ res_weight, const T* __restrict__ rms_weight,
                               const T* __restrict__ out_norm_weight, uint64_t tokens,
                               uint64_t hidden, uint64_t blocks, float epsilon,
                               float out_norm_epsilon) {
@@ -53,8 +52,7 @@ __global__ void AttnResKernel(const T* __restrict__ block_residual,
       if (threadIdx.x < stride) shared_sums[threadIdx.x] += shared_sums[threadIdx.x + stride];
       __syncthreads();
     }
-    const float inverse_rms =
-        rsqrtf(shared_sums[0] / static_cast<float>(hidden) + epsilon);
+    const float inverse_rms = rsqrtf(shared_sums[0] / static_cast<float>(hidden) + epsilon);
     shared_norm[n] = inverse_rms;
     __syncthreads();
     shared_sums[threadIdx.x] = dot;
@@ -105,18 +103,16 @@ __global__ void AttnResKernel(const T* __restrict__ block_residual,
         rsqrtf(shared_square[0] / static_cast<float>(hidden) + out_norm_epsilon);
     for (uint64_t h = threadIdx.x; h < hidden; h += blockDim.x) {
       const float mixed = Load(layer_residual + token * hidden, h);
-      Store(layer_residual + token * hidden, h,
-            mixed * inverse_rms * Load(out_norm_weight, h));
+      Store(layer_residual + token * hidden, h, mixed * inverse_rms * Load(out_norm_weight, h));
     }
   }
 }
 
 }  // namespace
 
-cudaError_t LaunchAttnRes(const void* block_residual, void* layer_residual,
-                          const void* res_weight, const void* rms_weight,
-                          const void* out_norm_weight, uint64_t tokens, uint64_t hidden,
-                          uint64_t blocks, float epsilon, float out_norm_epsilon,
+cudaError_t LaunchAttnRes(const void* block_residual, void* layer_residual, const void* res_weight,
+                          const void* rms_weight, const void* out_norm_weight, uint64_t tokens,
+                          uint64_t hidden, uint64_t blocks, float epsilon, float out_norm_epsilon,
                           StorageType dtype, cudaStream_t stream) {
   if (tokens == 0 || blocks == 0 || blocks + 1 > kMaxCandidates) return cudaErrorInvalidValue;
   switch (dtype) {

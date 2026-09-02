@@ -19,9 +19,8 @@ constexpr uint32_t kThreads = 256;
 
 // activated[token, r] = silu(scale * projected[token, r]); projected has
 // row stride (rank + hc_count), activated has row stride rank.
-__global__ void SiluScaleKernel(const float* __restrict__ projected,
-                                float* __restrict__ activated, uint64_t tokens, uint32_t rank,
-                                uint32_t hc_count, float scale) {
+__global__ void SiluScaleKernel(const float* __restrict__ projected, float* __restrict__ activated,
+                                uint64_t tokens, uint32_t rank, uint32_t hc_count, float scale) {
   const uint64_t index = static_cast<uint64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (index >= tokens * rank) return;
   const uint64_t token = index / rank;
@@ -73,18 +72,16 @@ __global__ void HcCombineKernel(const T* __restrict__ block_output, T* __restric
 
 }  // namespace
 
-uint64_t HcMixWorkspaceBytes(uint64_t tokens, uint32_t rank, uint32_t hc_count,
-                             uint32_t hidden) {
+uint64_t HcMixWorkspaceBytes(uint64_t tokens, uint32_t rank, uint32_t hc_count, uint32_t hidden) {
   const uint64_t wide = static_cast<uint64_t>(hc_count) * hidden;
   // projected [tokens, rank + hc] + activated [tokens, rank] + gate [tokens, wide]
   return tokens * ((rank + hc_count) + rank + wide) * sizeof(float);
 }
 
 cudaError_t LaunchHcMix(const void* normalized, const void* projection_weight,
-                        const void* up_weight, void* mixed, void* inject_logits,
-                        void* workspace, uint64_t tokens, uint32_t rank, uint32_t hc_count,
-                        uint32_t hidden, float projection_scale, StorageType dtype,
-                        cudaStream_t stream) {
+                        const void* up_weight, void* mixed, void* inject_logits, void* workspace,
+                        uint64_t tokens, uint32_t rank, uint32_t hc_count, uint32_t hidden,
+                        float projection_scale, StorageType dtype, cudaStream_t stream) {
   if (tokens == 0) return cudaSuccess;
   const uint64_t wide = static_cast<uint64_t>(hc_count) * hidden;
   float* projected = static_cast<float*>(workspace);
@@ -96,8 +93,7 @@ cudaError_t LaunchHcMix(const void* normalized, const void* projection_weight,
                               rank + hc_count, 1.0F, 0.0F, dtype, stream);
   if (status != cudaSuccess) return status;
   const uint64_t activated_elements = tokens * rank;
-  const uint32_t blocks =
-      static_cast<uint32_t>((activated_elements + kThreads - 1) / kThreads);
+  const uint32_t blocks = static_cast<uint32_t>((activated_elements + kThreads - 1) / kThreads);
   SiluScaleKernel<<<blocks, kThreads, 0, stream>>>(projected, activated, tokens, rank, hc_count,
                                                    projection_scale);
   status = cudaPeekAtLastError();
@@ -120,8 +116,8 @@ cudaError_t LaunchHcMix(const void* normalized, const void* projection_weight,
     case StorageType::kBFloat16:
       HcMixKernel<__nv_bfloat16><<<static_cast<uint32_t>(tokens), kThreads, 0, stream>>>(
           static_cast<const __nv_bfloat16*>(normalized), gate, projected,
-          static_cast<__nv_bfloat16*>(mixed), static_cast<float*>(inject_logits), tokens,
-          hc_count, hidden, rank, projection_scale);
+          static_cast<__nv_bfloat16*>(mixed), static_cast<float*>(inject_logits), tokens, hc_count,
+          hidden, rank, projection_scale);
       break;
     default:
       return cudaErrorInvalidValue;
@@ -130,8 +126,8 @@ cudaError_t LaunchHcMix(const void* normalized, const void* projection_weight,
 }
 
 cudaError_t LaunchHcCombine(const void* block_output, void* residual, const void* inject_logits,
-                            uint64_t tokens, uint32_t hc_count, uint32_t hidden,
-                            StorageType dtype, cudaStream_t stream) {
+                            uint64_t tokens, uint32_t hc_count, uint32_t hidden, StorageType dtype,
+                            cudaStream_t stream) {
   if (tokens == 0) return cudaSuccess;
   switch (dtype) {
     case StorageType::kFloat32:
@@ -146,9 +142,8 @@ cudaError_t LaunchHcCombine(const void* block_output, void* residual, const void
       break;
     case StorageType::kBFloat16:
       HcCombineKernel<__nv_bfloat16><<<static_cast<uint32_t>(tokens), kThreads, 0, stream>>>(
-          static_cast<const __nv_bfloat16*>(block_output),
-          static_cast<__nv_bfloat16*>(residual), static_cast<const float*>(inject_logits),
-          tokens, hc_count, hidden);
+          static_cast<const __nv_bfloat16*>(block_output), static_cast<__nv_bfloat16*>(residual),
+          static_cast<const float*>(inject_logits), tokens, hc_count, hidden);
       break;
     default:
       return cudaErrorInvalidValue;

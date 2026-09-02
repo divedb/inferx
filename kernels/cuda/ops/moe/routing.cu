@@ -26,8 +26,8 @@ __global__ void RoutingTopKKernel(const float* __restrict__ logits, const float*
   const uint64_t token = blockIdx.x;
   const float* row = logits + token * experts;
   for (uint64_t expert = threadIdx.x; expert < experts; expert += blockDim.x) {
-    shared_logits[expert] = kSigmoid ? row[expert] + (bias != nullptr ? bias[expert] : 0.0F)
-                                     : row[expert];
+    shared_logits[expert] =
+        kSigmoid ? row[expert] + (bias != nullptr ? bias[expert] : 0.0F) : row[expert];
   }
   __syncthreads();
   __shared__ float s_denominator;
@@ -89,22 +89,22 @@ cudaError_t LaunchSoftmaxTopK(const void* logits, void* weights, int32_t* ids, u
                               uint64_t experts, uint32_t top_k, bool renormalize,
                               cudaStream_t stream) {
   if (tokens == 0 || top_k == 0 || experts > kMaxExpertsInShared) return cudaErrorInvalidValue;
-  RoutingTopKKernel<false><<<static_cast<uint32_t>(tokens), kThreads,
-                             experts * sizeof(float), stream>>>(
-      static_cast<const float*>(logits), nullptr, static_cast<float*>(weights), ids, experts,
-      top_k, 1.0F, renormalize);
+  RoutingTopKKernel<false>
+      <<<static_cast<uint32_t>(tokens), kThreads, experts * sizeof(float), stream>>>(
+          static_cast<const float*>(logits), nullptr, static_cast<float*>(weights), ids, experts,
+          top_k, 1.0F, renormalize);
   return cudaGetLastError();
 }
 
-cudaError_t LaunchSigmoidBiasTopK(const void* logits, const void* bias, void* weights,
-                                  int32_t* ids, uint64_t tokens, uint64_t experts,
-                                  uint32_t top_k, float routed_scaling_factor,
-                                  bool renormalize, cudaStream_t stream) {
+cudaError_t LaunchSigmoidBiasTopK(const void* logits, const void* bias, void* weights, int32_t* ids,
+                                  uint64_t tokens, uint64_t experts, uint32_t top_k,
+                                  float routed_scaling_factor, bool renormalize,
+                                  cudaStream_t stream) {
   if (tokens == 0 || top_k == 0 || experts > kMaxExpertsInShared) return cudaErrorInvalidValue;
-  RoutingTopKKernel<true><<<static_cast<uint32_t>(tokens), kThreads,
-                            experts * sizeof(float), stream>>>(
-      static_cast<const float*>(logits), static_cast<const float*>(bias),
-      static_cast<float*>(weights), ids, experts, top_k, routed_scaling_factor, renormalize);
+  RoutingTopKKernel<true>
+      <<<static_cast<uint32_t>(tokens), kThreads, experts * sizeof(float), stream>>>(
+          static_cast<const float*>(logits), static_cast<const float*>(bias),
+          static_cast<float*>(weights), ids, experts, top_k, routed_scaling_factor, renormalize);
   return cudaGetLastError();
 }
 

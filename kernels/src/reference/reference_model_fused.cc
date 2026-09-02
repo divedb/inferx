@@ -23,8 +23,7 @@ absl::Status RequireFp32(const TensorView& tensor) {
 }  // namespace
 
 absl::Status ValidateAttnRes(const AttnResRequest& request) {
-  if (request.layer_residual.shape().rank() != 2 ||
-      request.block_residual.shape().rank() != 3 ||
+  if (request.layer_residual.shape().rank() != 2 || request.block_residual.shape().rank() != 3 ||
       request.block_residual.shape().dim(1) != request.layer_residual.shape().dim(0) ||
       request.block_residual.shape().dim(2) != request.layer_residual.shape().dim(1) ||
       request.res_weight.shape().dim(0) != request.layer_residual.shape().dim(1) ||
@@ -158,9 +157,8 @@ absl::Status ReferenceHcMix(const HcMixRequest& request) {
     for (uint64_t h = 0; h < wide; ++h) {
       float sum = 0.0F;
       for (uint64_t r = 0; r < rank; ++r) {
-        const float activated =
-            (request.projection_scale * projected[r]) /
-            (1.0F + std::exp(-request.projection_scale * projected[r]));
+        const float activated = (request.projection_scale * projected[r]) /
+                                (1.0F + std::exp(-request.projection_scale * projected[r]));
         sum += w_up[h * rank + r] * activated;
       }
       gate[h] = sum;
@@ -168,16 +166,13 @@ absl::Status ReferenceHcMix(const HcMixRequest& request) {
     for (uint64_t h = 0; h < request.hidden_size; ++h) {
       float sum = 0.0F;
       for (uint32_t b = 0; b < request.hc_count; ++b) {
-        const float sigmoid_gate =
-            1.0F / (1.0F + std::exp(-gate[b * request.hidden_size + h]));
+        const float sigmoid_gate = 1.0F / (1.0F + std::exp(-gate[b * request.hidden_size + h]));
         sum += sigmoid_gate * x[token * wide + b * request.hidden_size + h];
       }
-      mixed_out[token * request.hidden_size + h] =
-          sum / static_cast<float>(request.hc_count);
+      mixed_out[token * request.hidden_size + h] = sum / static_cast<float>(request.hc_count);
     }
     for (uint32_t b = 0; b < request.hc_count; ++b) {
-      inject_out[token * request.hc_count + b] =
-          request.projection_scale * projected[rank + b];
+      inject_out[token * request.hc_count + b] = request.projection_scale * projected[rank + b];
     }
   }
   return absl::OkStatus();
@@ -277,14 +272,14 @@ absl::Status ReferenceMhcPre(const MhcPreRequest& request) {
     for (uint64_t index = 0; index < wide; ++index) {
       square_sum += residual[token * wide + index] * residual[token * wide + index];
     }
-    const float rms =
-        1.0F / std::sqrt(square_sum / static_cast<float>(wide) + request.rms_eps);
+    const float rms = 1.0F / std::sqrt(square_sum / static_cast<float>(wide) + request.rms_eps);
     for (uint64_t i = 0; i < m; ++i) {
       layer_out[token * hidden + i] = 0.0F;  // accumulated below
     }
     std::vector<float> pre(m);
     for (uint64_t i = 0; i < m; ++i) {
-      pre[i] = 1.0F / (1.0F + std::exp(-(mix[i] * rms * hc_scale[0] + hc_base[i]))) + request.hc_eps;
+      pre[i] =
+          1.0F / (1.0F + std::exp(-(mix[i] * rms * hc_scale[0] + hc_base[i]))) + request.hc_eps;
       post_out[token * m + i] =
           2.0F / (1.0F + std::exp(-(mix[m + i] * rms * hc_scale[1] + hc_base[m + i])));
     }
@@ -338,8 +333,7 @@ absl::Status ReferenceMhcPre(const MhcPreRequest& request) {
 
 absl::Status ValidateMhcPost(const MhcPostRequest& request) {
   const uint64_t m = request.residual.shape().dim(1);
-  if (request.hidden_states.shape().rank() != 2 ||
-      request.residual.shape().rank() != 3 ||
+  if (request.hidden_states.shape().rank() != 2 || request.residual.shape().rank() != 3 ||
       request.hidden_states.shape().dim(1) != request.residual.shape().dim(2) ||
       request.post.shape().dim(1) != m || request.comb.shape().dim(1) != m ||
       request.comb.shape().dim(2) != m) {
@@ -388,8 +382,7 @@ absl::Status ReferenceMhcPost(const MhcPostRequest& request) {
 
 absl::Status ValidateRingSconv(const RingSconvRequest& request) {
   if (request.x.shape().rank() != 2 || request.weight.shape().rank() != 2 ||
-      request.weight.shape().dim(1) != request.window ||
-      request.conv_cache.shape().rank() != 3 ||
+      request.weight.shape().dim(1) != request.window || request.conv_cache.shape().rank() != 3 ||
       request.conv_cache.shape().dim(2) != request.x.shape().dim(1) ||
       request.conv_cache.shape().dim(1) < request.window ||
       request.output.shape() != request.x.shape() ||
@@ -430,8 +423,8 @@ absl::Status ReferenceRingSconv(const RingSconvRequest& request) {
     for (int32_t step = 0; step < seq_lens[sequence]; ++step, ++position) {
       const uint64_t ustep = static_cast<uint64_t>(step);
       for (uint64_t channel = 0; channel < width; ++channel) {
-        float sum = weight[channel * request.window + request.window - 1] *
-                    x[position * width + channel];
+        float sum =
+            weight[channel * request.window + request.window - 1] * x[position * width + channel];
         for (uint32_t lag = 1; lag < request.window; ++lag) {
           const uint64_t ring_position = (ustep + ring - lag) % ring;
           sum += weight[channel * request.window + request.window - 1 - lag] *

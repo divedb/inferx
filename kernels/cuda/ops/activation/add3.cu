@@ -14,8 +14,7 @@ namespace {
 
 template <typename T>
 __global__ void Add3Kernel(const T* __restrict__ a, const T* __restrict__ b,
-                           const T* __restrict__ c, T* __restrict__ output,
-                           uint64_t elements) {
+                           const T* __restrict__ c, T* __restrict__ output, uint64_t elements) {
   const uint64_t index = static_cast<uint64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (index < elements) Store(output, index, Load(a, index) + Load(b, index) + Load(c, index));
 }

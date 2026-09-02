@@ -8,14 +8,11 @@
 #include "inferx/tensor/tensor_view.h"
 
 namespace inferx::kernels {
-namespace {
-
-}  // namespace
+namespace {}  // namespace
 
 absl::Status ValidateActMul(const ActMulRequest& request) {
   if (request.input.shape().rank() != 2 || request.input.shape().dim(0) == 0 ||
-      request.input.shape().dim(1) % 2 != 0 ||
-      request.input.dtype() != request.output.dtype() ||
+      request.input.shape().dim(1) % 2 != 0 || request.input.dtype() != request.output.dtype() ||
       request.output.shape().dim(0) != request.input.shape().dim(0) ||
       request.output.shape().dim(1) * 2 != request.input.shape().dim(1)) {
     return absl::InvalidArgumentError("act_mul: input[tokens, 2d] -> output[tokens, d] required");
@@ -61,9 +58,9 @@ absl::Status ReferenceActMul(const ActMulRequest& request) {
           activated = 0.5F * gate * (1.0F + std::erf(gate * 0.70710678118654752440F));
           break;
         case ActMulKind::kGeluTanh:
-          activated = 0.5F * gate *
-                      (1.0F + std::tanh(0.7978845608028654F *
-                                        (gate + 0.044715F * gate * gate * gate)));
+          activated =
+              0.5F * gate *
+              (1.0F + std::tanh(0.7978845608028654F * (gate + 0.044715F * gate * gate * gate)));
           break;
         default:
           return absl::InvalidArgumentError("act_mul: unknown activation kind");
@@ -110,8 +107,7 @@ absl::Status ReferenceAdd3(const Add3Request& request) {
 
 absl::Status ValidateFusedAddRmsNorm(const FusedAddRmsNormRequest& request) {
   if (request.input.shape().rank() != 2 || request.input.shape() != request.residual.shape() ||
-      request.input.dtype() != request.residual.dtype() ||
-      request.weight.shape().rank() != 1 ||
+      request.input.dtype() != request.residual.dtype() || request.weight.shape().rank() != 1 ||
       request.weight.shape().dim(0) != request.input.shape().dim(1) ||
       request.weight.dtype() != request.input.dtype() || request.input.shape().dim(1) == 0 ||
       !std::isfinite(request.epsilon) || request.epsilon <= 0.0F) {
@@ -144,11 +140,9 @@ absl::Status ReferenceFusedAddRmsNorm(const FusedAddRmsNormRequest& request) {
       const float value = res[token * hidden + index];
       sum += value * value;
     }
-    const float inverse_rms =
-        1.0F / std::sqrt(sum / static_cast<float>(hidden) + request.epsilon);
+    const float inverse_rms = 1.0F / std::sqrt(sum / static_cast<float>(hidden) + request.epsilon);
     for (uint64_t index = 0; index < hidden; ++index) {
-      in[token * hidden + index] =
-          res[token * hidden + index] * inverse_rms * w[index];
+      in[token * hidden + index] = res[token * hidden + index] * inverse_rms * w[index];
     }
   }
   return absl::OkStatus();
@@ -159,9 +153,8 @@ absl::Status ValidateGemmaRmsNorm(const GemmaRmsNormRequest& request) {
       request.weight.shape().rank() != 1 ||
       request.weight.shape().dim(0) != request.input.shape().dim(1) ||
       request.input.dtype() != request.weight.dtype() ||
-      request.input.dtype() != request.output.dtype() ||
-      request.input.shape().dim(1) == 0 || !std::isfinite(request.epsilon) ||
-      request.epsilon <= 0.0F) {
+      request.input.dtype() != request.output.dtype() || request.input.shape().dim(1) == 0 ||
+      !std::isfinite(request.epsilon) || request.epsilon <= 0.0F) {
     return absl::InvalidArgumentError("gemma_rmsnorm: incompatible tensors");
   }
   return absl::OkStatus();
@@ -189,11 +182,9 @@ absl::Status ReferenceGemmaRmsNorm(const GemmaRmsNormRequest& request) {
     for (uint64_t index = 0; index < hidden; ++index) {
       sum += in[token * hidden + index] * in[token * hidden + index];
     }
-    const float inverse_rms =
-        1.0F / std::sqrt(sum / static_cast<float>(hidden) + request.epsilon);
+    const float inverse_rms = 1.0F / std::sqrt(sum / static_cast<float>(hidden) + request.epsilon);
     for (uint64_t index = 0; index < hidden; ++index) {
-      out[token * hidden + index] =
-          in[token * hidden + index] * inverse_rms * (1.0F + w[index]);
+      out[token * hidden + index] = in[token * hidden + index] * inverse_rms * (1.0F + w[index]);
     }
   }
   return absl::OkStatus();
@@ -288,7 +279,11 @@ absl::Status ReferenceHadamardTransform(const HadamardTransformRequest& request)
     for (int i = 0; i < 128; ++i) {
       float sum = 0.0F;
       for (int j = 0; j < 128; ++j) {
-        const float sign = ((__builtin_popcount(static_cast<unsigned int>(i) & static_cast<unsigned int>(j)) & 1) != 0) ? -1.0F : 1.0F;
+        const float sign =
+            ((__builtin_popcount(static_cast<unsigned int>(i) & static_cast<unsigned int>(j)) &
+              1) != 0)
+                ? -1.0F
+                : 1.0F;
         sum += sign * src[j];
       }
       dst[i] = sum * request.scale;

@@ -3,9 +3,9 @@
 #include <cstdint>
 #include <vector>
 
+#include "cuda_tensor_checks.h"
 #include "inferx/kernels/cuda/activation_kernels.h"
 #include "inferx/kernels/cuda/attention_kernels.h"
-#include "cuda_tensor_checks.h"
 #include "inferx/kernels/cuda/gemm_kernels.h"
 #include "inferx/kernels/cuda/layernorm_kernels.h"
 #include "inferx/kernels/cuda/model_fused_kernels.h"
@@ -43,12 +43,11 @@ absl::Status ActMul(const ActMulRequest& request, const CudaLaunchContext& conte
   const uint32_t kind = request.kind == ActMulKind::kSilu
                             ? kActMulSilu
                             : (request.kind == ActMulKind::kGelu ? 1U : 2U);
-  return CheckLaunchResult(
-      activation::LaunchActMulKernel(Address(request.input), Address(request.output),
-                                      request.input.shape().dim(0),
-                                      request.input.shape().dim(1) / 2, kind,
-                                      ToKernelStorageType(request.input.dtype()), context.stream),
-      "kernels_cuda.act_mul.launch", context);
+  return CheckLaunchResult(activation::LaunchActMulKernel(
+                               Address(request.input), Address(request.output),
+                               request.input.shape().dim(0), request.input.shape().dim(1) / 2, kind,
+                               ToKernelStorageType(request.input.dtype()), context.stream),
+                           "kernels_cuda.act_mul.launch", context);
 }
 
 bool ActMulAvailable(const ActMulRequest* probe, uint16_t compute_capability) {
@@ -82,9 +81,8 @@ absl::Status FusedAddRmsNorm(const FusedAddRmsNormRequest& request,
   if (!status.ok()) return status;
   return CheckLaunchResult(
       layernorm::LaunchFlashInferFusedAddRmsNorm(
-          Address(request.input), Address(request.residual),
-          Address(request.weight), request.input.shape().dim(0),
-          request.input.shape().dim(1), request.epsilon,
+          Address(request.input), Address(request.residual), Address(request.weight),
+          request.input.shape().dim(0), request.input.shape().dim(1), request.epsilon,
           ToKernelStorageType(request.input.dtype()), context.stream),
       "kernels_cuda.fused_add_rmsnorm.launch", context);
 }
@@ -123,9 +121,8 @@ absl::Status QkRmsNorm(const QkRmsNormRequest& request, const CudaLaunchContext&
   if (!status.ok()) return status;
   return CheckLaunchResult(
       layernorm::LaunchFlashInferQkRmsNorm(
-          Address(request.query), Address(request.key),
-          Address(request.query_weight), Address(request.key_weight),
-          request.query.shape().dim(0), request.query.shape().dim(1),
+          Address(request.query), Address(request.key), Address(request.query_weight),
+          Address(request.key_weight), request.query.shape().dim(0), request.query.shape().dim(1),
           request.key.shape().dim(1), request.query.shape().dim(2), request.epsilon,
           ToKernelStorageType(request.query.dtype()), context.stream),
       "kernels_cuda.qk_rmsnorm.launch", context);
@@ -139,20 +136,20 @@ bool QkRmsNormAvailable(const QkRmsNormRequest* probe, uint16_t compute_capabili
 }
 
 absl::Status HadamardTransform(const HadamardTransformRequest& request,
-                                const CudaLaunchContext& context) {
+                               const CudaLaunchContext& context) {
   absl::Status status = ValidateHadamardTransform(request);
   if (!status.ok()) return status;
   status = RequireDevice(request.input, context, "kernels_cuda.hadamard");
   if (!status.ok()) return status;
   const uint64_t rows = request.input.shape().NumElements().value_or(0) / 128;
-  return CheckLaunchResult(
-      transform::LaunchHadamard128(Address(request.input), Address(request.output), rows,
-                                   request.scale,
-                                   ToKernelStorageType(request.input.dtype()), context.stream),
-      "kernels_cuda.hadamard.launch", context);
+  return CheckLaunchResult(transform::LaunchHadamard128(
+                               Address(request.input), Address(request.output), rows, request.scale,
+                               ToKernelStorageType(request.input.dtype()), context.stream),
+                           "kernels_cuda.hadamard.launch", context);
 }
 
-bool HadamardTransformAvailable(const HadamardTransformRequest* /*probe*/, uint16_t compute_capability) {
+bool HadamardTransformAvailable(const HadamardTransformRequest* /*probe*/,
+                                uint16_t compute_capability) {
   return AlwaysAvailable(nullptr, compute_capability);
 }
 
@@ -180,9 +177,8 @@ absl::Status TopPRenorm(const TopPRenormRequest& request, const CudaLaunchContex
   if (!status.ok()) return status;
   return CheckLaunchResult(
       sampling::LaunchFlashInferTopPRenorm(
-          Address(request.probs), request.probs.shape().dim(0),
-          request.probs.shape().dim(1), request.top_p,
-          ToKernelStorageType(request.probs.dtype()), context.stream),
+          Address(request.probs), request.probs.shape().dim(0), request.probs.shape().dim(1),
+          request.top_p, ToKernelStorageType(request.probs.dtype()), context.stream),
       "kernels_cuda.top_p_renorm.launch", context);
 }
 
@@ -216,8 +212,8 @@ absl::Status Fp8Quant(const Fp8QuantRequest& request, const CudaLaunchContext& c
       quant::LaunchFp8Quant(Address(request.input), Address(request.output),
                             static_cast<float*>(Address(request.scales)),
                             request.input.shape().dim(0), request.input.shape().dim(1),
-                            static_cast<uint32_t>(request.granularity), static_cast<uint32_t>(request.group_size),
-                            context.stream),
+                            static_cast<uint32_t>(request.granularity),
+                            static_cast<uint32_t>(request.group_size), context.stream),
       "kernels_cuda.fp8_quant.launch", context);
 }
 
@@ -254,9 +250,8 @@ absl::Status SigmoidBiasTopK(const SigmoidBiasTopKRequest& request,
       moe::LaunchSigmoidBiasTopK(
           Address(request.logits), Address(request.bias), Address(request.weights),
           static_cast<int32_t*>(Address(request.ids)), request.logits.shape().dim(0),
-          request.logits.shape().dim(1),
-          static_cast<uint32_t>(request.weights.shape().dim(1)), request.routed_scaling_factor,
-          request.renormalize, context.stream),
+          request.logits.shape().dim(1), static_cast<uint32_t>(request.weights.shape().dim(1)),
+          request.routed_scaling_factor, request.renormalize, context.stream),
       "kernels_cuda.sigmoid_bias_topk.launch", context);
 }
 
@@ -333,7 +328,8 @@ absl::Status MhcPre(const MhcPreRequest& request, const CudaLaunchContext& conte
   status = RequireDevice(request.residual, context, "kernels_cuda.mhc_pre");
   if (!status.ok()) return status;
   const uint64_t tokens = request.residual.shape().dim(0);
-  const uint64_t needed = mhc::MhcPreWorkspaceBytes(tokens, static_cast<uint32_t>(request.residual.shape().dim(1)));
+  const uint64_t needed =
+      mhc::MhcPreWorkspaceBytes(tokens, static_cast<uint32_t>(request.residual.shape().dim(1)));
   if (context.workspace == nullptr || context.workspace_bytes < needed) {
     return absl::ResourceExhaustedError("kernels_cuda.mhc_pre: workspace too small");
   }
@@ -380,13 +376,13 @@ absl::Status RingSconv(const RingSconvRequest& request, const CudaLaunchContext&
   const uint64_t batch = request.seq_lens.shape().dim(0);
   // seq prefix staged through the workspace (batch + 1 int32 words).
   return CheckLaunchResult(
-      conv::LaunchRingSconv(Address(request.x), Address(request.weight),
-                            Address(request.conv_cache),
-                            static_cast<const int32_t*>(context.workspace),
-                            static_cast<const int32_t*>(Address(request.cache_indices)),
-                            Address(request.output), request.x.shape().dim(0),
-                            request.x.shape().dim(1), static_cast<uint32_t>(request.window), request.conv_cache.shape().dim(1), batch,
-                            ToKernelStorageType(request.x.dtype()), context.stream),
+      conv::LaunchRingSconv(
+          Address(request.x), Address(request.weight), Address(request.conv_cache),
+          static_cast<const int32_t*>(context.workspace),
+          static_cast<const int32_t*>(Address(request.cache_indices)), Address(request.output),
+          request.x.shape().dim(0), request.x.shape().dim(1), static_cast<uint32_t>(request.window),
+          request.conv_cache.shape().dim(1), batch, ToKernelStorageType(request.x.dtype()),
+          context.stream),
       "kernels_cuda.ring_sconv.launch", context);
 }
 

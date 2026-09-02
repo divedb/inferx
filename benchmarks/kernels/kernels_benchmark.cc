@@ -17,13 +17,13 @@
 #include "cuda_kernel_backend.h"
 #include "inferx/kernels/kernel_dispatch.h"
 #include "inferx/kernels/ops/activation.h"
-#include "inferx/kernels/ops/layernorm.h"
-#include "inferx/kernels/ops/sampling.h"
 #include "inferx/kernels/ops/attention.h"
 #include "inferx/kernels/ops/embedding.h"
 #include "inferx/kernels/ops/gemm.h"
-#include "inferx/kernels/ops/transform.h"
+#include "inferx/kernels/ops/layernorm.h"
 #include "inferx/kernels/ops/model_fused.h"
+#include "inferx/kernels/ops/sampling.h"
+#include "inferx/kernels/ops/transform.h"
 #include "inferx/platform/cuda/cuda_buffer_access.h"
 #include "inferx/tensor/allocator.h"
 #include "inferx/tensor/buffer.h"
@@ -71,8 +71,7 @@ DevTensor MakeTensor(std::vector<uint64_t> dims, inferx::DType dtype, uint64_t s
   cudaError_t alloc_status = cudaMalloc(&memory, bytes->value());
   if (alloc_status != cudaSuccess || memory == nullptr) {
     fprintf(stderr, "cudaMalloc(%llu) failed: %s\n",
-            static_cast<unsigned long long>(bytes->value()),
-            cudaGetErrorString(alloc_status));
+            static_cast<unsigned long long>(bytes->value()), cudaGetErrorString(alloc_status));
     exit(2);
   }
   if (fill && dtype != DType::kUInt8 && dtype != DType::kInt32) {
@@ -86,15 +85,21 @@ DevTensor MakeTensor(std::vector<uint64_t> dims, inferx::DType dtype, uint64_t s
       std::vector<__half> halfs(count);
       for (size_t i = 0; i < count; ++i) halfs[i] = __float2half(values[i]);
       cudaError_t c = cudaMemcpy(memory, halfs.data(), bytes->value(), cudaMemcpyHostToDevice);
-      if (c != cudaSuccess) { fprintf(stderr, "memcpy(fp16) failed: %s\n", cudaGetErrorString(c)); }
+      if (c != cudaSuccess) {
+        fprintf(stderr, "memcpy(fp16) failed: %s\n", cudaGetErrorString(c));
+      }
     } else if (dtype == DType::kBFloat16) {
       std::vector<__nv_bfloat16> bf16(count);
       for (size_t i = 0; i < count; ++i) bf16[i] = __float2bfloat16(values[i]);
       cudaError_t c = cudaMemcpy(memory, bf16.data(), bytes->value(), cudaMemcpyHostToDevice);
-      if (c != cudaSuccess) { fprintf(stderr, "memcpy(bf16) failed: %s\n", cudaGetErrorString(c)); }
+      if (c != cudaSuccess) {
+        fprintf(stderr, "memcpy(bf16) failed: %s\n", cudaGetErrorString(c));
+      }
     } else if (dtype == DType::kFloat32) {
       cudaError_t c = cudaMemcpy(memory, values.data(), bytes->value(), cudaMemcpyHostToDevice);
-      if (c != cudaSuccess) { fprintf(stderr, "memcpy(fp32) failed: %s\n", cudaGetErrorString(c)); }
+      if (c != cudaSuccess) {
+        fprintf(stderr, "memcpy(fp32) failed: %s\n", cudaGetErrorString(c));
+      }
     }
   }
   auto allocation_id = inferx::NextAllocationId();
@@ -134,7 +139,10 @@ double TimeOnce(Fn&& launch, uint32_t iters, uint32_t warmup) {
   KernelExecutionContext context = Context89();
   for (uint32_t i = 0; i < warmup; ++i) {
     absl::Status warmup_status = launch(context);
-    if (!warmup_status.ok()) { fprintf(stderr, "warmup failed: %s\n", warmup_status.ToString().c_str()); return -1.0; }
+    if (!warmup_status.ok()) {
+      fprintf(stderr, "warmup failed: %s\n", warmup_status.ToString().c_str());
+      return -1.0;
+    }
   }
   cudaDeviceSynchronize();
   std::vector<float> times(iters);
@@ -143,7 +151,10 @@ double TimeOnce(Fn&& launch, uint32_t iters, uint32_t warmup) {
     absl::Status status = launch(context);
     cudaEventRecord(g_stop);
     cudaEventSynchronize(g_stop);
-    if (!status.ok()) { fprintf(stderr, "launch failed: %s\n", status.ToString().c_str()); return -1.0; }
+    if (!status.ok()) {
+      fprintf(stderr, "launch failed: %s\n", status.ToString().c_str());
+      return -1.0;
+    }
     float ms = 0.0F;
     cudaEventElapsedTime(&ms, g_start, g_stop);
     times[i] = ms * 1000.0F;  // microseconds
@@ -188,38 +199,35 @@ int main(int argc, char** argv) {
   const int stage = stage_env ? atoi(stage_env) : 99;
   // act_mul (silu / gelu) [T, 2D] -> [T, D]
   if (stage >= 1)
-  for (const auto& [tokens, dim, kind] :
-       std::vector<std::tuple<uint64_t, uint64_t, const char*>>{
-           {4096, 5120, "silu"}, {16384, 8192, "silu"}, {4096, 5120, "gelu"}}) {
-    auto input = MakeTensor({tokens, 2 * dim}, inferx::DType::kBFloat16, 1);
-    auto output = MakeTensor({tokens, dim}, inferx::DType::kBFloat16, 2, /*fill=*/false);
-    ActMulKind k = std::string(kind) == "silu" ? ActMulKind::kSilu : ActMulKind::kGelu;
-    ActMulRequest request{input.view().AsConst(), output.view(), k};
-    std::string name = std::string(kind) == "silu"
-                           ? (tokens == 4096 ? "T4096_D5120" : "T16384_D8192")
-                           : "T4096_D5120";
-    std::string opname = std::string(kind) == "silu" ? "act_mul_silu" : "act_mul_gelu";
-    emit(opname.c_str(), name.c_str(),
-         TimeOnce([&](auto& c) { return inferx::kernels::LaunchActMul(request, c); }, kIters,
-                  kWarmup));
-  }
+    for (const auto& [tokens, dim, kind] : std::vector<std::tuple<uint64_t, uint64_t, const char*>>{
+             {4096, 5120, "silu"}, {16384, 8192, "silu"}, {4096, 5120, "gelu"}}) {
+      auto input = MakeTensor({tokens, 2 * dim}, inferx::DType::kBFloat16, 1);
+      auto output = MakeTensor({tokens, dim}, inferx::DType::kBFloat16, 2, /*fill=*/false);
+      ActMulKind k = std::string(kind) == "silu" ? ActMulKind::kSilu : ActMulKind::kGelu;
+      ActMulRequest request{input.view().AsConst(), output.view(), k};
+      std::string name = std::string(kind) == "silu"
+                             ? (tokens == 4096 ? "T4096_D5120" : "T16384_D8192")
+                             : "T4096_D5120";
+      std::string opname = std::string(kind) == "silu" ? "act_mul_silu" : "act_mul_gelu";
+      emit(opname.c_str(), name.c_str(),
+           TimeOnce([&](auto& c) { return inferx::kernels::LaunchActMul(request, c); }, kIters,
+                    kWarmup));
+    }
 
   // rmsnorm T4096 H5120 bf16
-  if (stage >= 2)
-  {
+  if (stage >= 2) {
     auto input = MakeTensor({4096, 5120}, inferx::DType::kBFloat16, 3);
     auto weight = MakeTensor({5120}, inferx::DType::kBFloat16, 4);
     auto output = MakeTensor({4096, 5120}, inferx::DType::kBFloat16, 5, false);
-    inferx::ops::RmsNormRequest request{input.view().AsConst(), weight.view().AsConst(), output.view(),
-                                        1.0e-5F};
+    inferx::ops::RmsNormRequest request{input.view().AsConst(), weight.view().AsConst(),
+                                        output.view(), 1.0e-5F};
     emit("rmsnorm", "T4096_H5120",
          TimeOnce([&](auto& c) { return inferx::kernels::LaunchRmsNorm(request, c); }, kIters,
                   kWarmup));
   }
 
   // fused_add_rmsnorm T4096 H5120 bf16
-  if (stage >= 3)
-  {
+  if (stage >= 3) {
     auto input = MakeTensor({4096, 5120}, inferx::DType::kBFloat16, 6);
     auto residual = MakeTensor({4096, 5120}, inferx::DType::kBFloat16, 7);
     auto weight = MakeTensor({5120}, inferx::DType::kBFloat16, 8);
@@ -252,12 +260,18 @@ int main(int argc, char** argv) {
     std::vector<int32_t> positions(4096);
     for (uint64_t t = 0; t < 4096; ++t) positions[t] = static_cast<int32_t>(t);
     auto pos = MakeTensor({4096}, inferx::DType::kInt32, 17, false);
-    cudaMemcpy(const_cast<void*>(inferx::cuda::BufferAccess::Address(pos.view().AsConst().buffer())),
-               positions.data(), 4096 * 4, cudaMemcpyHostToDevice);
+    cudaMemcpy(
+        const_cast<void*>(inferx::cuda::BufferAccess::Address(pos.view().AsConst().buffer())),
+        positions.data(), 4096 * 4, cudaMemcpyHostToDevice);
     std::vector<int32_t> host_positions = positions;
-    inferx::ops::RopeRequest request{
-        q.view().AsConst(), k.view().AsConst(), pos.view().AsConst(), qo.view(), ko.view(), 10000.0F, 8192,
-        host_positions};
+    inferx::ops::RopeRequest request{q.view().AsConst(),
+                                     k.view().AsConst(),
+                                     pos.view().AsConst(),
+                                     qo.view(),
+                                     ko.view(),
+                                     10000.0F,
+                                     8192,
+                                     host_positions};
     emit("rope", "T4096_H32_D128",
          TimeOnce([&](auto& c) { return inferx::kernels::LaunchRope(request, c); }, kIters,
                   kWarmup));
@@ -297,8 +311,9 @@ int main(int argc, char** argv) {
     auto d_positions = MakeTensor({batch}, inferx::DType::kInt32, 0, false);
     auto d_lengths = MakeTensor({batch}, inferx::DType::kInt32, 0, false);
     auto upload = [&](DevTensor& t, const void* data, size_t bytes) {
-      cudaMemcpy(const_cast<void*>(inferx::cuda::BufferAccess::Address(t.view().AsConst().buffer())),
-                 data, bytes, cudaMemcpyHostToDevice);
+      cudaMemcpy(
+          const_cast<void*>(inferx::cuda::BufferAccess::Address(t.view().AsConst().buffer())), data,
+          bytes, cudaMemcpyHostToDevice);
     };
     upload(d_q_indptr, q_indptr.data(), q_indptr.size() * 4);
     upload(d_kv_indptr, kv_indptr.data(), kv_indptr.size() * 4);
@@ -313,11 +328,16 @@ int main(int argc, char** argv) {
             inferx::cuda::BufferAccess::Address(d_positions.view().AsConst().buffer())),
         reinterpret_cast<const int32_t*>(
             inferx::cuda::BufferAccess::Address(d_lengths.view().AsConst().buffer()))};
-    inferx::ops::AttentionRequest request{q.view().AsConst(),  new_k.view().AsConst(),
-                                          new_v.view().AsConst(), q_indptr,
-                                          kv_indptr,            positions,
-                                          lengths,              k_cache.view(),
-                                          v_cache.view(),         output.view(),
+    inferx::ops::AttentionRequest request{q.view().AsConst(),
+                                          new_k.view().AsConst(),
+                                          new_v.view().AsConst(),
+                                          q_indptr,
+                                          kv_indptr,
+                                          positions,
+                                          lengths,
+                                          k_cache.view(),
+                                          v_cache.view(),
+                                          output.view(),
                                           inferx::ops::ExecutionPhase::kDecode};
     void* workspace = nullptr;
     cudaMalloc(&workspace, 64 * 1024);
@@ -354,9 +374,8 @@ int main(int argc, char** argv) {
     auto input = MakeTensor({4096, 7168}, inferx::DType::kFloat32, 29);
     auto output = MakeTensor({4096, 7168}, inferx::DType::kUInt8, 0, false);
     auto scales = MakeTensor({4096ULL * 56ULL}, inferx::DType::kFloat32, 0, false);
-    inferx::kernels::Fp8QuantRequest request{
-        input.view().AsConst(), output.view(), scales.view(),
-        inferx::kernels::QuantGranularity::kTokenGroup, 128};
+    inferx::kernels::Fp8QuantRequest request{input.view().AsConst(), output.view(), scales.view(),
+                                             inferx::kernels::QuantGranularity::kTokenGroup, 128};
     emit("fp8_quant", "T4096_D7168",
          TimeOnce([&](auto& c) { return inferx::kernels::LaunchFp8Quant(request, c); }, kIters,
                   kWarmup));
@@ -378,7 +397,8 @@ int main(int argc, char** argv) {
   {
     auto input = MakeTensor({4096, 128}, inferx::DType::kBFloat16, 31);
     auto output = MakeTensor({4096, 128}, inferx::DType::kBFloat16, 32, false);
-    inferx::kernels::HadamardTransformRequest request{input.view().AsConst(), output.view(), 0.044F};
+    inferx::kernels::HadamardTransformRequest request{input.view().AsConst(), output.view(),
+                                                      0.044F};
     emit("hadamard", "T4096_D128",
          TimeOnce([&](auto& c) { return inferx::kernels::LaunchHadamardTransform(request, c); },
                   kIters, kWarmup));
@@ -388,9 +408,10 @@ int main(int argc, char** argv) {
   fprintf(stderr, "samples: %zu\n", samples.size());
   printf("[\n");
   for (size_t i = 0; i < samples.size(); ++i) {
-    printf("  {\"impl\": \"inferx\", \"op\": \"%s\", \"workload\": \"%s\", \"latency_us\": %.3f}%s\n",
-           samples[i].op.c_str(), samples[i].workload.c_str(), samples[i].micros,
-           i + 1 == samples.size() ? "" : ",");
+    printf(
+        "  {\"impl\": \"inferx\", \"op\": \"%s\", \"workload\": \"%s\", \"latency_us\": %.3f}%s\n",
+        samples[i].op.c_str(), samples[i].workload.c_str(), samples[i].micros,
+        i + 1 == samples.size() ? "" : ",");
   }
   printf("]\n");
   inferx::kernels::ResetKernelBackendsForTest();

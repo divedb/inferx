@@ -104,8 +104,10 @@ __global__ void TopKRenormKernel(T* __restrict__ probs, uint64_t vocab, uint32_t
   for (uint64_t index = threadIdx.x; index < vocab; index += blockDim.x) {
     const float value = Load(row_data, index);
     const int bits = value >= 0.0F ? __float_as_int(value) : 0;
-    if (bits < threshold_bits) Store(row_data, index, 0.0F);
-    else local_sum += value;
+    if (bits < threshold_bits)
+      Store(row_data, index, 0.0F);
+    else
+      local_sum += value;
   }
   __shared__ float shared_sum[kThreads];
   shared_sum[threadIdx.x] = local_sum;

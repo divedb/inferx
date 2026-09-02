@@ -183,21 +183,20 @@ absl::Status ReferenceTopKRenorm(const TopKRenormRequest& request) {
 
 absl::Status ValidateFp8Quant(const Fp8QuantRequest& request) {
   if (request.input.shape().rank() != 2 || request.input.shape().dim(1) == 0 ||
-      request.output.shape() != request.input.shape() ||
-      request.output.dtype() != DType::kUInt8 || request.input.dtype() != DType::kFloat32 ||
-      request.scales.dtype() != DType::kFloat32 ||
+      request.output.shape() != request.input.shape() || request.output.dtype() != DType::kUInt8 ||
+      request.input.dtype() != DType::kFloat32 || request.scales.dtype() != DType::kFloat32 ||
       (request.granularity == QuantGranularity::kTokenGroup && request.group_size == 0)) {
     return absl::InvalidArgumentError(
         "fp8_quant: input[tokens,dim] FP32 -> uint8 e4m3 bits + FP32 scales required");
   }
   const uint64_t tokens = request.input.shape().dim(0);
   const uint64_t dim = request.input.shape().dim(1);
-  const uint64_t expected = request.granularity == QuantGranularity::kTensor
-                                ? 1
-                                : (request.granularity == QuantGranularity::kToken
-                                       ? tokens
-                                       : tokens * ((dim + request.group_size - 1) /
-                                                   request.group_size));
+  const uint64_t expected =
+      request.granularity == QuantGranularity::kTensor
+          ? 1
+          : (request.granularity == QuantGranularity::kToken
+                 ? tokens
+                 : tokens * ((dim + request.group_size - 1) / request.group_size));
   if (request.scales.shape().rank() != 1 || request.scales.shape().dim(0) != expected) {
     return absl::InvalidArgumentError("fp8_quant: unexpected scales shape");
   }
