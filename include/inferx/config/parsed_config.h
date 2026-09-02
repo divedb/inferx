@@ -63,6 +63,17 @@ struct SourcedValue {
   X(CudaWorkspaceBytesPerSlot, "cuda.workspace_bytes_per_slot", 16777216) \
   X(CudaEnableTransferStream, "cuda.enable_transfer_stream", 1)
 
+// M5 execution fields (m5.md section 7). Same conventions as the CUDA
+// section: flattened internal names, nested `execution` JSON object,
+// ModelDeviceBudgetBytes == 0 denotes null.
+#define INFERX_EXECUTION_CONFIG_FIELDS(X)                                           \
+  X(ExecutionMaxPrefillTokens, "execution.max_prefill_tokens", 512)                 \
+  X(ExecutionMaxContextTokens, "execution.max_context_tokens", 4096)                \
+  X(ExecutionMaxOutputTokens, "execution.max_output_tokens", 256)                   \
+  X(ExecutionModelDeviceBudgetBytes, "execution.model_device_budget_bytes", 0)      \
+  X(ExecutionModelHostBudgetBytes, "execution.model_host_budget_bytes", 2147483648) \
+  X(ExecutionPollBackoffUs, "execution.poll_backoff_us", 50)
+
 #define INFERX_CONFIG_MEMBER(camel, json_name, default_value)                                    \
   SourcedValue camel = SourcedValue{(default_value), ConfigSource::kDefault};                    \
   void Set##camel /* NOLINT(bugprone-macro-parentheses): paste target */ (uint64_t value,        \
@@ -73,6 +84,7 @@ struct SourcedValue {
 struct ParsedConfig {
   INFERX_CONFIG_FIELDS(INFERX_CONFIG_MEMBER)
   INFERX_CUDA_CONFIG_FIELDS(INFERX_CONFIG_MEMBER)
+  INFERX_EXECUTION_CONFIG_FIELDS(INFERX_CONFIG_MEMBER)
 };
 
 #undef INFERX_CONFIG_MEMBER

@@ -77,7 +77,8 @@ TEST(CudaConfigTest, JsonTypesRemainStrict) {
   EXPECT_FALSE(ParseConfigJson(R"({"cuda":{"enabled":1}})").ok());
   EXPECT_FALSE(ParseConfigJson(R"({"cuda":{"event_pool_slots":true}})").ok());
   EXPECT_FALSE(ParseConfigJson(R"({"cuda":{"event_pool_slots":null}})").ok());
-  EXPECT_FALSE(ParseConfigJson(R"({"schema_version":3})").ok());
+  // Schema 3 is the M5 execution section; the next unknown major is 4.
+  EXPECT_FALSE(ParseConfigJson(R"({"schema_version":4})").ok());
 }
 
 }  // namespace

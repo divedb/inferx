@@ -312,8 +312,19 @@ gtest_discover_tests(inferx_m5_cpu_backend_test
 
 set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/m5_test_labels.cmake")
+if(DEFINED inferx_execution_config_test_TESTS)
+  set_tests_properties(${inferx_execution_config_test_TESTS}
+    PROPERTIES LABELS "m5;m5-unit;config" TIMEOUT 120)
+endif()
 
 add_executable(inferx_cuda_config_test unit/config/cuda_config_test.cc)
+
+add_executable(inferx_execution_config_test unit/config/execution_config_test.cc)
+inferx_apply_project_options(inferx_execution_config_test)
+target_link_libraries(inferx_execution_config_test PRIVATE
+  inferx::config GTest::gtest_main absl::status absl::statusor absl::strings)
+gtest_discover_tests(inferx_execution_config_test
+  PROPERTIES TIMEOUT 120)
 inferx_apply_project_options(inferx_cuda_config_test)
 target_link_libraries(inferx_cuda_config_test PRIVATE
   inferx::config GTest::gtest_main absl::status absl::statusor)

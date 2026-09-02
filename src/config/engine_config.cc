@@ -64,6 +64,7 @@ std::vector<std::string> CanonicalFieldOrder() {
 #define INFERX_COLLECT(camel, json_name, default_value) names.emplace_back(json_name);
   INFERX_CONFIG_FIELDS(INFERX_COLLECT)
   INFERX_CUDA_CONFIG_FIELDS(INFERX_COLLECT)
+  INFERX_EXECUTION_CONFIG_FIELDS(INFERX_COLLECT)
 #undef INFERX_COLLECT
   std::sort(names.begin(), names.end());
   return names;
@@ -104,6 +105,12 @@ absl::StatusOr<EngineConfig> EngineConfig::Validate(const ParsedConfig& parsed,
       {"cuda.workspace_bytes_per_slot", parsed.CudaWorkspaceBytesPerSlot.value, 1048576,
        4294967296ULL},
       {"cuda.workspace_slots", parsed.CudaWorkspaceSlots.value, 1, 64},
+      {"execution.max_prefill_tokens", parsed.ExecutionMaxPrefillTokens.value, 1, 512},
+      {"execution.max_context_tokens", parsed.ExecutionMaxContextTokens.value, 2, 4096},
+      {"execution.max_output_tokens", parsed.ExecutionMaxOutputTokens.value, 1, 4096},
+      {"execution.model_device_budget_bytes", parsed.ExecutionModelDeviceBudgetBytes.value, 0, 0},
+      {"execution.model_host_budget_bytes", parsed.ExecutionModelHostBudgetBytes.value, 1048576, 0},
+      {"execution.poll_backoff_us", parsed.ExecutionPollBackoffUs.value, 10, 1000},
   };
 
   for (const Range& range : ranges) {
@@ -146,6 +153,22 @@ absl::StatusOr<EngineConfig> EngineConfig::Validate(const ParsedConfig& parsed,
       INFERX_CUDA_CONFIG_FIELDS(INFERX_CUDA_PRESENT)
 #undef INFERX_CUDA_PRESENT
           false;
+  const bool has_execution_section =
+#define INFERX_EXECUTION_PRESENT(camel, json_name, default_value) \
+  parsed.camel.source != ConfigSource::kDefault ||
+      INFERX_EXECUTION_CONFIG_FIELDS(INFERX_EXECUTION_PRESENT)
+#undef INFERX_EXECUTION_PRESENT
+          false;
+  if (has_execution_section) {
+    if (parsed.ExecutionMaxPrefillTokens.value > parsed.ExecutionMaxContextTokens.value) {
+      return FieldError("execution.max_prefill_tokens",
+                        "must not exceed execution.max_context_tokens");
+    }
+    if (parsed.ExecutionMaxOutputTokens.value > parsed.ExecutionMaxContextTokens.value) {
+      return FieldError("execution.max_output_tokens",
+                        "must not exceed execution.max_context_tokens");
+    }
+  }
   if (parsed.CudaEnabled.value != 0 && !build.cuda) {
     return FieldError("cuda.enabled", "true requires an INFERX_ENABLE_CUDA build");
   }
@@ -206,13 +229,17 @@ absl::StatusOr<EngineConfig> EngineConfig::Validate(const ParsedConfig& parsed,
   EngineConfig effective;
   effective.values_ = parsed;
   effective.has_cuda_section_ = has_cuda_section;
+  effective.has_execution_section_ = has_execution_section;
   return effective;
 }
 
 std::string EngineConfig::CanonicalJson() const {
   // Schema version first, then lexicographic field order, decimal integers,
   // no insignificant whitespace.
-  std::string out = has_cuda_section_ ? "{\"schema_version\":2" : "{\"schema_version\":1";
+  // Schema: 1 base, 2 with the CUDA section, 3 with the M5 execution
+  // section (a reader of 3 must tolerate an absent cuda object).
+  const uint32_t schema_version = has_execution_section_ ? 3 : (has_cuda_section_ ? 2 : 1);
+  std::string out = absl::StrCat("{\"schema_version\":", schema_version);
   std::vector<std::pair<std::string, uint64_t>> fields;
 #define INFERX_PAIR(camel, json_name, default_value) \
   fields.emplace_back(json_name, values_.camel.value);
@@ -243,6 +270,28 @@ std::string EngineConfig::CanonicalJson() const {
       if (name == "enabled" || name == "enable_transfer_stream") {
         out += value == 0 ? "false" : "true";
       } else if (name == "device_budget_bytes" && value == 0) {
+        out += "null";
+      } else {
+        out += absl::StrCat(value);
+      }
+    }
+    out += "}";
+  }
+  if (has_execution_section_) {
+    out += ",\"execution\":{";
+    std::vector<std::pair<std::string, uint64_t>> execution_fields;
+#define INFERX_EXECUTION_PAIR(camel, json_name, default_value) \
+  execution_fields.emplace_back(std::string(json_name).substr(10), values_.camel.value);
+    INFERX_EXECUTION_CONFIG_FIELDS(INFERX_EXECUTION_PAIR)
+#undef INFERX_EXECUTION_PAIR
+    std::sort(execution_fields.begin(), execution_fields.end(),
+              [](const auto& a, const auto& b) { return a.first < b.first; });
+    bool first = true;
+    for (const auto& [name, value] : execution_fields) {
+      if (!first) out += ",";
+      first = false;
+      out += "\"" + name + "\":";
+      if (name == "model_device_budget_bytes" && value == 0) {
         out += "null";
       } else {
         out += absl::StrCat(value);

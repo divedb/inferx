@@ -31,6 +31,7 @@ absl::Status ApplyLayer(const FieldValues& layer, ConfigSource source,
   } else
     INFERX_CONFIG_FIELDS(INFERX_CONFIG_SET)
     INFERX_CUDA_CONFIG_FIELDS(INFERX_CONFIG_SET)
+    INFERX_EXECUTION_CONFIG_FIELDS(INFERX_CONFIG_SET)
     (void)0;  // terminate the generated else-chain
 #undef INFERX_CONFIG_SET
     if (!applied) {
@@ -79,8 +80,8 @@ absl::StatusOr<FieldValues> ParseConfigJson(absl::string_view json_text) {
     return parsed;
   }
   if (const auto schema = parsed->find("schema_version"); schema != parsed->end()) {
-    if (schema->second != 1 && schema->second != 2) {
-      return FieldError("config", "schema_version", "must be 1 or 2");
+    if (schema->second != 1 && schema->second != 2 && schema->second != 3) {
+      return FieldError("config", "schema_version", "must be 1, 2, or 3");
     }
     parsed->erase(schema);
   }
@@ -94,6 +95,7 @@ absl::StatusOr<FieldValues> ParseConfigJson(absl::string_view json_text) {
   }
     INFERX_CONFIG_FIELDS(INFERX_KNOWN)
     INFERX_CUDA_CONFIG_FIELDS(INFERX_KNOWN)
+    INFERX_EXECUTION_CONFIG_FIELDS(INFERX_KNOWN)
 #undef INFERX_KNOWN
     (void)value;
     if (!known) {
@@ -133,6 +135,8 @@ absl::StatusOr<FieldValues> ReadConfigEnvironment() {
   }
   INFERX_CONFIG_FIELDS(INFERX_CONFIG_ENV)
   INFERX_CUDA_CONFIG_FIELDS(INFERX_CONFIG_ENV)
+  INFERX_EXECUTION_CONFIG_FIELDS(INFERX_CONFIG_ENV)
+  INFERX_EXECUTION_CONFIG_FIELDS(INFERX_CONFIG_ENV)
 #undef INFERX_CONFIG_ENV
   return values;
 }

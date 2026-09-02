@@ -94,6 +94,35 @@ absl::StatusOr<std::map<std::string, uint64_t>> ParseFlatIntegerObject(absl::str
       }
       continue;
     }
+    if (name == "execution") {
+      simdjson::dom::object execution;
+      if (const simdjson::error_code error = value.get(execution); error != simdjson::SUCCESS) {
+        return Invalid(name, "must be an object");
+      }
+      std::set<std::string> execution_seen;
+      for (auto [execution_key, execution_value] : execution) {
+        std::string child(execution_key);
+        const std::string flattened = "execution." + child;
+        if (!execution_seen.insert(child).second) {
+          return Invalid(flattened, "duplicate field");
+        }
+        if (values.size() >= static_cast<size_t>(kMaxObjectMembers)) {
+          return Invalid(flattened, absl::StrCat("more than ", kMaxObjectMembers, " members"));
+        }
+        uint64_t parsed = 0;
+        if (const simdjson::error_code integer_error = execution_value.get(parsed);
+            integer_error != simdjson::SUCCESS && execution_value.is_null()) {
+          if (child != "model_device_budget_bytes") {
+            return Invalid(flattened, "null is allowed only for model_device_budget_bytes");
+          }
+          parsed = 0;
+        } else if (integer_error != simdjson::SUCCESS) {
+          return Invalid(flattened, "must be an unsigned integer or null");
+        }
+        values.emplace(flattened, parsed);
+      }
+      continue;
+    }
     uint64_t parsed = 0;
     if (const simdjson::error_code error = value.get(parsed); error != simdjson::SUCCESS) {
       return Invalid(name, "must be an unsigned integer");
