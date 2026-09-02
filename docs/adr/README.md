@@ -72,3 +72,4 @@ Every ADR contains, in order:
 | [0032](0032-external-kernel-providers.md) | External kernel provider qualification at the pinned revisions | Accepted (provisional; evidence recorded below) |
 | [0033](0033-hugging-face-model-resolution.md) | Hugging Face model resolution and cache handoff | Accepted |
 | [0034](0034-local-artifact-trust-boundary.md) | Local artifact trust boundary | Accepted |
+| [0035](0035-hardware-agnostic-upper-layers.md) | Hardware-agnostic upper layers and the backend boundary | Accepted |

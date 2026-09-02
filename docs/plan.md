@@ -36,6 +36,10 @@ Initial product assumptions, to be confirmed by ADRs in M0, are:
 | API | Token-ID C++ API first, text API second, OpenAI-compatible HTTP third | Internal gRPC control plane for distributed operation |
 | Correctness | Deterministic greedy generation compared with an independent reference | Statistical sampling and quantized tolerances later |
 
+CUDA-first is a delivery decision, not an architectural coupling: per ADR 0035 the model, runtime,
+scheduling, and execution layers are hardware-independent, and additional backends (AMD ROCm/HIP,
+NPU) are added below the backend boundary in `kernels/<backend>/` without upper-layer changes.
+
 The first useful release is not “all features.” It is a reliable vertical slice:
 
 ```text
@@ -98,8 +102,26 @@ These rules are design constraints, not suggestions.
 
 1. **Policy is separate from mechanism.** Scheduling policy sees immutable resource snapshots and
    produces plans. Allocators, executors, and transports perform the work.
-2. **The control plane is hardware independent.** `base`, `api`, `engine`, `scheduler`, model
-   metadata, sampling policy, and KV identity cannot include CUDA/NCCL headers.
+2. **Only the backend layer is hardware-specific.** The model, runtime, scheduler, `engine`,
+   `base`, `api`, sampling policy, KV identity, and the operator-contract layers are
+   hardware-independent: they name execution devices only through the `DeviceKind`/`Device`
+   vocabulary and never include backend headers or types. All hardware-specific implementation —
+   kernels, providers, device resources, execution-backend realization, error translation — lives
+   under `kernels/<backend>/` (ADR 0031/0035). Adding a backend (AMD ROCm, NPU) adds a tree and
+   registers it; no upper layer changes:
+
+   ```text
+   Model / serving layer            api, engine, scheduler, server          hardware-independent
+           |
+   ModelInstance / runtime          runtime, model, kv logical, sampling    hardware-independent
+           |
+   Execution / operator abstraction ops contracts, ExecutionBackend        hardware-neutral interface
+           |
+   Kernel backend layer             kernels/<backend>                      hardware-specific
+      +-- CUDA (kernels/cuda, first backend)
+      +-- AMD ROCm/HIP (kernels/amd, future)
+      +-- NPU (kernels/npu, future)
+   ```
 3. **Model semantics are separate from operators, and operators from kernels.** A Llama layer names
    RMSNorm/attention/MLP operations; backend selection chooses implementations.
 4. **No raw address is an identity or ownership token.** Device addresses live only in non-owning
@@ -109,11 +131,13 @@ These rules are design constraints, not suggestions.
 6. **GPU work is asynchronous by default.** A successful submission means work was queued. Memory
    and request state cannot be reused until its `CompletionFence` succeeds.
 7. **Hot-path allocation is bounded.** Model weights, KV pages, metadata buffers, workspaces, events,
-   and common graph buffers are pooled before serving; an iteration must not depend on `cudaMalloc`.
+   and common graph buffers are pooled before serving; an iteration must not depend on device
+   allocation APIs (`cudaMalloc` in the CUDA backend).
 8. **Admission is resource-aware.** Accepted work has bounded queue, host-memory, KV, sequence,
    token, and deadline costs. Backpressure is explicit.
 9. **Errors are typed and scoped.** Invalid input fails one request; corrupt model artifacts fail
-   startup; CUDA context loss poisons and drains a replica; distributed rank failure fails its group.
+   startup; device/backend context loss (CUDA context loss today) poisons and drains a replica;
+   distributed rank failure fails its group.
 10. **Correctness precedes optimization.** Every optimized backend is compared with an independent
     reference and can be disabled at runtime.
 11. **No unbounded cardinality in telemetry.** Request IDs, prompts, token IDs, and tenant IDs never
@@ -138,7 +162,7 @@ include-what-you-use.
 | `runtime` | Model instances, workers, plan submission, tickets, workspace lifecycle | HTTP/JSON or scheduling policy |
 | `model` | Architecture validation, semantic modules, parameter mapping | Rank-specific communication calls or kernels |
 | `ops` | Hardware-neutral operation/layout/workspace contracts | Model names, scheduling, or server values |
-| `kernels/` | Unified kernel dispatch, backends, provider chain (supersedes the removed `platform/cuda` substrate; ADR 0031) | Request policy or HTTP/tokenizer behavior |
+| `kernels/` | Per-backend trees: unified kernel dispatch, kernel providers, device resources, and the execution-backend realization; the only production code that includes backend SDKs (supersedes the removed `platform/cuda` substrate; ADRs 0031/0035) | Request policy or HTTP/tokenizer behavior |
 | `sampling` | Parameter semantics, RNG, logits processing, stop decisions | Model forward, sockets, KV allocation |
 | `distributed` | Topology/placement, process groups, worker protocol, KV transport | Model semantics or public API compatibility |
 | `server` | HTTP/SSE, limits, auth hooks, protocol mapping | Engine state mutation or GPU ownership |
@@ -169,8 +193,9 @@ include/inferx/
   server/           protocol-neutral server facade
   telemetry/        metrics/tracing/logging contracts
 src/                 implementations matching include/inferx/
-kernels/             the only production code that includes CUDA/CUTLASS (ADR 0031)
-kernels/cuda/        custom CUDA kernels and generated kernel registry
+kernels/             the only production code that includes backend SDKs — CUDA/CUTLASS today (ADRs 0031/0035)
+kernels/cuda/        the CUDA backend: kernels, providers, and execution-backend realization
+                     (kernels/amd, kernels/npu arrive with their backends; none pre-created)
 apps/
   inferx_cli/
   inferx_server/
@@ -202,7 +227,9 @@ distributed -> runtime/kv contracts; networking never depends on kernels/
 telemetry contracts may be used everywhere; exporters may not be used by core libraries
 ```
 
-`base`, `tensor`, `scheduler`, and the logical portion of `kv` must have CPU-only build/test targets.
+`base`, `tensor`, `scheduler`, the logical portion of `kv`, and the contract portions of `ops`,
+`model`, and `runtime` must have CPU-only build/test targets (ADR 0035: upper layers are
+hardware-independent).
 CUDA support is an optional CMake feature for developer machines; production presets require it.
 
 ## 5. Core contracts and coding rules
@@ -216,8 +243,9 @@ CUDA support is an optional CMake feature for developer machines; production pre
 - Prefer value types, `std::unique_ptr`, `std::span`, `std::string_view`, `std::chrono`, `std::jthread`,
   and `std::stop_token`. Use `std::shared_ptr` only when ownership is truly shared and documented.
 - Raw pointers and references are non-owning and cannot outlive the call unless an interface says so.
-- RAII-wrap CUDA streams/events/graphs, device and pinned buffers, cuBLASLt handles, NCCL
-  communicators, file mappings, sockets, registrations, and trace spans.
+- RAII-wrap backend resources — device streams/events/graphs, device and pinned buffers,
+  vendor-library handles (cuBLASLt, NCCL today) — plus file mappings, sockets, registrations, and
+  trace spans.
 - No exceptions cross public/runtime/plugin boundaries. A dependency that throws is caught in its
   adapter. Destructors never report recoverable failures and never synchronize unexpectedly.
 - Avoid global mutable state. Registries are constructed at startup, frozen before serving, and
@@ -228,7 +256,8 @@ CUDA support is an optional CMake feature for developer machines; production pre
 ### 5.2 Status, IDs, and time
 
 Use Abseil's `absl::Status` and `absl::StatusOr<T>` rather than inventing parallel error types.
-Adapters translate `cudaError_t`, `cublasStatus_t`, `ncclResult_t`, filesystem, tokenizer, HTTP, and
+Adapters translate backend API failures (CUDA today: `cudaError_t`, `cublasStatus_t`,
+`ncclResult_t`; a later backend translates its SDK's codes), filesystem, tokenizer, HTTP, and
 RPC failures into canonical codes plus structured payloads such as component, device, rank, request
 ID, and retryability. User-visible messages are sanitized; detailed causes go to logs/traces.
 
@@ -239,7 +268,7 @@ ID, and retryability. User-visible messages are sanitized; detailed causes go to
 | Queue/KV capacity | Reject at admission or keep in a bounded wait state according to policy | `RESOURCE_EXHAUSTED` may be retried with backoff |
 | Corrupt/unsupported artifact | Fail model startup/readiness; tear down partial load by RAII | Retry only with corrected artifact/config |
 | Per-step backend error with intact context | Fail affected requests, invalidate writes, collect diagnostics | Retry only if backend marks it safe |
-| CUDA illegal access/device loss | Poison and drain the entire replica; supervisor restarts process | Requests return retryable `UNAVAILABLE` |
+| Device illegal access/loss (CUDA today) | Poison and drain the entire replica; supervisor restarts process | Requests return retryable `UNAVAILABLE` |
 | Collective/rank divergence or timeout | Abort/drain the full parallel replica; no rank continues alone | Retry on another healthy replica |
 | KV transfer timeout/corruption | Invalidate destination; recompute if deadline/capacity allow, else fail request | Internal bounded retry; never reuse uncertain pages |
 | Telemetry/exporter failure | Drop/sample telemetry with counters; inference remains healthy | Exporter retries independently |
@@ -263,6 +292,12 @@ struct TensorView {
   Strides strides;
 };
 ```
+
+`DeviceKind` is the single hardware-named vocabulary above the backend layer: an extensible
+backend-platform enumeration that the kernels registry keys on (one backend per kind). It stays
+platform-named — `kCuda` today; `kRocm`/`kAmd`/`kNpu` values arrive with their backends (ADR 0035) —
+because an enumerator such as `kGpu` could not distinguish CUDA from ROCm dispatch. "Pinned host"
+similarly names a cross-backend concept, not a CUDA API.
 
 `Buffer` uniquely owns an allocation through a device-neutral deleter. `BufferView` carries device,
 offset, size, and alignment, but no ownership. Tensors are immutable by default; mutating operations
@@ -288,14 +323,15 @@ and exposed in diagnostics. Runtime tuning values may change only through an exp
 ### 6.1 Initial process topology
 
 The single-GPU server starts as one process with separated components. Multi-GPU later uses one
-worker process per GPU so a CUDA-context failure does not corrupt the API/coordinator process.
+worker process per GPU so a device-context failure (CUDA context today) does not corrupt the
+API/coordinator process.
 
 ```text
 HTTP I/O threads --bounded MPSC--> EngineCoordinator (one event-loop thread)
 TokenizerPool ----bounded MPSC--/       |
                                        +--> DeviceWorker / ExecutionBackend
 GPU completion queue <-----------------/        |
-ResponseDispatcher <---- immutable events       +--> CUDA streams/events
+ResponseDispatcher <---- immutable events       +--> backend streams/events (CUDA today)
 ```
 
 - HTTP I/O threads own sockets and protocol parsing only.
@@ -345,10 +381,10 @@ so stale plans and delayed transfer completions are rejected rather than corrupt
 ### 6.4 Graceful shutdown
 
 Shutdown has explicit phases: stop admission; cancel or drain by configured deadline; stop planning;
-wait for in-flight GPU/transport fences; emit terminal responses; flush telemetry; destroy NCCL and
-CUDA resources; join threads. Deadline expiry marks unfinished requests `UNAVAILABLE`, abandons
-network delivery, and still waits for memory-safe device teardown. Tests must exercise shutdown at
-every request state.
+wait for in-flight GPU/transport fences; emit terminal responses; flush telemetry; destroy backend,
+collective, and device resources (NCCL/CUDA today); join threads. Deadline expiry marks unfinished
+requests `UNAVAILABLE`, abandons network delivery, and still waits for memory-safe device teardown.
+Tests must exercise shutdown at every request state.
 
 ## 7. Request and response lifecycle
 
@@ -457,7 +493,8 @@ Key modules:
   shape-incompatible weights fail startup. It also describes transpose, concatenation, packing,
   quantization metadata, and TP/PP/EP slicing without performing I/O.
 - `MemoryPlanner`: accounts for weights, allocator reserve, KV pool, activation/workspace high-water
-  marks, CUDA graphs, NCCL, and a safety margin. Startup fails before partial loading if it cannot fit.
+  marks, graph and collective reserves (CUDA graphs, NCCL today), and a safety margin. Startup fails
+  before partial loading if it cannot fit.
 - `WeightLoader`: pipelines memory mapping -> pinned staging -> optional transform -> async H2D copy;
   limits open files and staging bytes; reports per-tensor context on failure.
 
@@ -531,7 +568,8 @@ batch/sequence bucket, graph compatibility, and workspace limit. Selection is de
 logged. Forced-backend config supports testing. Unsupported combinations fail during warm-up, not on
 the first live request.
 
-The backend order is pragmatic:
+Provider preference is pragmatic and resolved inside the selected backend (the CUDA backend's chain
+today, ADRs 0031/0032); upper layers see only the frozen `KernelRegistry` selection:
 
 1. CPU/reference implementations for small correctness tests.
 2. cuBLASLt for production dense GEMM and heuristic selection.
@@ -557,15 +595,15 @@ class ExecutionBackend {
 
 `StepPlan` contains IDs, token spans, positions, sequence lengths, logical block-table snapshots,
 sampling work, expected collective sequence, and buffer-slot IDs. It does not contain `cudaStream_t`,
-raw device pointers, HTTP values, or owning request pointers. The CUDA backend resolves logical
-handles to device metadata and pointers.
+raw device pointers, HTTP values, or owning request pointers. The active backend resolves logical
+handles to device metadata and pointers (the CUDA backend today).
 
-### 9.4 CUDA implementation
+### 9.4 Backend implementations (CUDA first)
 
-(The original plan placed this under `platform/cuda`; the substrate was
-removed after the kernels architecture landed — ADR 0031. The equivalent
-future responsibilities live under `kernels/` and a future runtime
-backend:)
+Each backend implements the neutral contracts of sections 9.1-9.3 inside its own
+`kernels/<backend>/` tree; no upper layer references these types (ADR 0035). The original plan
+placed the CUDA realization under `platform/cuda`; the substrate was removed after the kernels
+architecture landed — ADR 0031 — and the responsibilities live under `kernels/cuda/`:
 
 - `CudaDevice`/`CudaDeviceGuard` and capability discovery;
 - move-only `CudaStream`, `CudaEvent`, `CudaGraph`, cuBLASLt and NCCL handle wrappers;
@@ -573,6 +611,12 @@ backend:)
 - pinned host pools, event pools, stream roles, metadata ring buffers, and workspace arenas;
 - `CudaExecutionBackend`, `CudaModelInstance`, `CudaGraphCache`, and kernel adapters;
 - error translation and device-health monitoring.
+
+Adding a backend (AMD ROCm/HIP, NPU) implements `KernelBackend` and the execution contracts for a
+new `DeviceKind` under `kernels/<backend>/` and registers it at startup — no upper-layer change
+(ADR 0031's extension rule, extended stack-wide by ADR 0035). A backend brings its own SDK
+dependencies, presets, config section, and CI lane through the same qualification gates; none is
+proposed yet.
 
 Use separate compute, collective, and KV-transfer streams only when events express true dependencies.
 More streams are not automatically faster. The initial eager path uses one compute stream and no
@@ -745,7 +789,11 @@ unreferenced/unpinned leaves and frees physical pages through the allocator. Can
 request leases but does not remove reusable prefix ownership. Cache-disabled mode still maintains a
 request's chunk-to-chunk block table; it is not a special scheduler architecture.
 
-### 11.4 General GPU memory
+### 11.4 General device memory
+
+Arena categories are named after their CUDA realization (graphs, stream-ordered suballocation,
+pinned host); a non-CUDA backend maps the same categories onto its equivalents without changing
+the accounting (ADR 0035).
 
 - Long-lived arena: weights and fixed KV pools.
 - Stable graph arena: graph input/output/metadata addresses by bucket.
@@ -1011,9 +1059,9 @@ when the deadline and capacity permit.
 
 | Dependency | Use | Introduction |
 |---|---|---|
-| CUDA Runtime/Driver APIs | devices, streams, events, graphs, memory, P2P | M2; system dependency, not vendored |
-| cuBLASLt | production FP16/BF16 dense GEMM, heuristics and workspace | M4; CUDA toolkit dependency |
-| NCCL | intra/inter-node GPU collectives and grouped point-to-point | M14; system/container dependency, not vendored |
+| CUDA Runtime/Driver APIs | devices, streams, events, graphs, memory, P2P | M2; CUDA backend; system dependency, not vendored |
+| cuBLASLt | production FP16/BF16 dense GEMM, heuristics and workspace | M4; CUDA backend; CUDA toolkit dependency |
+| NCCL | intra/inter-node GPU collectives and grouped point-to-point | M14; first collective backend; system/container dependency, not vendored |
 | `syoyo/safetensors-cpp` (candidate) plus the Hugging Face format conformance corpus | safe mapped weight/index reading | M0 security/fuzz/API audit is mandatory; its documented validation gaps mean it is not approved by declaration. If rejected, build a narrow bounds/shape verifier over simdjson and the official format rather than another general serializer |
 | simdjson | model/config/manifest and HTTP JSON parsing with size/depth validation | M1/M3/M9 |
 | GoogleTest/GoogleMock | unit, integration, death/failure, parameterized tests | M0 |
@@ -1028,6 +1076,11 @@ when the deadline and capacity permit.
 Potential dependencies must not be added “just in case.” gRPC, OpenTelemetry, NIXL, RapidCheck, and
 specialized kernel libraries remain feature-gated so a minimal embedded engine has a small closure.
 Do not add a second JSON, logging, status, HTTP, RPC, or metrics stack without an ADR.
+
+CUDA Runtime/cuBLASLt/NCCL (and FlashInfer/CUTLASS/hpc-ops) are dependencies of the CUDA backend
+only and never appear above the backend boundary (ADR 0035). A future backend brings its own SDK
+closure — ROCm/HIP, an NPU SDK — through the same pinning and qualification gates; none is proposed
+yet.
 
 ## 18. Verification strategy and definitions
 
@@ -1310,8 +1363,8 @@ hardware-constrained release job.
 
 **Deliverables**
 
-- `LlamaForCausalLM`, GPU weight loading, memory plan, eager `CudaExecutionBackend`, and one-request
-  executor with a simple contiguous KV cache.
+- `LlamaForCausalLM`, device weight loading, memory plan, an eager `ExecutionBackend` realization
+  (CUDA backend first; ADR 0035), and one-request executor with a simple contiguous KV cache.
 - Token-ID and text CLI: load -> warm up -> prefill -> greedy decode -> incremental text output.
 - Independent reference fixture generation and intermediate-tensor diagnostic mode.
 
@@ -1333,7 +1386,8 @@ hardware-constrained release job.
 - Greedy output matches the reference for every committed fixture (at least 100 prompts and 32 output
   tokens unless EOS); logits meet thresholds established and documented from M4 error data.
 - After 1,000 requests, all non-model memory categories return to their warm baseline and sanitizer/
-  profiler checks show no invalid access or unintended per-token `cudaMalloc`/device synchronize.
+  profiler checks show no invalid access or unintended per-token device allocation/synchronize
+  (`cudaMalloc`/device synchronize on the CUDA backend).
 - One documented CLI command reproduces the path from a fresh supported environment.
 
 ### M6 — Production paged KV cache
@@ -1571,8 +1625,9 @@ hardware-constrained release job.
 
 - GPU fused/qualified sampling path with counter RNG and minimal D2H output; asynchronous output
   processing; double/triple-buffered step metadata; CPU plan N+1 overlap with GPU step N.
-- CUDA graph cache for measured decode buckets with stable graph arenas, padding policy, capture-safe
-  backends, miss/fallback path, memory budget, and hit/eviction telemetry.
+- Graph capture/replay cache for measured decode buckets (CUDA graphs first) with stable graph
+  arenas, padding policy, capture-safe backends, miss/fallback path, memory budget, and
+  hit/eviction telemetry.
 - Profile-guided fusions/backend selection and autotune cache keyed by device/software/model/shape.
 
 **Tests**
@@ -1639,7 +1694,8 @@ hardware-constrained release job.
 - One process per GPU worker, versioned coordinator/worker protobuf protocol, capability/health
   handshake, shared-memory or compact IPC for metadata where justified, and external supervisor
   integration.
-- `ParallelTopology`/`ParallelPlan`, NCCL `ProcessGroup`, collective sequence validation, TP weight/KV
+- `ParallelTopology`/`ParallelPlan`, NCCL-backed `ProcessGroup` (first collective backend),
+  collective sequence validation, TP weight/KV
   sharding, column/row parallel linear, head/vocab rules, and distributed sampling path.
 - Single-process single-GPU remains supported through the same logical execution contract.
 
@@ -1845,8 +1901,11 @@ decision.
 
 Features not assigned to milestones—multimodality, adapters/LoRA, beam search, constrained/structured
 decoding, context parallelism, sliding-window/recurrent state caches, request migration, autoscaling,
-and non-NVIDIA backends—require separate ADRs and roadmaps. The existing boundaries should permit
-them, but “permitted” is not a commitment or evidence that the abstractions are sufficient.
+and non-NVIDIA backends—require separate ADRs and roadmaps. Non-NVIDIA backends additionally follow
+ADR 0035's backend boundary: the upper layers are already hardware-independent, so a backend ADR owns
+its `kernels/<backend>` tree, SDK pins, and qualification evidence rather than a runtime redesign.
+“Permitted” is still not a commitment or evidence that the abstractions are sufficient for a specific
+backend.
 
 ## 21. Primary references and applicability notes
 
