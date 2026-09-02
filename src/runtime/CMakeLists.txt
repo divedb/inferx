@@ -21,3 +21,5 @@ target_include_directories(inferx_runtime
 install(TARGETS inferx_runtime
         EXPORT InferXTargets
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../include/inferx/runtime"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/inferx")

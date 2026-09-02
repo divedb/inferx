@@ -57,3 +57,19 @@ native subset for the accepted SM list, compute-sanitizer + reference correctnes
 
 **Experimental, disabled.** Owner: `ops`. Retained as a source of candidate kernels and
 benchmarks only.
+
+## Update 2026-09-01 (kernels-architecture branch, ADR 0032)
+- Status changed to `approved` (flashinfer/cutlass) / `candidate` (hpc-ops) for
+  the ADR 0031 provider chain: integration is ahead-of-time compilation of the
+  pinned sources only — no JIT kernel cache, no runtime cubin loading, no
+  Python in the link closure. FlashInfer integration additionally requires its
+  recorded nested CCCL closure (`3rdparty/cccl` at the flashinfer pin).
+- Verified on the SM89 runner (CUDA 13.0): FlashInfer RMSNorm/RoPE device
+  templates and the CUTLASS 4.8 classic GEMM pass CPU-oracle tests
+  (`inferx_kernels_cuda_test`).
+- hpc-ops remains probe-only: its build supports SM90/100/103 exclusively and
+  its clean-header kernels do not match the current operator contracts
+  (FP8-only GEMMs, fused activations, fused rope+norm+KV-store). Attention on
+  SM90+ is the primary future integration target.
+- Outstanding evidence: compute-sanitizer sweeps, multi-stream races, FP16/BF16
+  oracle suites, binary-size accounting (ADR 0032 gap log).

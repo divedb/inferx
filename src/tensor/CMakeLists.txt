@@ -24,3 +24,5 @@ target_include_directories(inferx_tensor
 install(TARGETS inferx_tensor
         EXPORT InferXTargets
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../include/inferx/tensor"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/inferx")

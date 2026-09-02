@@ -16,7 +16,7 @@ namespace inferx::model {
 
 // The artifact/model half of a package.  This value is deliberately distinct
 // from the milestone's ValidatedModelPackage: it cannot be promoted until the
-// tokenizer backend passes ADR 0025's qualification gate.
+// tokenizer backend passes ADR 0024's qualification gate.
 struct InspectedModelArtifacts {
   ModelSpec model_spec;
   ParameterCatalog parameters;

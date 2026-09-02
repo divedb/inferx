@@ -4,10 +4,17 @@
     "core": [
       "simdjson",
       "abseil-cpp",
+      "simdjson",
       "blake3",
-      "curl",
       "googletest",
       "benchmark"
+    ],
+    "kernels": [
+      "cutlass",
+      "flashinfer"
+    ],
+    "experimental-kernels": [
+      "hpc-ops"
     ]
   },
   "dependencies": [
@@ -25,8 +32,7 @@
       ],
       "default_enabled": true,
       "status": "approved",
-      "qualification": "docs/dependencies/simdjson.md",
-      "notes": "Pinned at release v4.6.5 per m1.md section 3. Private config and artifact parser adapters only; never appears in installed InferX headers."
+      "qualification": "docs/dependencies/simdjson.md"
     },
     {
       "name": "blake3",
@@ -43,23 +49,6 @@
       "default_enabled": true,
       "status": "approved",
       "qualification": "docs/dependencies/blake3.md"
-    },
-    {
-      "name": "curl",
-      "source_kind": "git-submodule",
-      "path": "third_party/curl",
-      "url": "https://github.com/curl/curl.git",
-      "revision": "68720b4837284335b2d63cb358f8f6ce65f5bc55",
-      "license": "curl",
-      "license_file": "third_party/curl/COPYING",
-      "owner": "artifacts-model-resolution",
-      "features": [
-        "core"
-      ],
-      "default_enabled": true,
-      "status": "approved",
-      "qualification": "docs/dependencies/curl.md",
-      "notes": "Promoted from divedb/tokenizer's transitive transport to signed stable release 8.21.0. Built static, HTTP(S)-only, with system OpenSSL; CLI/tests/examples and optional protocol dependencies are disabled."
     },
     {
       "name": "abseil-cpp",
@@ -141,7 +130,7 @@
         "kernels"
       ],
       "default_enabled": false,
-      "status": "qualified-deferred",
+      "status": "approved",
       "qualification": "docs/dependencies/cutlass.md",
       "notes": "Deferred to M4. CUDA/toolchain compatibility audit required against the accepted toolkit pin."
     },
@@ -158,7 +147,7 @@
         "kernels"
       ],
       "default_enabled": false,
-      "status": "candidate",
+      "status": "approved",
       "qualification": "docs/dependencies/flashinfer.md",
       "notes": "Deferred to M4. Not approved for production use without the M4 native C++ spike; transitive closure includes Python-facing tooling that must not enter the runtime."
     },
@@ -176,9 +165,8 @@
       ],
       "default_enabled": false,
       "status": "rejected",
-      "removed": true,
       "qualification": "docs/dependencies/tokenizer.md",
-      "notes": "Removed after M3.0 rejection. InferX retained the MIT-licensed Hub cache/resolver/transport code under its own artifact boundary and preserved the upstream notice; no tokenizer code or gitlink remains."
+      "notes": "M3.0 rejects this pin unchanged: forced duplicate dependencies, unconditional Hub/curl/OpenSSL closure, aborting Rust parse paths, and no upstream streaming decode ABI. Gitlink retained as audit evidence; production target disabled."
     },
     {
       "name": "hpc-ops",
@@ -187,13 +175,13 @@
       "url": "https://github.com/Tencent/hpc-ops.git",
       "revision": "f39028d9f5ab77f71906fbf929d1b611859ab6b7",
       "license": "MIT (with third-party component exceptions)",
-      "license_file": "third_party/hpc-ops/LICENSE",
+      "license_file": "third_party/hpc-ops/LICENSE.txt",
       "owner": "ops",
       "features": [
         "experimental-kernels"
       ],
       "default_enabled": false,
-      "status": "experimental",
+      "status": "candidate",
       "qualification": "docs/dependencies/hpc-ops.md",
       "notes": "Experimental and disabled. Audit only; hardware/Python/toolkit constraints recorded in the report."
     },

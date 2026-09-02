@@ -57,6 +57,15 @@ enum class ErrorReason : uint16_t {  // NOLINT(performance-enum-size)
   kPoolExhausted = 108,
   kPendingResource = 109,
   kUnsupportedCapability = 110,
+  kInvalidOperatorContract = 200,
+  kRegistryFrozen = 201,
+  kDuplicateKernelCapability = 202,
+  kKernelRegistryMiss = 203,
+  kPreparedKernelCacheExhausted = 204,
+  kInsufficientWorkspace = 205,
+  kVendorAlgorithmUnavailable = 206,
+  kNumericWarmupMismatch = 207,
+  kInvalidAttentionMetadata = 208,
 };
 
 // Payload URL carrying the reason classification on an absl::Status.
@@ -129,12 +138,30 @@ inline constexpr absl::string_view kErrorReasonPayloadUrl = "type.inferx.dev/err
       return "pending-resource";
     case ErrorReason::kUnsupportedCapability:
       return "unsupported-capability";
+    case ErrorReason::kInvalidOperatorContract:
+      return "invalid-operator-contract";
+    case ErrorReason::kRegistryFrozen:
+      return "registry-frozen";
+    case ErrorReason::kDuplicateKernelCapability:
+      return "duplicate-kernel-capability";
+    case ErrorReason::kKernelRegistryMiss:
+      return "kernel-registry-miss";
+    case ErrorReason::kPreparedKernelCacheExhausted:
+      return "prepared-kernel-cache-exhausted";
+    case ErrorReason::kInsufficientWorkspace:
+      return "insufficient-workspace";
+    case ErrorReason::kVendorAlgorithmUnavailable:
+      return "vendor-algorithm-unavailable";
+    case ErrorReason::kNumericWarmupMismatch:
+      return "numeric-warmup-mismatch";
+    case ErrorReason::kInvalidAttentionMetadata:
+      return "invalid-attention-metadata";
   }
   return "unknown";
 }
 
 [[nodiscard]] inline std::optional<ErrorReason> ErrorReasonFromName(absl::string_view name) {
-  constexpr std::array<ErrorReason, 32> kReasons{
+  constexpr std::array<ErrorReason, 41> kReasons{
       ErrorReason::kNone,
       ErrorReason::kInvalidConfig,
       ErrorReason::kInvalidWorkload,
@@ -167,6 +194,15 @@ inline constexpr absl::string_view kErrorReasonPayloadUrl = "type.inferx.dev/err
       ErrorReason::kPoolExhausted,
       ErrorReason::kPendingResource,
       ErrorReason::kUnsupportedCapability,
+      ErrorReason::kInvalidOperatorContract,
+      ErrorReason::kRegistryFrozen,
+      ErrorReason::kDuplicateKernelCapability,
+      ErrorReason::kKernelRegistryMiss,
+      ErrorReason::kPreparedKernelCacheExhausted,
+      ErrorReason::kInsufficientWorkspace,
+      ErrorReason::kVendorAlgorithmUnavailable,
+      ErrorReason::kNumericWarmupMismatch,
+      ErrorReason::kInvalidAttentionMetadata,
   };
   for (ErrorReason reason : kReasons) {
     if (ErrorReasonToName(reason) == name) {

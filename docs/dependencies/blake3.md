@@ -8,9 +8,6 @@
 InferX builds `blake3.c`, `blake3_dispatch.c`, and `blake3_portable.c`. SSE2, SSE4.1, AVX2, and
 AVX-512 dispatch are disabled for the M3 baseline, and TBB/assembly are not linked. The C API is
 private to `digest.cc`; public code sees only `Digest256` and `Hasher`.
-Bundled installs export the archive as the implementation-only
-`inferx::blake3_internal` target; no BLAKE3 header or source-tree include path
-appears in the public artifact API.
 
 Qualification includes official empty-input and `abc` vectors, incremental/one-shot equivalence,
 lowercase hex round trips, finalization-state checks, complete-file hashing, range hashing, and file

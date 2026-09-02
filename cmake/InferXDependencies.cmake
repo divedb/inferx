@@ -66,9 +66,8 @@ endfunction()
 # ---------------------------------------------------------------------------
 # Core profile dependencies.
 #
-# Abseil, simdjson, BLAKE3, and (when enabled) curl are production requirements
-# for M3 artifact/model resolution. GoogleTest remains test-only and Google
-# Benchmark benchmark-only.
+# Abseil, simdjson, and BLAKE3 are production requirements for the M3 artifact
+# reader. GoogleTest remains test-only and Google Benchmark benchmark-only.
 # ---------------------------------------------------------------------------
 # M1 exposes Abseil through inferx::base public headers (ADR 0008), so the
 # core profile is an unconditional prerequisite; GoogleTest/Benchmark remain
@@ -112,7 +111,7 @@ if(_INFERX_CORE_PROFILE)
     endif()
   endif()
 
-  # --- simdjson (unconditional: config and artifact parsing are core) --------
+  # --- simdjson (unconditional: config and artifact readers are core) -------
   if(INFERX_DEPENDENCY_PROVIDER STREQUAL "submodule")
     if(NOT EXISTS "${INFERX_THIRD_PARTY_DIR}/simdjson/CMakeLists.txt")
       inferx_fail_missing_dependency(simdjson simdjson ${_INFERX_CORE_PROFILE})
@@ -122,28 +121,19 @@ if(_INFERX_CORE_PROFILE)
                                  SIMDJSON_DISABLE_DEPRECATED_API
                                  SIMDJSON_DEVELOPER_MODE)
     set(BUILD_SHARED_LIBS OFF)
-    set(SIMDJSON_INSTALL ON)
+    set(SIMDJSON_INSTALL OFF)
     set(SIMDJSON_ENABLE_THREADS OFF)
     set(SIMDJSON_DISABLE_DEPRECATED_API ON)
     set(SIMDJSON_DEVELOPER_MODE OFF)
-    # Keep simdjson's install rules in the top-level install graph. Installed
-    # static inferx::config/model/artifacts targets retain a link-only
-    # simdjson::simdjson dependency that InferXConfig resolves from this same
-    # prefix.
     add_subdirectory("${INFERX_THIRD_PARTY_DIR}/simdjson"
                      "${CMAKE_BINARY_DIR}/third_party/simdjson"
-                     SYSTEM)
+                     SYSTEM EXCLUDE_FROM_ALL)
     inferx_dependency_scope_pop(BUILD_SHARED_LIBS SIMDJSON_INSTALL
                                 SIMDJSON_ENABLE_THREADS
                                 SIMDJSON_DISABLE_DEPRECATED_API
                                 SIMDJSON_DEVELOPER_MODE)
   else()
-    find_package(simdjson CONFIG REQUIRED)
-    if(simdjson_VERSION AND simdjson_VERSION VERSION_LESS 3.0.0)
-      message(FATAL_ERROR
-        "System simdjson ${simdjson_VERSION} is older than the accepted "
-        "minimum 3.0.0 (submodule pin: v4.6.5); see docs/dependencies/simdjson.md")
-    endif()
+    find_package(simdjson 4.6.5 CONFIG REQUIRED)
   endif()
 
   # --- BLAKE3 portable C implementation ------------------------------------
@@ -156,12 +146,10 @@ if(_INFERX_CORE_PROFILE)
       "${INFERX_THIRD_PARTY_DIR}/blake3/c/blake3_dispatch.c"
       "${INFERX_THIRD_PARTY_DIR}/blake3/c/blake3_portable.c")
     target_include_directories(inferx_blake3 SYSTEM PUBLIC
-      $<BUILD_INTERFACE:${INFERX_THIRD_PARTY_DIR}/blake3/c>)
+      "${INFERX_THIRD_PARTY_DIR}/blake3/c")
     target_compile_definitions(inferx_blake3 PRIVATE
       BLAKE3_NO_SSE2 BLAKE3_NO_SSE41 BLAKE3_NO_AVX2 BLAKE3_NO_AVX512)
-    set_target_properties(inferx_blake3 PROPERTIES
-      EXPORT_NAME blake3_internal
-      POSITION_INDEPENDENT_CODE ON)
+    set_target_properties(inferx_blake3 PROPERTIES POSITION_INDEPENDENT_CODE ON)
     add_library(blake3::blake3 ALIAS inferx_blake3)
   else()
     find_package(blake3 1.8.7 CONFIG REQUIRED)
@@ -169,53 +157,10 @@ if(_INFERX_CORE_PROFILE)
 
   if(INFERX_ENABLE_TOKENIZATION)
     message(FATAL_ERROR
-      "INFERX_ENABLE_TOKENIZATION is ON, but no tokenizer backend is approved. "
-      "divedb/tokenizer was removed after failing the M3.0 qualification gate; "
-      "an error-returning construction ABI and streaming decode state are still "
-      "required. Keep this option OFF until ADR 0025 records an approved replacement.")
-  endif()
-
-  # --- libcurl (native Hugging Face model resolution) ----------------------
-  if(INFERX_ENABLE_HF_HUB)
-    if(INFERX_DEPENDENCY_PROVIDER STREQUAL "submodule")
-      if(NOT EXISTS "${INFERX_THIRD_PARTY_DIR}/curl/CMakeLists.txt")
-        inferx_fail_missing_dependency(curl curl core)
-      endif()
-      inferx_dependency_scope_push(
-        BUILD_CURL_EXE BUILD_EXAMPLES BUILD_LIBCURL_DOCS BUILD_MISC_DOCS
-        BUILD_SHARED_LIBS BUILD_STATIC_LIBS BUILD_TESTING ENABLE_CURL_MANUAL
-        CURL_BROTLI CURL_BUILD_EVERYTHING CURL_ENABLE_EXPORT_TARGET CURL_USE_LIBPSL
-        CURL_ZLIB CURL_ZSTD CURL_USE_LIBSSH2 CURL_USE_OPENSSL HTTP_ONLY PICKY_COMPILER)
-      set(BUILD_CURL_EXE OFF)
-      set(BUILD_EXAMPLES OFF)
-      set(BUILD_LIBCURL_DOCS OFF)
-      set(BUILD_MISC_DOCS OFF)
-      set(BUILD_SHARED_LIBS OFF)
-      set(BUILD_STATIC_LIBS ON)
-      set(BUILD_TESTING OFF)
-      set(ENABLE_CURL_MANUAL OFF)
-      set(CURL_BUILD_EVERYTHING OFF)
-      set(CURL_BROTLI OFF)
-      set(CURL_ZLIB OFF)
-      set(CURL_ZSTD OFF)
-      set(CURL_ENABLE_EXPORT_TARGET ON)
-      set(CURL_USE_LIBPSL OFF)
-      set(CURL_USE_LIBSSH2 OFF)
-      set(CURL_USE_OPENSSL ON)
-      set(HTTP_ONLY ON)
-      set(PICKY_COMPILER OFF)
-      find_package(OpenSSL 3.0 REQUIRED)
-      add_subdirectory("${INFERX_THIRD_PARTY_DIR}/curl"
-                       "${CMAKE_BINARY_DIR}/third_party/curl"
-                       SYSTEM)
-      inferx_dependency_scope_pop(
-        BUILD_CURL_EXE BUILD_EXAMPLES BUILD_LIBCURL_DOCS BUILD_MISC_DOCS
-        BUILD_SHARED_LIBS BUILD_STATIC_LIBS BUILD_TESTING ENABLE_CURL_MANUAL
-        CURL_BROTLI CURL_BUILD_EVERYTHING CURL_ENABLE_EXPORT_TARGET CURL_USE_LIBPSL
-        CURL_ZLIB CURL_ZSTD CURL_USE_LIBSSH2 CURL_USE_OPENSSL HTTP_ONLY PICKY_COMPILER)
-    else()
-      find_package(CURL 8.21 REQUIRED)
-    endif()
+      "INFERX_ENABLE_TOKENIZATION is ON, but divedb/tokenizer f109b7a is "
+      "candidate-only and fails the M3.0 qualification gate: local-only "
+      "build, error-returning construction, and streaming decode ABI are "
+      "required. Keep this option OFF until ADR 0024 records an approved pin.")
   endif()
 
   # --- GoogleTest -----------------------------------------------------------

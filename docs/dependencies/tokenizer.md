@@ -1,6 +1,6 @@
 # Qualification report: tokenizer (divedb/tokenizer)
 
-- Manifest entry: `tokenizer` — rejected and removed, feature `tokenization` (M3), owner `tokenization`
+- Manifest entry: `tokenizer` — candidate, feature `tokenization` (M3), owner `tokenization`
 - Pin: `f109b7aef148dd4866a3dae7a8e5a6d221f95c75` (audited 2026-08-31)
 - License: MIT (`LICENSE` at the pin, verified via raw.githubusercontent.com)
 
@@ -11,8 +11,7 @@ detokenization (plan section 8.3).
 
 ## 2. Required now, deferred, experimental, or rejected?
 
-Rejected unchanged by M3.0 and removed. The manifest/report remain as audit evidence; there is no
-gitlink, configured target, or tokenizer code in the dependency tree.
+Rejected unchanged by M3.0. The gitlink remains as audit evidence and is not configured or linked.
 
 ## 3. Source and transitive dependencies
 
@@ -59,8 +58,6 @@ differential corpus, subprocess malformed-input corpus, TSan pool stress, and li
 
 ## 10. Disposition and approvals
 
-**Rejected and removed**, owner `tokenization`. `INFERX_ENABLE_TOKENIZATION=ON` fails configuration
-until ADR 0025 names an approved replacement pin. InferX retained and adapted the useful
-MIT-licensed Hub cache/resolver/transport implementation under `inferx::artifacts`, with the license
-at `third_party/notices/divedb-tokenizer-MIT.txt`; it did not retain tokenizer algorithms or ABI.
-The rejection is a hard M3 completion gate, not a runtime fallback.
+**Rejected unchanged**, owner `tokenization`. `INFERX_ENABLE_TOKENIZATION=ON` fails configuration
+until ADR 0024 names an approved replacement pin. The rejection is a hard M3 completion gate, not a
+runtime fallback.

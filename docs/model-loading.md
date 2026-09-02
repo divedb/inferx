@@ -1,19 +1,11 @@
 # Dense Llama model loading
 
-`artifacts::ModelResolver` first turns a local directory or Hugging Face model ID into a
-symlink-free local root using the order and controls in [model resolution](model-resolution.md).
-Resolution is architecture-neutral; the loader capability described below remains dense Llama only.
-
 `ModelArtifactLoader::Inspect` performs deterministic discovery, content hashing, strict parsing,
 external tensor catalog construction, and complete logical planning. Required fixed inputs are
 `config.json` and `tokenizer.json`. An index is preferred over standalone weights only when there is
 no ambiguity; if both exist, a manifest must explicitly select `model.safetensors.index.json`.
 Every ordinary JSON artifact is size-checked before hashing or parsing, and every consumed file plus
 the optional manifest is identity-checked again immediately before a successful inspection returns.
-
-The artifact-foundation merge accepts `ArtifactLimits` directly at the loader boundary. These limits
-are not yet part of M1's effective engine configuration or provenance record; that integration is a
-remaining full-M3 task before `ValidatedModelPackage` readiness is published.
 
 The initial schema accepts `model_type=llama` and, when declared, exactly
 `LlamaForCausalLM`. It consumes vocabulary/hidden/intermediate sizes, layer and attention counts,
@@ -32,7 +24,3 @@ With tied embeddings, an absent LM head becomes an alias. If present, its tensor
 equal the embedding tensor digest. Plan items use identity transforms and replicated full logical
 shards. `InspectedModelArtifacts` is intentionally not model readiness: tokenizer qualification and
 model/tokenizer cross-checks must occur before a future `ValidatedModelPackage` is published.
-
-The experimental static `inferx::artifacts` and `inferx::model` targets are installed with the public
-headers. The installed-package consumer exercises both targets and their pinned simdjson/BLAKE3 link
-closure without source-tree or build-tree paths.

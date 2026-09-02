@@ -1,72 +1,16 @@
-# Qualification report: simdjson
+# simdjson qualification
 
-- Manifest entry: `simdjson` — approved, feature `core`, owner `config-artifacts`
-- Pin: `0a851a64cd984e9e1a6cab93b6e773aa3f4dc30d` (release tag **v4.6.5**, as
-  mandated by `docs/milestones/m1.md` section 3)
-- License: Apache-2.0, `third_party/simdjson/LICENSE`
+- Revision: `0a851a64cd984e9e1a6cab93b6e773aa3f4dc30d` (`v4.6.5`)
+- License: Apache-2.0
+- Owner: configuration and artifacts
+- Status: approved
 
-## 1. Which InferX contract uses it?
+InferX uses simdjson only behind schema-specific readers. No simdjson type is present in a public
+header and no view survives its parser. The source build is static and offline, with installation,
+internal threads, deprecated APIs, and developer targets disabled. Every reader performs an explicit
+file-size check, parser-depth allocation, duplicate-key walk, exact integer conversion, and immediate
+copy into owned values.
 
-Strict JSON parsing for configuration (M1), workload files, replay input
-(M1.7), and schema-specific local model artifacts (M3). All uses remain
-behind private adapters that immediately copy validated values into InferX
-types.
-
-## 2. Required now, deferred, experimental, or rejected?
-
-Required (core profile) from M1.3 on: `inferx_config` and the M3 artifact
-readers parse their JSON input through it. The bundled package is installed
-beside InferX so downstream static consumers can resolve the link-only
-`simdjson::simdjson` dependency without a source- or build-tree path.
-
-## 3. Source and transitive dependencies
-
-Single C++ library; no transitive third-party requirements (pthreads only,
-and `SIMDJSON_ENABLE_THREADS=OFF` disables even that for our use).
-
-## 4. Toolchain/C++23 compatibility
-
-Builds with GCC 13/Clang 18 on Ubuntu 24.04 with
-`BUILD_SHARED_LIBS=OFF, SIMDJSON_INSTALL=ON, SIMDJSON_ENABLE_THREADS=OFF,
-SIMDJSON_DISABLE_DEPRECATED_API=ON, SIMDJSON_DEVELOPER_MODE=OFF` (scoped per
-M0's dependency helper). Evidence: `dev-gcc`, `dev-clang`, `asan-ubsan`,
-`tsan`, `analysis` lanes since M1.3. Runtime dispatch selects the best SIMD
-kernel for the host CPU; behavior differences by backend are covered by the
-m1.md section 19 risk row (adapter detects duplicates; unsupported backends
-would be disabled via the build capability report).
-
-## 5. Runtime behavior caveats
-
-The C++ API signals errors through error codes (no exceptions on our paths);
-the adapter still wraps parsing in a defensive try/catch per ADR 0004. No
-threads, no global mutable state (parser instances are local), no JIT.
-
-## 6. API stability and namespaces
-
-Namespace `simdjson::` (dom/ondemand); release-tagged; the pin follows a
-maintained release compatible with the compiler floor.
-
-## 7. License/notice obligations and security
-
-Apache-2.0 — notice retention if sources/binaries are redistributed. The
-parser is security-relevant (untrusted model metadata/manifests): the
-malformed/limit corpus in `tests/unit/config/` and the parser limits
-(`m1.md` section 8.4) are the first gates; fuzzing is tracked in M1.7.
-
-## 8. Binary/build/startup cost
-
-Static archive builds in seconds; parse throughput is gigabytes/second class
-— negligible next to config/workload sizes.
-
-## 9. Upgrade/rollback procedure
-
-Advance gitlink + manifest + this report together; re-run the config unit
-suite (canonical byte-equality tests are the sensitive gate), M3 malformed
-artifact and safetensors corpora, sanitizer lanes, and the M1.7 replay corpus;
-regenerate goldens only with a reviewed semantic diff.
-
-## 10. Disposition and approvals
-
-**Approved** for the private parser adapter per m1.md section 3 and ADR 0011.
-Public headers must not expose simdjson types — enforced by header
-self-containment probes (the public `config/` headers include no simdjson).
+The pin builds in C++23 host mode with GCC and Clang. Upgrade qualification must rerun configuration,
+malformed JSON, duplicate-key, UTF-8, large-integer, maximum-depth, safetensors, shard-index,
+manifest, and Llama configuration corpora under ASan/UBSan.

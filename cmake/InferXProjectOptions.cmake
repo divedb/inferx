@@ -55,14 +55,28 @@ option(INFERX_BUILD_TOOLS "Build InferX developer tools such as inferx-info."
 option(INFERX_ENABLE_TOKENIZATION
        "Build the M3 tokenizer adapter after its dependency qualification gate is closed."
        OFF)
-option(INFERX_ENABLE_HF_HUB
-       "Resolve uncached Hugging Face model IDs with native HTTPS downloads."
-       ${_INFERX_TOP_LEVEL_DEFAULT})
 option(INFERX_M3_ENABLE_OPENAT2
        "Use Linux openat2 for rooted artifact opens, with a checked openat fallback."
        ON)
 option(INFERX_ENABLE_CUDA "Enable the optional CUDA platform (explicit opt-in; a missing toolkit is fatal when ON)."
        OFF)
+option(INFERX_ENABLE_FLASHINFER
+       "Build the kernels-architecture FlashInfer providers (AOT device-kernel instantiations at the pinned revision; requires the gitlink, ADR 0032)." OFF)
+option(INFERX_ENABLE_CUTLASS
+       "Build the kernels-architecture CUTLASS GEMM provider (requires the gitlink, ADR 0032)." OFF)
+option(INFERX_ENABLE_HPC_OPS
+       "Reserve the hpc-ops provider slot (SM90+ module; probes only until the adapter qualifies, ADR 0032)." OFF)
+option(INFERX_BUILD_M4_REFERENCE_TESTS "Build M4 CPU contract/reference tests."
+       ${_INFERX_TOP_LEVEL_DEFAULT})
+option(INFERX_BUILD_M4_GPU_TESTS "Build M4 GPU tests (requires INFERX_ENABLE_CUDA)."
+       ${_INFERX_TOP_LEVEL_DEFAULT})
+option(INFERX_BUILD_M4_BENCHMARKS "Build M4 operator/dispatch benchmarks."
+       ${_INFERX_TOP_LEVEL_DEFAULT})
+# The kernels-architecture branch (ADR 0031/0032) supersedes the ADR 0029
+# rejection for the new provider chain: FlashInfer/CUTLASS enter as AOT
+# instantiations of the pinned gitlinks with no JIT/cubin-loading path, and
+# the option gates remain OFF by default until qualification evidence is
+# complete. The legacy M4 platform adapters are unaffected.
 option(INFERX_BUILD_GPU_TESTS "Build M2 GPU tests (requires INFERX_ENABLE_CUDA)."
        ${_INFERX_TOP_LEVEL_DEFAULT})
 option(INFERX_BUILD_COMPUTE_SANITIZER_TESTS
@@ -73,6 +87,10 @@ if(INFERX_BUILD_GPU_TESTS AND NOT INFERX_ENABLE_CUDA)
   # GPU tests default with top-level builds but remain dormant in CPU builds.
   set(INFERX_BUILD_GPU_TESTS OFF CACHE BOOL
       "Build M2 GPU tests (requires INFERX_ENABLE_CUDA)." FORCE)
+endif()
+if(INFERX_BUILD_M4_GPU_TESTS AND NOT INFERX_ENABLE_CUDA)
+  set(INFERX_BUILD_M4_GPU_TESTS OFF CACHE BOOL
+      "Build M4 GPU tests (requires INFERX_ENABLE_CUDA)." FORCE)
 endif()
 if(INFERX_BUILD_COMPUTE_SANITIZER_TESTS AND NOT INFERX_ENABLE_CUDA)
   message(FATAL_ERROR

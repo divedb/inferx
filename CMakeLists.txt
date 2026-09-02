@@ -37,13 +37,15 @@ add_subdirectory(src/tensor)
 add_subdirectory(src/runtime)
 add_subdirectory(src/artifacts)
 add_subdirectory(src/model)
+add_subdirectory(src/ops)
+add_subdirectory(src/model_adapters)
 add_subdirectory(simulator)
 
 if(INFERX_BUILD_TOOLS)
   add_subdirectory(apps/inferx_info)
+  add_subdirectory(apps/inferx_model_inspect)
   add_subdirectory(apps/inferx_sim)
   add_subdirectory(apps/inferx_fsm_schema)
-  add_subdirectory(apps/inferx_model_inspect)
 endif()
 
 if(INFERX_ENABLE_CUDA)
@@ -54,6 +56,11 @@ if(INFERX_ENABLE_CUDA)
     add_subdirectory(apps/inferx_device_info)
   endif()
 endif()
+
+# Unified kernels layer (ADR 0031): the neutral dispatch target builds on
+# every preset; CUDA categories register only under INFERX_ENABLE_CUDA and
+# after InferXCuda.cmake has set the CUDA language variables.
+add_subdirectory(kernels)
 
 if(BUILD_TESTING)
   add_subdirectory(tests)

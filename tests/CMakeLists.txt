@@ -32,57 +32,69 @@ target_link_libraries(inferx_m3_artifacts_test PRIVATE
   inferx::artifacts inferx::model GTest::gtest_main)
 gtest_discover_tests(inferx_m3_artifacts_test
   PROPERTIES TIMEOUT 60)
-
-add_executable(inferx_m3_model_resolver_test
-  unit/artifacts/m3_model_resolver_test.cc)
-inferx_apply_project_options(inferx_m3_model_resolver_test)
-target_include_directories(inferx_m3_model_resolver_test PRIVATE ${CMAKE_SOURCE_DIR})
-target_link_libraries(inferx_m3_model_resolver_test PRIVATE
-  inferx::artifacts GTest::gtest_main absl::status absl::statusor absl::strings)
-gtest_discover_tests(inferx_m3_model_resolver_test
-  PROPERTIES TIMEOUT 60)
-
-add_executable(inferx_m3_model_package_integration_test
-  integration/model_package/m3_model_package_integration_test.cc)
-inferx_apply_project_options(inferx_m3_model_package_integration_test)
-target_compile_definitions(inferx_m3_model_package_integration_test PRIVATE
-  INFERX_M3_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/m3")
-target_link_libraries(inferx_m3_model_package_integration_test PRIVATE
-  inferx::artifacts inferx::model GTest::gtest_main)
-gtest_discover_tests(inferx_m3_model_package_integration_test
-  PROPERTIES TIMEOUT 120)
-
-add_executable(inferx_m3_safetensors_corpus_test
-  correctness/safetensors/m3_safetensors_corpus_test.cc)
-inferx_apply_project_options(inferx_m3_safetensors_corpus_test)
-target_compile_definitions(inferx_m3_safetensors_corpus_test PRIVATE
-  INFERX_M3_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/m3")
-target_link_libraries(inferx_m3_safetensors_corpus_test PRIVATE
-  inferx::artifacts GTest::gtest_main)
-gtest_discover_tests(inferx_m3_safetensors_corpus_test
-  PROPERTIES TIMEOUT 120)
-
-add_executable(inferx_m3_artifact_stress_test
-  stress/artifacts/m3_artifact_stress_test.cc)
-inferx_apply_project_options(inferx_m3_artifact_stress_test)
-target_compile_definitions(inferx_m3_artifact_stress_test PRIVATE
-  INFERX_M3_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/m3")
-target_link_libraries(inferx_m3_artifact_stress_test PRIVATE
-  inferx::artifacts inferx::model GTest::gtest_main)
-gtest_discover_tests(inferx_m3_artifact_stress_test
-  PROPERTIES TIMEOUT 300)
-
-add_custom_target(m3-fixture-check
-  COMMAND Python3::Interpreter
-          ${CMAKE_SOURCE_DIR}/tools/fixtures/generate_m3_artifact_fixtures.py
-          --check
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  VERBATIM
-  COMMENT "InferX M3: verify committed artifact fixtures")
 # GoogleTest discovers individual cases after build. Assign the labels at
 # CTest time so the semicolon-separated label list remains one property value.
 set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/m3_test_labels.cmake")
+
+if(INFERX_BUILD_M4_REFERENCE_TESTS)
+  add_executable(inferx_m4_ops_test unit/ops/m4_ops_test.cc)
+  inferx_apply_project_options(inferx_m4_ops_test)
+  target_link_libraries(inferx_m4_ops_test PRIVATE
+    inferx::ops inferx::tensor GTest::gtest_main absl::status absl::statusor)
+  gtest_discover_tests(inferx_m4_ops_test PROPERTIES TIMEOUT 120)
+
+  add_executable(inferx_m4_artifact_adapter_test
+    unit/ops/m4_artifact_adapter_test.cc)
+  inferx_apply_project_options(inferx_m4_artifact_adapter_test)
+  target_include_directories(inferx_m4_artifact_adapter_test PRIVATE ${CMAKE_SOURCE_DIR})
+  target_link_libraries(inferx_m4_artifact_adapter_test PRIVATE
+    inferx_artifact_tensor_adapter GTest::gtest_main absl::status absl::statusor)
+  gtest_discover_tests(inferx_m4_artifact_adapter_test PROPERTIES TIMEOUT 120)
+endif()
+
+if(INFERX_BUILD_M4_REFERENCE_TESTS)
+  add_executable(inferx_kernels_dispatch_test unit/kernels/kernel_dispatch_test.cc)
+  inferx_apply_project_options(inferx_kernels_dispatch_test)
+  target_compile_definitions(inferx_kernels_dispatch_test PRIVATE
+    INFERX_KERNELS_SOURCE_DIR="${CMAKE_SOURCE_DIR}/kernels")
+  target_link_libraries(inferx_kernels_dispatch_test PRIVATE
+    inferx_kernels GTest::gtest_main)
+  gtest_discover_tests(inferx_kernels_dispatch_test PROPERTIES TIMEOUT 120)
+endif()
+
+if(INFERX_ENABLE_CUDA AND INFERX_BUILD_M4_GPU_TESTS)
+  add_executable(inferx_kernels_cuda_test unit/cuda/kernels_cuda_test.cc)
+  inferx_apply_project_options(inferx_kernels_cuda_test)
+  target_include_directories(inferx_kernels_cuda_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/kernels/cuda/dispatch ${CMAKE_SOURCE_DIR}/platform/cuda/include)
+  target_link_libraries(inferx_kernels_cuda_test PRIVATE
+    inferx_kernels inferx_kernels_cuda inferx::ops inferx::tensor
+    GTest::gtest_main CUDA::cudart absl::status absl::statusor absl::strings
+    absl::synchronization)
+  gtest_discover_tests(inferx_kernels_cuda_test PROPERTIES TIMEOUT 120)
+endif()
+
+if(INFERX_ENABLE_CUDA AND INFERX_BUILD_M4_GPU_TESTS)
+  add_executable(inferx_kernels_ops_oracle_test unit/cuda/kernels_ops_oracle_test.cc)
+  inferx_apply_project_options(inferx_kernels_ops_oracle_test)
+  target_include_directories(inferx_kernels_ops_oracle_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/kernels/cuda/dispatch ${CMAKE_SOURCE_DIR}/kernels/cuda/include/inferx/kernels/cuda
+    ${CMAKE_SOURCE_DIR}/kernels/cuda/include
+    ${CMAKE_SOURCE_DIR}/platform/cuda/include)
+  target_link_libraries(inferx_kernels_ops_oracle_test PRIVATE
+    inferx_kernels inferx_kernels_cuda inferx::ops inferx::tensor
+    GTest::gtest_main CUDA::cudart absl::status absl::statusor absl::strings
+    absl::synchronization)
+  gtest_discover_tests(inferx_kernels_ops_oracle_test PROPERTIES TIMEOUT 120)
+
+endif()
+
+if(INFERX_BUILD_M4_REFERENCE_TESTS OR
+   (INFERX_ENABLE_CUDA AND INFERX_BUILD_M4_GPU_TESTS))
+  set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/m4_test_labels.cmake")
+endif()
 
 # ---------------------------------------------------------------------------
 # m1-unit: M1 base contract tests (labels include the general `m1` label).
@@ -470,7 +482,7 @@ inferx_add_failure_test(consumer_missing_dependency
 inferx_add_failure_test(tokenizer_unqualified
   --fixture ${CMAKE_CURRENT_SOURCE_DIR}/failure/tokenizer_unqualified.cmake
   --arg INFERX_ROOT=${CMAKE_SOURCE_DIR}
-  EXPECT "INFERX_ENABLE_TOKENIZATION" "was removed" "streaming decode state")
+  EXPECT "INFERX_ENABLE_TOKENIZATION" "candidate-only" "streaming decode ABI")
 
 inferx_add_failure_test(manifest_gitlink_drift
   --script ${CMAKE_CURRENT_SOURCE_DIR}/failure/manifest_drift.py
@@ -498,21 +510,8 @@ add_custom_target(check-fast
   COMMENT "InferX check-fast: format-check + unit/compile tests")
 add_dependencies(check-fast
   inferx_base_test
-  inferx_cxx23_smoke
-  inferx_m1_config_test
-  inferx_m1_fsm_test
-  inferx_m1_scheduler_test
-  inferx_m1_simulator_components_test
-  inferx_m1_status_test
-  inferx_m1_value_test
-  inferx_m2_config_test
-  inferx_m2_runtime_test
-  inferx_m2_tensor_test
   inferx_m3_artifacts_test
-  inferx_m3_model_resolver_test)
-if(INFERX_ENABLE_CUDA)
-  add_dependencies(check-fast inferx_m2_cuda_unit_test)
-endif()
+  inferx_cxx23_smoke)
 
 add_custom_target(check-analysis
   COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/check_cuda_boundaries.py

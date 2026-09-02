@@ -6,17 +6,6 @@ include(CMakeFindDependencyMacro)
 # exposes absl::Status/hash/format in public headers; the prefix must contain
 # the pinned Abseil package (proven by tests/consumer_absl in M0).
 find_dependency(absl CONFIG)
-find_dependency(simdjson CONFIG)
-if("@INFERX_ENABLE_HF_HUB@")
-  find_dependency(CURL 8.21)
-endif()
-
-# Bundled builds export the portable implementation as
-# inferx::blake3_internal. System-provider builds retain the qualified
-# external target in inferx::artifacts' static link interface.
-if("@INFERX_DEPENDENCY_PROVIDER@" STREQUAL "system")
-  find_dependency(blake3 1.8.7 CONFIG)
-endif()
 
 # Attach the pinned Abseil link interface to the installed static library.
 # The standalone-installed Abseil in this prefix provides both the headers

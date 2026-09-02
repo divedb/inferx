@@ -1,10 +1,7 @@
 # Model artifact format and trust boundary
 
-InferX's public model resolver accepts a local directory or case-preserving Hugging Face Hub ID. It
-checks configured local directories and the standard cache first, optionally downloads a safe
-non-executable artifact subset, then atomically materializes a symlink-free local snapshot as
-specified by ADR 0027. `ModelLocator` begins at that local boundary and never performs HTTP or cache
-resolution itself. The root is opened once; all fixed artifacts and index/manifest shard names pass `SafeRelativePath` and are opened below
+InferX opens an explicitly selected local directory and never resolves a Hub ID. The root is opened
+once; all fixed artifacts and index/manifest shard names pass `SafeRelativePath` and are opened below
 the directory fd. Valid paths are nonempty UTF-8 slash paths without absolute prefixes, NUL,
 backslash, empty, dot, or dot-dot components. Descendant symlinks and non-regular files fail.
 
