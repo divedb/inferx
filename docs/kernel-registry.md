@@ -31,7 +31,8 @@ backend and returns `Unimplemented` instead of silently falling back.
 
 `BuildRequiredKernelSet(LlamaOperatorSpec, OperatorEnvelope)` derives, normalizes, sorts, and
 deduplicates the embedding, norm, projection, RoPE, attention, activation, residual, and logits keys
-for every configured token bucket. The private model adapter converts the normalized M3 `ModelSpec`
+for every configured token bucket, with explicit prefill and decode attention requirements. The
+private model adapter converts the normalized M3 `ModelSpec`
 to `LlamaOperatorSpec`; this preserves `base <- tensor <- ops` dependency direction.
 
 `WarmupKernelSet` freezes the registry when needed, selects and prepares every required key into a
@@ -43,3 +44,9 @@ Vendor plans remain process-local. cuBLASLt descriptors and heuristics are creat
 `Prepare`; launch receives an already acquired aligned workspace view and an explicit stream. A
 changed envelope, SM, toolkit/backend version, dtype/layout, alignment class, or workspace cap
 requires preparation of a different key set.
+
+Each prepared plan records its contract and backend dependency version in addition to the normalized
+key and selected capability. `ComputeOperatorCompatibilityFingerprint` sorts those plans and hashes
+their durable key bytes, backend/capability/version identities, workspace requirements, the operator
+contract/key schemas, and the toolkit/runtime version. The separate `opcompat-v1-...` identity is
+order-independent and excludes pointers, opaque vendor algorithms, and timing results.

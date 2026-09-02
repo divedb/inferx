@@ -120,7 +120,7 @@ jobs:
           cmake --preset asan-ubsan
           cmake --build --preset asan-ubsan --parallel
           python3 tools/ci/check_m1_labels.py --build-dir out/build/asan-ubsan
-          ctest --preset asan-ubsan -L m1 --output-on-failure
+          ctest --preset asan-ubsan -L 'm1|m4' --output-on-failure
       - name: Nightly 1,000,000-operation deterministic stress
         if: github.event_name == 'schedule'
         run: |

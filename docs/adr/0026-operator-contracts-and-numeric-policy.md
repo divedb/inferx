@@ -25,6 +25,12 @@ byte intervals before mutation. Only the exact aliases documented in
 [`operator-contracts.md`](../operator-contracts.md) are accepted. Zero tokens are validated no-ops;
 semantic hidden, vocabulary, and head dimensions remain positive.
 
+The attention reference does not special-case non-finite scores into a fabricated distribution. A
+NaN score propagates NaN to the output row. A positive-infinity maximum likewise yields NaN under
+the explicit max-subtraction formula because `+Inf - +Inf` is NaN. The production capability is
+qualified for finite model values; adversarial tests retain the classification behavior as a safety
+gate.
+
 ## Alternatives
 
 - Reusing a vendor implementation as the reference was rejected because it would not be an
@@ -42,8 +48,9 @@ capabilities and correctness evidence. The reference remains intentionally bound
 ## Validation evidence
 
 `M4ReferenceTest.*` covers transactional embedding validation, `[out,in]` GEMM, RMSNorm/SwiGLU,
-half-split RoPE, causal GQA attention, and KV append. The GCC C++23 CPU build, eight M4 tests, and all
-75 public-header self-containment probes passed on 2026-09-01. Supported-GPU numeric and sanitizer
+standalone elementwise/residual/logits operations, half-split RoPE, causal prefill/decode GQA,
+pre-existing KV, and zero-query attention. The GCC C++23 CPU build, 16 M4 tests, and all 75
+public-header self-containment probes passed on 2026-09-01. Supported-GPU numeric and sanitizer
 evidence remains owned by the CUDA 13 CI lane and is not inferred from these CPU results.
 
 ## Supersession

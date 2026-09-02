@@ -35,7 +35,8 @@ plan, metadata/workspace lease, and final `CompletionFence` until acknowledgemen
 
 CUDA embedding and RoPE requests retain exact immutable host mirrors of token IDs and positions.
 The mirrors let launch reject semantic range errors before queueing work; the owned kernels also
-scan the device vectors before writing as a defense against a broken mirror/transfer contract.
+scan the device vectors before writing so an out-of-range device metadata value cannot cause an
+out-of-bounds read or partial output.
 
 ## Attention metadata
 
@@ -63,3 +64,8 @@ stores K after RoPE; cached K is never rotated again.
 Embedding copies must be bit-exact. Numeric tests additionally compare finite classification,
 absolute/relative worst cases, and operation-specific diagnostics; changing a maximum requires an
 independent error study and a superseding ADR.
+
+For adversarial attention inputs, any NaN score makes the complete output row NaN. Positive infinity
+also produces NaN through the specified max-subtraction formula (`+Inf - +Inf`); it is never replaced
+with an apparently finite probability distribution. The normal registered capability is qualified
+for finite weights and activations.
