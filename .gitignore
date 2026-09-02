@@ -29,3 +29,9 @@ __pycache__/
 .DS_Store
 tools/bench/tokenspeed/
 bench-venv/
+
+# Tokenizer vendor package: cargo build tree (the crate closure is vendored;
+# the staticlib is built into out/ via --target-dir).
+third_party/tokenizer/rust/target/
+# Tokenizer differential-corpus generation environment (tooling only).
+out/fixtures-venv/

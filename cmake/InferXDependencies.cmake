@@ -67,10 +67,10 @@ endfunction()
 # Core profile dependencies.
 #
 # Abseil, simdjson, BLAKE3, and (when enabled) curl are production requirements
-# for M3 artifact/model resolution. GoogleTest remains test-only and Google
+# for artifact/model resolution. GoogleTest remains test-only and Google
 # Benchmark benchmark-only.
 # ---------------------------------------------------------------------------
-# M1 exposes Abseil through inferx::base public headers (ADR 0008), so the
+# InferX exposes Abseil through inferx::base public headers (ADR 0008), so the
 # core profile is an unconditional prerequisite; GoogleTest/Benchmark remain
 # gated by their options below.
 set(_INFERX_CORE_PROFILE core)
@@ -168,11 +168,34 @@ if(_INFERX_CORE_PROFILE)
   endif()
 
   if(INFERX_ENABLE_TOKENIZATION)
-    message(FATAL_ERROR
-      "INFERX_ENABLE_TOKENIZATION is ON, but no tokenizer backend is approved. "
-      "divedb/tokenizer was removed after failing the M3.0 qualification gate; "
-      "an error-returning construction ABI and streaming decode state are still "
-      "required. Keep this option OFF until ADR 0025 records an approved replacement.")
+    # The qualified tokenizer backend (ADR 0024): an owned local-only
+    # adaptation of divedb/tokenizer's C++ over an owned error-returning Rust
+    # FFI shim on the Hugging Face `tokenizers` engine. nlohmann/json and
+    # minja (chat-template closure) are pinned submodules; the crate closure
+    # is vendored under third_party/tokenizer/rust/vendor and the cargo build
+    # is offline.
+    find_program(INFERX_CARGO_EXECUTABLE NAMES cargo)
+    if(NOT INFERX_CARGO_EXECUTABLE)
+      message(FATAL_ERROR
+        "INFERX_ENABLE_TOKENIZATION is ON, but cargo was not found. The "
+        "qualified tokenizer backend builds the Hugging Face tokenizers "
+        "engine from the vendored crate closure "
+        "(third_party/tokenizer/rust). Install Rust (rustup) so `cargo` is "
+        "on PATH, or configure with -DINFERX_ENABLE_TOKENIZATION=OFF to "
+        "build the artifact/model layers without the tokenizer.")
+    endif()
+    if(NOT EXISTS "${INFERX_THIRD_PARTY_DIR}/nlohmann-json/single_include")
+      inferx_fail_missing_dependency(nlohmann-json nlohmann-json core)
+    endif()
+    if(NOT EXISTS "${INFERX_THIRD_PARTY_DIR}/minja/include/minja")
+      inferx_fail_missing_dependency(minja minja core)
+    endif()
+    if(NOT EXISTS "${INFERX_THIRD_PARTY_DIR}/tokenizer/CMakeLists.txt")
+      inferx_fail_missing_dependency(tokenizer tokenizer core)
+    endif()
+    find_package(Threads REQUIRED)
+    add_subdirectory("${INFERX_THIRD_PARTY_DIR}/tokenizer"
+                     "${CMAKE_BINARY_DIR}/third_party/tokenizer")
   endif()
 
   # --- libcurl (native Hugging Face model resolution) ----------------------
@@ -227,7 +250,7 @@ if(_INFERX_CORE_PROFILE)
       inferx_dependency_scope_push(INSTALL_GTEST BUILD_GMOCK
                                    googletest_disable_pthreads)
       set(INSTALL_GTEST OFF)
-      # M0 declares GoogleMock part of the test dependency surface.
+      # GoogleMock is part of the test dependency surface.
       set(BUILD_GMOCK ON)
       add_subdirectory("${INFERX_THIRD_PARTY_DIR}/googletest"
                        "${CMAKE_BINARY_DIR}/third_party/googletest"

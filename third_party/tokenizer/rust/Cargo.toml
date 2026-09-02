@@ -1,0 +1,32 @@
+# Owned InferX tokenizer FFI shim (ADR 0024).
+#
+# This crate is the C ABI that the vendored `tokenizer` C++ package binds to.
+# It replaces the upstream tokenizers-cpp Rust shim, which aborts the process
+# through `unwrap()` on malformed `tokenizer.json`, aliases decode results to
+# handle-owned scratch, and exposes no streaming decode state. Every entry
+# point here returns an error code and, on failure, an owned error buffer;
+# no panic, abort, or unwind crosses the FFI.
+#
+# The engine is the official Hugging Face Rust `tokenizers` crate at 0.21.x,
+# pinned exactly by Cargo.lock and the vendored crate sources in `vendor/`.
+# The build is offline: `.cargo/config.toml` forbids network access.
+
+[package]
+name = "inferx-tokenizers-c"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+# rlib additionally so cargo tests can link the crate directly
+crate-type = ["staticlib", "rlib"]
+name = "inferx_tokenizers_c"
+
+[dependencies]
+tokenizers = { version = "=0.21.2", default-features = false, features = ["onig"] }
+
+[profile.release]
+# unwinding must remain available so `catch_unwind` can convert engine panics
+# into FFI error returns instead of aborting the host process.
+panic = "unwind"
+strip = "symbols"

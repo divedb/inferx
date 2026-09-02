@@ -48,14 +48,14 @@ if(NOT DEFINED BUILD_TESTING)
       "Build InferX tests (CTest standard switch).")
 endif()
 
-option(INFERX_BUILD_BENCHMARKS "Build InferX benchmarks (Google Benchmark smoke in M0)."
+option(INFERX_BUILD_BENCHMARKS "Build InferX benchmarks."
        ${_INFERX_TOP_LEVEL_DEFAULT})
 option(INFERX_BUILD_TOOLS "Build InferX developer tools such as inferx-info."
        ${_INFERX_TOP_LEVEL_DEFAULT})
 option(INFERX_ENABLE_TOKENIZATION
-       "Build the M3 tokenizer adapter after its dependency qualification gate is closed."
-       OFF)
-option(INFERX_M3_ENABLE_OPENAT2
+       "Build the tokenizer backend (owned local-only adaptation of divedb/tokenizer; ADR 0024)."
+       ON)
+option(INFERX_ENABLE_OPENAT2
        "Use Linux openat2 for rooted artifact opens, with a checked openat fallback."
        ON)
 option(INFERX_ENABLE_CUDA "Enable the optional CUDA platform (explicit opt-in; a missing toolkit is fatal when ON)."
@@ -66,31 +66,31 @@ option(INFERX_ENABLE_CUTLASS
        "Build the kernels-architecture CUTLASS GEMM provider (requires the gitlink, ADR 0032)." OFF)
 option(INFERX_ENABLE_HPC_OPS
        "Reserve the hpc-ops provider slot (SM90+ module; probes only until the adapter qualifies, ADR 0032)." OFF)
-option(INFERX_BUILD_M4_REFERENCE_TESTS "Build M4 CPU contract/reference tests."
+option(INFERX_BUILD_OPERATOR_REFERENCE_TESTS "Build CPU operator contract/reference tests."
        ${_INFERX_TOP_LEVEL_DEFAULT})
-option(INFERX_BUILD_M4_GPU_TESTS "Build M4 GPU tests (requires INFERX_ENABLE_CUDA)."
+option(INFERX_BUILD_OPERATOR_GPU_TESTS "Build operator GPU tests (requires INFERX_ENABLE_CUDA)."
        ${_INFERX_TOP_LEVEL_DEFAULT})
-option(INFERX_BUILD_M4_BENCHMARKS "Build M4 operator/dispatch benchmarks."
+option(INFERX_BUILD_OPERATOR_BENCHMARKS "Build operator/dispatch benchmarks."
        ${_INFERX_TOP_LEVEL_DEFAULT})
 # The kernels-architecture branch (ADR 0031/0032) supersedes the ADR 0029
 # rejection for the new provider chain: FlashInfer/CUTLASS enter as AOT
 # instantiations of the pinned gitlinks with no JIT/cubin-loading path, and
 # the option gates remain OFF by default until qualification evidence is
-# complete. The legacy M4 platform adapters are unaffected.
-option(INFERX_BUILD_GPU_TESTS "Build M2 GPU tests (requires INFERX_ENABLE_CUDA)."
+# complete. The legacy platform adapters are unaffected.
+option(INFERX_BUILD_GPU_TESTS "Build GPU platform tests (requires INFERX_ENABLE_CUDA)."
        ${_INFERX_TOP_LEVEL_DEFAULT})
 option(INFERX_BUILD_COMPUTE_SANITIZER_TESTS
-       "Register M2 Compute Sanitizer tests (requires CUDA and compute-sanitizer)." OFF)
+       "Register Compute Sanitizer tests (requires CUDA and compute-sanitizer)." OFF)
 option(INFERX_CUDA_ENABLE_LINEINFO
        "Compile InferX CUDA kernels with device line information." ON)
 if(INFERX_BUILD_GPU_TESTS AND NOT INFERX_ENABLE_CUDA)
   # GPU tests default with top-level builds but remain dormant in CPU builds.
   set(INFERX_BUILD_GPU_TESTS OFF CACHE BOOL
-      "Build M2 GPU tests (requires INFERX_ENABLE_CUDA)." FORCE)
+      "Build GPU platform tests (requires INFERX_ENABLE_CUDA)." FORCE)
 endif()
-if(INFERX_BUILD_M4_GPU_TESTS AND NOT INFERX_ENABLE_CUDA)
-  set(INFERX_BUILD_M4_GPU_TESTS OFF CACHE BOOL
-      "Build M4 GPU tests (requires INFERX_ENABLE_CUDA)." FORCE)
+if(INFERX_BUILD_OPERATOR_GPU_TESTS AND NOT INFERX_ENABLE_CUDA)
+  set(INFERX_BUILD_OPERATOR_GPU_TESTS OFF CACHE BOOL
+      "Build operator GPU tests (requires INFERX_ENABLE_CUDA)." FORCE)
 endif()
 if(INFERX_BUILD_COMPUTE_SANITIZER_TESTS AND NOT INFERX_ENABLE_CUDA)
   message(FATAL_ERROR
@@ -102,7 +102,7 @@ option(INFERX_ENABLE_CLANG_TIDY "Run clang-tidy on InferX-owned targets (analysi
        OFF)
 option(INFERX_ENABLE_IWYU "Run include-what-you-use on InferX-owned targets (analysis preset)."
        OFF)
-option(INFERX_ENABLE_ASAN "Enable AddressSanitizer (CPU-only in M0; mutually exclusive with TSan)."
+option(INFERX_ENABLE_ASAN "Enable AddressSanitizer (CPU-only; mutually exclusive with TSan)."
        OFF)
 option(INFERX_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer (combined with ASan in the standard preset)."
        OFF)
@@ -143,7 +143,7 @@ set(_INFERX_WARNING_FLAGS
     -Woverloaded-virtual)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   # CXX-only: host warning flags must not be forwarded through NVCC (CUDA
-  # warning flags are selected separately; m0.md section 6.5).
+  # warning flags are selected separately).
   target_compile_options(inferx_project_warnings INTERFACE
     $<$<COMPILE_LANGUAGE:CXX>:${_INFERX_WARNING_FLAGS}>)
   if(INFERX_WARNINGS_AS_ERRORS)
@@ -164,7 +164,7 @@ endif()
 # ---------------------------------------------------------------------------
 function(inferx_apply_project_options target)
   # BUILD_INTERFACE keeps build-only policy libraries out of the installed
-  # export of a static library (m0.md section 6.4).
+  # export of a static library.
   target_link_libraries(${target} PRIVATE
     $<BUILD_INTERFACE:inferx_project_options>
     $<BUILD_INTERFACE:inferx_project_warnings>)

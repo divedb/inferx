@@ -28,3 +28,9 @@
 [submodule "third_party/curl"]
 	path = third_party/curl
 	url = https://github.com/curl/curl.git
+[submodule "third_party/nlohmann-json"]
+	path = third_party/nlohmann-json
+	url = https://github.com/nlohmann/json.git
+[submodule "third_party/minja"]
+	path = third_party/minja
+	url = https://github.com/google/minja.git

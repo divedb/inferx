@@ -1,0 +1,12 @@
+# Offline builds only: the crate closure is vendored under rust/vendor/ and
+# recorded in Cargo.lock. No crates.io or network access happens at build
+# time (ADR 0024 qualification criterion).
+
+[source.crates-io]
+replace-with = "vendored-sources"
+
+[source.vendored-sources]
+directory = "vendor"
+
+[net]
+offline = true

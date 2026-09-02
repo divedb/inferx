@@ -88,8 +88,28 @@ def validate_entry(entry: dict, index: int) -> None:
     for field in REQUIRED_FIELDS:
         if field not in entry:
             raise Drift(f"{where}: missing required field '{field}'")
-    if entry["source_kind"] != "git-submodule":
+    if entry["source_kind"] not in ("git-submodule", "vendored-adaptation"):
         raise Drift(f"{where}: unsupported source_kind {entry['source_kind']!r}")
+    if entry["source_kind"] == "vendored-adaptation":
+        # In-tree qualified adaptation (ADR 0024): the revision records
+        # upstream provenance; there is no gitlink to drift against, so only
+        # the schema fields, status, and the license/qualification records
+        # are enforced.
+        if entry["status"] not in ALLOWED_STATUS:
+            raise Drift(f"{where}: status {entry['status']!r} not in sorted({sorted(ALLOWED_STATUS)})")
+        if not HEX40.match(entry["revision"]):
+            raise Drift(f"{where}: revision {entry['revision']!r} is not a 40-hex sha1")
+        if not entry["path"].startswith("third_party/"):
+            raise Drift(f"{where}: path {entry['path']!r} must live under third_party/")
+        if not entry["license_file"].startswith("third_party/"):
+            raise Drift(f"{where}: license_file {entry['license_file']!r} must live under third_party/")
+        if not isinstance(entry["features"], list) or not all(
+            isinstance(f, str) for f in entry["features"]
+        ):
+            raise Drift(f"{where}: features must be a list of profile/feature names")
+        if not isinstance(entry["default_enabled"], bool):
+            raise Drift(f"{where}: default_enabled must be a boolean")
+        return
     if entry["status"] not in ALLOWED_STATUS:
         raise Drift(f"{where}: status {entry['status']!r} not in sorted({sorted(ALLOWED_STATUS)})")
     if not HEX40.match(entry["revision"]):
@@ -169,6 +189,17 @@ def check_manifest(manifest_path: Path, root: Path, *, notes: list[str] | None =
                 errors.append(
                     f"{path}: manifest marks the dependency removed but .gitmodules "
                     "still declares it; removal must update .gitmodules"
+                )
+            continue
+
+        if entry["source_kind"] == "vendored-adaptation":
+            # In-tree adaptation: no gitlink by design; the tree's presence
+            # and license file are the checks.
+            if not (root / path).is_dir():
+                errors.append(f"{path}: vendored adaptation directory is missing")
+            if not (root / entry["license_file"]).exists():
+                errors.append(
+                    f"{path}: license file {entry['license_file']} is missing"
                 )
             continue
 

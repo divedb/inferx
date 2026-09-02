@@ -32,6 +32,49 @@ target_link_libraries(inferx_m3_artifacts_test PRIVATE
   inferx::artifacts inferx::model GTest::gtest_main)
 gtest_discover_tests(inferx_m3_artifacts_test
   PROPERTIES TIMEOUT 60)
+
+if(INFERX_ENABLE_TOKENIZATION)
+  add_executable(inferx_m3_tokenization_test
+    unit/tokenization/tokenizer_smoke_test.cc)
+  inferx_apply_project_options(inferx_m3_tokenization_test)
+  target_link_libraries(inferx_m3_tokenization_test PRIVATE
+    inferx::tokenization GTest::gtest_main)
+  target_compile_definitions(inferx_m3_tokenization_test PRIVATE
+    TOKENIZER_JSON_PATH="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/m3/tokenizer_reference/qwen2.5/tokenizer.json"
+    TOKENIZER_CONFIG_PATH="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/m3/tokenizer_reference/qwen2.5/tokenizer_config.json")
+  gtest_discover_tests(inferx_m3_tokenization_test
+    PROPERTIES TIMEOUT 120)
+
+  add_executable(inferx_m3_tokenizer_differential_test
+    correctness/tokenization/tokenizer_differential_test.cc)
+  inferx_apply_project_options(inferx_m3_tokenizer_differential_test)
+  target_link_libraries(inferx_m3_tokenizer_differential_test PRIVATE
+    inferx::tokenization GTest::gtest_main simdjson::simdjson)
+  target_compile_definitions(inferx_m3_tokenizer_differential_test PRIVATE
+    TOKENIZER_REFERENCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/m3/tokenizer_reference")
+  gtest_discover_tests(inferx_m3_tokenizer_differential_test
+    PROPERTIES TIMEOUT 600 LABELS "m3;m3-correctness")
+
+  add_executable(inferx_m3_tokenizer_subprocess_test
+    failure/tokenization/tokenizer_subprocess_test.cc)
+  inferx_apply_project_options(inferx_m3_tokenizer_subprocess_test)
+  target_link_libraries(inferx_m3_tokenizer_subprocess_test PRIVATE
+    inferx::tokenization GTest::gtest_main)
+  target_compile_definitions(inferx_m3_tokenizer_subprocess_test PRIVATE
+    TOKENIZER_JSON_PATH="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/m3/tokenizer_reference/qwen2.5/tokenizer.json")
+  gtest_discover_tests(inferx_m3_tokenizer_subprocess_test
+    PROPERTIES TIMEOUT 300 LABELS "m3;m3-failure")
+
+  add_executable(inferx_m3_tokenizer_pool_stress_test
+    stress/tokenization/tokenizer_pool_stress_test.cc)
+  inferx_apply_project_options(inferx_m3_tokenizer_pool_stress_test)
+  target_link_libraries(inferx_m3_tokenizer_pool_stress_test PRIVATE
+    inferx::tokenization GTest::gtest_main)
+  target_compile_definitions(inferx_m3_tokenizer_pool_stress_test PRIVATE
+    TOKENIZER_JSON_PATH="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/m3/tokenizer_reference/qwen2.5/tokenizer.json")
+  gtest_discover_tests(inferx_m3_tokenizer_pool_stress_test
+    PROPERTIES TIMEOUT 300 LABELS "m3;m3-stress")
+endif()
 # GoogleTest discovers individual cases after build. Assign the labels at
 # CTest time so the semicolon-separated label list remains one property value.
 set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
@@ -414,10 +457,10 @@ inferx_add_failure_test(consumer_missing_dependency
   --arg CONSUMER_DIR=${CMAKE_CURRENT_SOURCE_DIR}/consumer_absl
   EXPECT "absl")
 
-inferx_add_failure_test(tokenizer_unqualified
-  --fixture ${CMAKE_CURRENT_SOURCE_DIR}/failure/tokenizer_unqualified.cmake
-  --arg INFERX_ROOT=${CMAKE_SOURCE_DIR}
-  EXPECT "INFERX_ENABLE_TOKENIZATION" "was removed" "streaming decode state")
+# The tokenizer_unqualified fixture existed to prove the rejected divedb
+# candidate could not be enabled accidentally (ADR 0024, pre-acceptance).
+# The gate is closed: the owned qualified backend configures and builds, and
+# the m3 tokenization suites cover it; the obsolete expected-failure is gone.
 
 inferx_add_failure_test(manifest_gitlink_drift
   --script ${CMAKE_CURRENT_SOURCE_DIR}/failure/manifest_drift.py

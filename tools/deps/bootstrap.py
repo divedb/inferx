@@ -47,7 +47,10 @@ def select(manifest: dict, profile: str | None, dependency: str | None) -> list[
     if profile not in manifest.get("profiles", {}):
         known = ", ".join(sorted(manifest.get("profiles", {}))) or "(none)"
         sys.exit(f"error: unknown profile {profile!r}; known profiles: {known}")
-    return [deps[name] for name in manifest["profiles"][profile]]
+    # Only git-submodule entries are initialized here; vendored trees (e.g.
+    # the tokenizer package) live in-tree and need no bootstrap.
+    return [deps[name] for name in manifest["profiles"][profile]
+            if deps[name].get("source_kind") == "git-submodule"]
 
 
 def bootstrap(entry: dict) -> bool:

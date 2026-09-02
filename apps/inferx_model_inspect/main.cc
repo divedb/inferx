@@ -5,7 +5,7 @@
 #include <string_view>
 
 #include "inferx/artifacts/model_resolver.h"
-#include "inferx/model/model_package.h"
+#include "inferx/input/model_package.h"
 
 namespace {
 
@@ -74,31 +74,29 @@ int main(int argc, char** argv) {
     std::cerr << "model resolution failed: " << resolved.status() << '\n';
     return 1;
   }
-  inferx::model::ModelArtifactLoader loader;
-  auto package = loader.Inspect(resolved->path);
+  inferx::input::PackageTokenizerPolicy policy;
+  auto package = inferx::input::ModelPackageLoader::Load(resolved->path.string(), policy);
   if (!package.ok()) {
     std::cerr << "model inspection failed: " << package.status() << '\n';
     return 1;
   }
-  const auto& llama = package->model_spec.llama();
+  const auto& llama = package->model_spec().llama();
   std::cout << "model=" << resolved->model << '\n'
             << "model_source=" << inferx::artifacts::ModelSourceName(resolved->source) << '\n'
             << "model_path=" << resolved->path.string() << '\n'
             << "model_revision=" << resolved->revision << '\n'
             << "architecture=llama\n"
-            << "weights_entry=" << package->weights_entry.string() << '\n'
+            << "weights_entry=" << package->weights_entry().string() << '\n'
             << "vocab_size=" << llama.vocab_size << '\n'
             << "hidden_size=" << llama.hidden_size << '\n'
             << "layers=" << llama.num_hidden_layers << '\n'
             << "attention_heads=" << llama.num_attention_heads << '\n'
             << "key_value_heads=" << llama.num_key_value_heads << '\n'
-            << "parameters_expected=" << package->weight_plan.coverage.expected << '\n'
-            << "parameters_assigned=" << package->weight_plan.coverage.assigned << '\n'
-            << "parameters_aliased=" << package->weight_plan.coverage.aliased << '\n'
-            << "integrity_manifest=" << (package->integrity_manifest ? "true" : "false") << '\n'
-            << "tokenizer_qualified=false\n"
-            << "model_fingerprint=unavailable\n";
-  std::cerr << "note: tokenizer/fingerprint publication is blocked by the "
-               "ADR 0025 dependency qualification gate\n";
+            << "parameters_expected=" << package->weight_plan().coverage.expected << '\n'
+            << "parameters_assigned=" << package->weight_plan().coverage.assigned << '\n'
+            << "parameters_aliased=" << package->weight_plan().coverage.aliased << '\n'
+            << "integrity_manifest=" << (package->integrity_manifest() ? "true" : "false") << '\n'
+            << "tokenizer_qualified=true\n"
+            << "model_fingerprint=" << package->fingerprint().digest().Hex() << '\n';
   return 0;
 }

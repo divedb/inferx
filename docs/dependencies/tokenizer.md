@@ -1,63 +1,82 @@
-# Qualification report: tokenizer (divedb/tokenizer)
+# Qualification report: tokenizer (owned adaptation of divedb/tokenizer)
 
-- Manifest entry: `tokenizer` — candidate, feature `tokenization` (M3), owner `tokenization`
-- Pin: `f109b7aef148dd4866a3dae7a8e5a6d221f95c75` (audited 2026-08-31)
-- License: MIT (`LICENSE` at the pin, verified via raw.githubusercontent.com)
+- Manifest entries: `tokenizer` (owned vendor package), `nlohmann-json`, `minja` —
+  feature `tokenization` (M3), owner `tokenization`
+- Provenance: divedb/tokenizer @ `f109b7aef148dd4866a3dae7a8e5a6d221f95c75` (MIT),
+  adapted locally; the Rust FFI shim and its build are new InferX code
+- Decision: **Accepted (ADR 0024, 2026-09-02)**
 
-## 1. Which InferX contract would use it?
+## 1. Which InferX contract uses it?
 
-Native `tokenizer.json` encode/decode behind the `Tokenizer` interface with incremental
-detokenization (plan section 8.3).
+Native `tokenizer.json` encode/decode/streaming-decode/chat-template behind
+`inferx::tokenization::Tokenizer` (m3.md section 13), plus prompt processing
+and the validated model package (m3.md section 14).
 
-## 2. Required now, deferred, experimental, or rejected?
+## 2. Required/deferred/experimental/rejected?
 
-Rejected unchanged by M3.0. The gitlink remains as audit evidence and is not configured or linked.
+Accepted, replacing the 2026-08-31 rejection of the unchanged upstream. The
+rejection's four findings are each closed:
+
+| Rejection finding | Closure |
+|---|---|
+| force-added duplicate deps; nested-tree symlink mutation | owned vendor CMake; parent-provided Abseil; no add_subdirectory of upstream; no symlinks |
+| unconditional Hub/curl/OpenSSL network closure | hub/cache/curl/OpenSSL code deleted; loading consumes bytes only |
+| `unwrap()`/abort reachable from malformed bytes | owned shim: every entry `catch_unwind`-guarded, status + owned error buffer; subprocess fuzz corpus proves no abort |
+| no upstream streaming decode state | `ixtok_stream_new/step/finish` externalize the upstream `step_decode_stream` state |
 
 ## 3. Source and transitive dependencies
 
-The pin force-configures private Abseil and GoogleTest copies, nlohmann/json, minja,
-tokenizers-cpp/SentencePiece, curl, and system OpenSSL. Its default target always compiles Hub/cache
-and HTTP sources. It mutates a nested SentencePiece tree with a symlink at configure time and uses
-`CACHE ... FORCE`, so it cannot be embedded under InferX's dependency policy unchanged.
+- Rust engine: official Hugging Face `tokenizers` crate `=0.21.2`; the full
+  crates.io closure (80 crates) is vendored under
+  `third_party/tokenizer/rust/vendor/` and pinned by `Cargo.lock`. Licenses:
+  Apache-2.0/MIT (tokenizers, rayon, serde, ...), BSD-2-Clause (onig_sys's
+  vendored Oniguruma), Unicode-3.0 (unicode-ident). The build is offline by
+  configuration (`[net] offline = true`).
+- Chat-template closure: `minja` (Apache-2.0) and `nlohmann/json` (MIT) as
+  pinned submodules; private to the vendor target, never in an InferX
+  public header.
+- C++ layer deps: parent Abseil only.
 
-## 4. Toolchain/C++23 compatibility
+## 4. Toolchain compatibility
 
-The surface is C++20-compatible, but the unchanged CMake composition collides with InferX's Abseil
-targets before a qualified C++23 integration can be produced.
+C++23 (GCC 13 / Clang 18 lanes) via the adapted divedb sources; Rust via
+`cargo` (1.97-era toolchain tested) building a `staticlib` with `panic =
+"unwind"` so `catch_unwind` can convert engine panics into FFI error
+returns. The staticlib links `Threads`/`dl` only.
 
 ## 5. Runtime behavior caveats
 
-`PretrainedTokenizer` is explicitly thread-affine and non-thread-safe. Rust encode/decode results
-alias handle-owned scratch. More importantly, the C shim calls Rust `unwrap()` for malformed
-`tokenizer.json` and invalid UTF-8; the C++ layer can pre-screen common cases but cannot guarantee
-that arbitrary malformed tokenizer structures will not abort. The public surface has no upstream
-streaming decode state.
+One thread-affine engine handle per exclusive instance; the InferX facade
+lends instances under a mutex/condvar and the pool owns one per worker.
+Engine-internal Rayon parallelism is disabled on the serving path. Decode
+and stream results are caller-owned buffers; nothing aliases handle state.
 
-## 6. API stability and namespaces
+## 6. API stability
 
-Small project (single-digit stars); API stability must be treated as unstable — the M3
-adapter wraps it entirely behind InferX's `Tokenizer` interface, and differential tests
-against Hugging Face Tokenizers are the acceptance gate.
+Unstable, first-party, and completely hidden behind
+`inferx::tokenization`/`inferx::input`; no vendor type appears in any InferX
+public header. Upgrades require re-running the differential corpus.
 
-## 7. License/notice obligations and security
+## 7. License/security
 
-MIT at the pinned revision. Fuzz the parser on untrusted `tokenizer.json` (plan section
-17.3 requires the security audit). No known advisories; small attack surface but
-unaudited.
+MIT (adapted C++), Apache-2.0/MIT (Rust engine closure), Apache-2.0 (minja),
+MIT (nlohmann). The parser is fuzzed in a subprocess (committed corpus plus
+seeded mutations); malformed input is a typed error, never an abort. No
+credentials, network, or paths outside the rooted artifact session.
 
-## 8. Binary/build/startup cost
+## 8. Cost
 
-The dependency has no binary/build/startup cost because it was removed. The retained owned Hub
-resolver is measured independently from any future tokenizer backend.
+Offline cargo build (~12 s warm, ~1 min cold) producing a ~37 MB static
+archive; per-instance engine construction ~0.3 s per real checkpoint
+(Qwen2.5 measured on the dev host).
 
-## 9. Upgrade/rollback procedure
+## 9. Upgrade/rollback
 
-An upgrade is eligible only when it supplies local-only composition, parent-provided Abseil/tests,
-owned error returns across FFI, and upstream streaming decode state. It then runs the 10,000-case
-differential corpus, subprocess malformed-input corpus, TSan pool stress, and license/SBOM audit.
+The vendor tree is repo-owned: upgrades are repo commits diffing against the
+recorded upstream revision, followed by the full differential corpus,
+subprocess corpus, and TSan pool gate. Rollback is `git revert`.
 
-## 10. Disposition and approvals
+## 10. Disposition
 
-**Rejected unchanged**, owner `tokenization`. `INFERX_ENABLE_TOKENIZATION=ON` fails configuration
-until ADR 0024 names an approved replacement pin. The rejection is a hard M3 completion gate, not a
-runtime fallback.
+Approved (ADR 0024). `INFERX_ENABLE_TOKENIZATION` defaults ON; missing
+cargo/submodules fail configure with the exact bootstrap remediation.

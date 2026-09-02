@@ -24,7 +24,7 @@ include(cmake/InferXDependencies.cmake)
 include(cmake/InferXInstall.cmake)
 
 # ---------------------------------------------------------------------------
-# M0-owned subdirectories only. Optional dependency directories are never
+# First-party subdirectories only. Optional dependency directories are never
 # inspected unless their feature is enabled (see InferXDependencies.cmake).
 # ---------------------------------------------------------------------------
 add_subdirectory(src/base)
@@ -37,6 +37,8 @@ add_subdirectory(src/tensor)
 add_subdirectory(src/runtime)
 add_subdirectory(src/artifacts)
 add_subdirectory(src/model)
+add_subdirectory(src/tokenization)
+add_subdirectory(src/input)
 add_subdirectory(src/ops)
 add_subdirectory(src/model_adapters)
 add_subdirectory(simulator)
@@ -66,7 +68,7 @@ if(INFERX_BUILD_BENCHMARKS)
 endif()
 
 # ---------------------------------------------------------------------------
-# Format targets (m0.md section 9.1): 'format' mutates tracked InferX
+# Format targets: 'format' mutates tracked InferX
 # sources; 'format-check' never mutates and is what CI runs.
 # ---------------------------------------------------------------------------
 add_custom_target(format

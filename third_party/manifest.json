@@ -1,205 +1,261 @@
 {
-  "schema_version": 1,
-  "profiles": {
-    "core": [
-      "simdjson",
-      "abseil-cpp",
-      "blake3",
-      "curl",
-      "googletest",
-      "benchmark"
-    ],
-    "kernels": [
-      "cutlass",
-      "flashinfer"
-    ],
-    "experimental-kernels": [
-      "hpc-ops"
-    ]
-  },
-  "dependencies": [
-    {
-      "name": "simdjson",
-      "source_kind": "git-submodule",
-      "path": "third_party/simdjson",
-      "url": "https://github.com/simdjson/simdjson.git",
-      "revision": "0a851a64cd984e9e1a6cab93b6e773aa3f4dc30d",
-      "license": "Apache-2.0",
-      "license_file": "third_party/simdjson/LICENSE",
-      "owner": "config-artifacts",
-      "features": [
-        "core"
-      ],
-      "default_enabled": true,
-      "status": "approved",
-      "qualification": "docs/dependencies/simdjson.md"
-    },
-    {
-      "name": "blake3",
-      "source_kind": "git-submodule",
-      "path": "third_party/blake3",
-      "url": "https://github.com/BLAKE3-team/BLAKE3.git",
-      "revision": "f3149ec5bb5449af877ba20377a11008ff499fa2",
-      "license": "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception",
-      "license_file": "third_party/blake3/LICENSE_A2",
-      "owner": "artifacts",
-      "features": [
-        "core"
-      ],
-      "default_enabled": true,
-      "status": "approved",
-      "qualification": "docs/dependencies/blake3.md"
-    },
-    {
-      "name": "abseil-cpp",
-      "source_kind": "git-submodule",
-      "path": "third_party/abseil-cpp",
-      "url": "https://github.com/abseil/abseil-cpp.git",
-      "revision": "2c004366e983c5be8334ac1ea3d4420e8fbcbea7",
-      "license": "Apache-2.0",
-      "license_file": "third_party/abseil-cpp/LICENSE",
-      "owner": "base",
-      "features": [
-        "core"
-      ],
-      "default_enabled": true,
-      "status": "approved",
-      "qualification": "docs/dependencies/abseil-cpp.md"
-    },
-    {
-      "name": "googletest",
-      "source_kind": "git-submodule",
-      "path": "third_party/googletest",
-      "url": "https://github.com/google/googletest.git",
-      "revision": "063de7e9578f82b369302001269680b4b1553359",
-      "license": "BSD-3-Clause",
-      "license_file": "third_party/googletest/LICENSE",
-      "owner": "tests",
-      "features": [
-        "core"
-      ],
-      "default_enabled": true,
-      "status": "approved",
-      "qualification": "docs/dependencies/googletest.md",
-      "notes": "Pinned to release tag v1.18.0; build/test-only dependency."
-    },
-    {
-      "name": "benchmark",
-      "source_kind": "git-submodule",
-      "path": "third_party/benchmark",
-      "url": "https://github.com/google/benchmark.git",
-      "revision": "192ef10025eb2c4cdd392bc502f0c852196baa48",
-      "license": "Apache-2.0",
-      "license_file": "third_party/benchmark/LICENSE",
-      "owner": "benchmarks",
-      "features": [
-        "core"
-      ],
-      "default_enabled": true,
-      "status": "approved",
-      "qualification": "docs/dependencies/benchmark.md",
-      "notes": "Pinned to release tag v1.9.5; build/test-only dependency."
-    },
-    {
-      "name": "beast",
-      "source_kind": "git-submodule",
-      "path": "third_party/beast",
-      "url": "https://github.com/boostorg/beast.git",
-      "revision": "cbbabdec878641ddf83a9be24f75666742cd2b8d",
-      "license": "BSL-1.0",
-      "license_file": "third_party/beast/LICENSE_1_0.txt",
-      "owner": "server",
-      "features": [
-        "http-server"
-      ],
-      "default_enabled": false,
-      "status": "qualified-deferred",
-      "qualification": "docs/dependencies/beast.md",
-      "notes": "Deferred to M9. Beast alone is not a complete dependency: the Boost.Asio/System header closure must be pinned and qualified first."
-    },
-    {
-      "name": "cutlass",
-      "source_kind": "git-submodule",
-      "path": "third_party/cutlass",
-      "url": "https://github.com/NVIDIA/cutlass.git",
-      "revision": "dc45f979ae336a235da1676b311f35efeb30149a",
-      "license": "BSD-3-Clause",
-      "license_file": "third_party/cutlass/LICENSE.txt",
-      "owner": "ops",
-      "features": [
-        "kernels"
-      ],
-      "default_enabled": false,
-      "status": "approved",
-      "qualification": "docs/dependencies/cutlass.md",
-      "notes": "Deferred to M4. CUDA/toolchain compatibility audit required against the accepted toolkit pin."
-    },
-    {
-      "name": "flashinfer",
-      "source_kind": "git-submodule",
-      "path": "third_party/flashinfer",
-      "url": "https://github.com/flashinfer-ai/flashinfer.git",
-      "revision": "44428003ba219c14b5473fefec8f7bfd4b72178e",
-      "license": "Apache-2.0",
-      "license_file": "third_party/flashinfer/LICENSE",
-      "owner": "ops",
-      "features": [
-        "kernels"
-      ],
-      "default_enabled": false,
-      "status": "approved",
-      "qualification": "docs/dependencies/flashinfer.md",
-      "notes": "Deferred to M4. Not approved for production use without the M4 native C++ spike; transitive closure includes Python-facing tooling that must not enter the runtime."
-    },
-    {
-      "name": "hpc-ops",
-      "source_kind": "git-submodule",
-      "path": "third_party/hpc-ops",
-      "url": "https://github.com/Tencent/hpc-ops.git",
-      "revision": "f39028d9f5ab77f71906fbf929d1b611859ab6b7",
-      "license": "MIT (with third-party component exceptions)",
-      "license_file": "third_party/hpc-ops/LICENSE.txt",
-      "owner": "ops",
-      "features": [
-        "experimental-kernels"
-      ],
-      "default_enabled": false,
-      "status": "candidate",
-      "qualification": "docs/dependencies/hpc-ops.md",
-      "notes": "Experimental and disabled. Audit only; hardware/Python/toolkit constraints recorded in the report."
-    },
-    {
-      "name": "folly",
-      "source_kind": "git-submodule",
-      "path": "third_party/folly",
-      "url": "https://github.com/facebook/folly.git",
-      "revision": "39d23d493c5947f043e78932d9c5822963449b33",
-      "license": "Apache-2.0",
-      "license_file": "third_party/folly/LICENSE",
-      "owner": "unowned",
-      "features": [],
-      "default_enabled": false,
-      "status": "rejected",
-      "qualification": "docs/dependencies/folly.md",
-      "removed": true,
-      "notes": "No approved use case; the C++23 host plus Asio lane covers the roadmap need at a fraction of the build/dependency cost. Gitlink removed in M0; report retained for the audit trail."
-    },
-    {
-      "name": "curl",
-      "source_kind": "git-submodule",
-      "path": "third_party/curl",
-      "url": "https://github.com/curl/curl.git",
-      "revision": "68720b4837284335b2d63cb358f8f6ce65f5bc55",
-      "license": "curl",
-      "license_file": "third_party/curl/COPYING",
-      "owner": "artifacts-model-resolution",
-      "features": [
-        "core"
-      ],
-      "default_enabled": true,
-      "status": "approved",
-      "qualification": "docs/dependencies/curl.md",
-      "notes": "Promoted from divedb/tokenizer's transitive transport to signed stable release 8.21.0. Built static, HTTP(S)-only, with system OpenSSL; CLI/tests/examples and optional protocol dependencies are disabled."
-    }
+ "schema_version": 1,
+ "profiles": {
+  "core": [
+   "simdjson",
+   "abseil-cpp",
+   "blake3",
+   "curl",
+   "googletest",
+   "benchmark"
+  ],
+  "kernels": [
+   "cutlass",
+   "flashinfer"
+  ],
+  "experimental-kernels": [
+   "hpc-ops"
+  ],
+  "tokenization": [
+   "nlohmann-json",
+   "minja",
+   "tokenizer-package"
   ]
+ },
+ "dependencies": [
+  {
+   "name": "simdjson",
+   "source_kind": "git-submodule",
+   "path": "third_party/simdjson",
+   "url": "https://github.com/simdjson/simdjson.git",
+   "revision": "0a851a64cd984e9e1a6cab93b6e773aa3f4dc30d",
+   "license": "Apache-2.0",
+   "license_file": "third_party/simdjson/LICENSE",
+   "owner": "config-artifacts",
+   "features": [
+    "core"
+   ],
+   "default_enabled": true,
+   "status": "approved",
+   "qualification": "docs/dependencies/simdjson.md"
+  },
+  {
+   "name": "blake3",
+   "source_kind": "git-submodule",
+   "path": "third_party/blake3",
+   "url": "https://github.com/BLAKE3-team/BLAKE3.git",
+   "revision": "f3149ec5bb5449af877ba20377a11008ff499fa2",
+   "license": "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception",
+   "license_file": "third_party/blake3/LICENSE_A2",
+   "owner": "artifacts",
+   "features": [
+    "core"
+   ],
+   "default_enabled": true,
+   "status": "approved",
+   "qualification": "docs/dependencies/blake3.md"
+  },
+  {
+   "name": "abseil-cpp",
+   "source_kind": "git-submodule",
+   "path": "third_party/abseil-cpp",
+   "url": "https://github.com/abseil/abseil-cpp.git",
+   "revision": "2c004366e983c5be8334ac1ea3d4420e8fbcbea7",
+   "license": "Apache-2.0",
+   "license_file": "third_party/abseil-cpp/LICENSE",
+   "owner": "base",
+   "features": [
+    "core"
+   ],
+   "default_enabled": true,
+   "status": "approved",
+   "qualification": "docs/dependencies/abseil-cpp.md"
+  },
+  {
+   "name": "googletest",
+   "source_kind": "git-submodule",
+   "path": "third_party/googletest",
+   "url": "https://github.com/google/googletest.git",
+   "revision": "063de7e9578f82b369302001269680b4b1553359",
+   "license": "BSD-3-Clause",
+   "license_file": "third_party/googletest/LICENSE",
+   "owner": "tests",
+   "features": [
+    "core"
+   ],
+   "default_enabled": true,
+   "status": "approved",
+   "qualification": "docs/dependencies/googletest.md",
+   "notes": "Pinned to release tag v1.18.0; build/test-only dependency."
+  },
+  {
+   "name": "benchmark",
+   "source_kind": "git-submodule",
+   "path": "third_party/benchmark",
+   "url": "https://github.com/google/benchmark.git",
+   "revision": "192ef10025eb2c4cdd392bc502f0c852196baa48",
+   "license": "Apache-2.0",
+   "license_file": "third_party/benchmark/LICENSE",
+   "owner": "benchmarks",
+   "features": [
+    "core"
+   ],
+   "default_enabled": true,
+   "status": "approved",
+   "qualification": "docs/dependencies/benchmark.md",
+   "notes": "Pinned to release tag v1.9.5; build/test-only dependency."
+  },
+  {
+   "name": "beast",
+   "source_kind": "git-submodule",
+   "path": "third_party/beast",
+   "url": "https://github.com/boostorg/beast.git",
+   "revision": "cbbabdec878641ddf83a9be24f75666742cd2b8d",
+   "license": "BSL-1.0",
+   "license_file": "third_party/beast/LICENSE_1_0.txt",
+   "owner": "server",
+   "features": [
+    "http-server"
+   ],
+   "default_enabled": false,
+   "status": "qualified-deferred",
+   "qualification": "docs/dependencies/beast.md",
+   "notes": "Deferred to M9. Beast alone is not a complete dependency: the Boost.Asio/System header closure must be pinned and qualified first."
+  },
+  {
+   "name": "cutlass",
+   "source_kind": "git-submodule",
+   "path": "third_party/cutlass",
+   "url": "https://github.com/NVIDIA/cutlass.git",
+   "revision": "dc45f979ae336a235da1676b311f35efeb30149a",
+   "license": "BSD-3-Clause",
+   "license_file": "third_party/cutlass/LICENSE.txt",
+   "owner": "ops",
+   "features": [
+    "kernels"
+   ],
+   "default_enabled": false,
+   "status": "approved",
+   "qualification": "docs/dependencies/cutlass.md",
+   "notes": "Deferred to M4. CUDA/toolchain compatibility audit required against the accepted toolkit pin."
+  },
+  {
+   "name": "flashinfer",
+   "source_kind": "git-submodule",
+   "path": "third_party/flashinfer",
+   "url": "https://github.com/flashinfer-ai/flashinfer.git",
+   "revision": "44428003ba219c14b5473fefec8f7bfd4b72178e",
+   "license": "Apache-2.0",
+   "license_file": "third_party/flashinfer/LICENSE",
+   "owner": "ops",
+   "features": [
+    "kernels"
+   ],
+   "default_enabled": false,
+   "status": "approved",
+   "qualification": "docs/dependencies/flashinfer.md",
+   "notes": "Deferred to M4. Not approved for production use without the M4 native C++ spike; transitive closure includes Python-facing tooling that must not enter the runtime."
+  },
+  {
+   "name": "hpc-ops",
+   "source_kind": "git-submodule",
+   "path": "third_party/hpc-ops",
+   "url": "https://github.com/Tencent/hpc-ops.git",
+   "revision": "f39028d9f5ab77f71906fbf929d1b611859ab6b7",
+   "license": "MIT (with third-party component exceptions)",
+   "license_file": "third_party/hpc-ops/LICENSE.txt",
+   "owner": "ops",
+   "features": [
+    "experimental-kernels"
+   ],
+   "default_enabled": false,
+   "status": "candidate",
+   "qualification": "docs/dependencies/hpc-ops.md",
+   "notes": "Experimental and disabled. Audit only; hardware/Python/toolkit constraints recorded in the report."
+  },
+  {
+   "name": "folly",
+   "source_kind": "git-submodule",
+   "path": "third_party/folly",
+   "url": "https://github.com/facebook/folly.git",
+   "revision": "39d23d493c5947f043e78932d9c5822963449b33",
+   "license": "Apache-2.0",
+   "license_file": "third_party/folly/LICENSE",
+   "owner": "unowned",
+   "features": [],
+   "default_enabled": false,
+   "status": "rejected",
+   "qualification": "docs/dependencies/folly.md",
+   "removed": true,
+   "notes": "No approved use case; the C++23 host plus Asio lane covers the roadmap need at a fraction of the build/dependency cost. Gitlink removed in M0; report retained for the audit trail."
+  },
+  {
+   "name": "curl",
+   "source_kind": "git-submodule",
+   "path": "third_party/curl",
+   "url": "https://github.com/curl/curl.git",
+   "revision": "68720b4837284335b2d63cb358f8f6ce65f5bc55",
+   "license": "curl",
+   "license_file": "third_party/curl/COPYING",
+   "owner": "artifacts-model-resolution",
+   "features": [
+    "core"
+   ],
+   "default_enabled": true,
+   "status": "approved",
+   "qualification": "docs/dependencies/curl.md",
+   "notes": "Promoted from divedb/tokenizer's transitive transport to signed stable release 8.21.0. Built static, HTTP(S)-only, with system OpenSSL; CLI/tests/examples and optional protocol dependencies are disabled."
+  },
+  {
+   "name": "nlohmann-json",
+   "source_kind": "git-submodule",
+   "path": "third_party/nlohmann-json",
+   "url": "https://github.com/nlohmann/json.git",
+   "revision": "734fd305a19995673c5b83b4a30c06a96ff5c9b0",
+   "license": "MIT",
+   "license_file": "third_party/nlohmann-json/LICENSE.MIT",
+   "owner": "tokenization",
+   "features": [
+    "tokenization"
+   ],
+   "default_enabled": true,
+   "status": "approved",
+   "qualification": "docs/dependencies/nlohmann-json.md",
+   "notes": "Single-header JSON used privately inside the tokenizer vendor package (chat-template closure and adapted config parsing); never in an InferX public header."
+  },
+  {
+   "name": "minja",
+   "source_kind": "git-submodule",
+   "path": "third_party/minja",
+   "url": "https://github.com/google/minja.git",
+   "revision": "021c2293c187789ef13d56c6cfd89c9b134fd80f",
+   "license": "Apache-2.0",
+   "license_file": "third_party/minja/LICENSE",
+   "owner": "tokenization",
+   "features": [
+    "tokenization"
+   ],
+   "default_enabled": true,
+   "status": "approved",
+   "qualification": "docs/dependencies/minja.md",
+   "notes": "Header-only minimal Jinja engine (the vetted chat-template implementation, m3.md 8.3); private to the tokenizer vendor package."
+  },
+  {
+   "name": "tokenizer-package",
+   "source_kind": "vendored-adaptation",
+   "path": "third_party/tokenizer",
+   "url": "https://github.com/divedb/tokenizer.git",
+   "revision": "f109b7aef148dd4866a3dae7a8e5a6d221f95c75",
+   "license": "MIT",
+   "license_file": "third_party/tokenizer/LICENSE.divedb-tokenizer",
+   "owner": "tokenization",
+   "features": [
+    "tokenization"
+   ],
+   "default_enabled": true,
+   "status": "approved",
+   "qualification": "docs/dependencies/tokenizer.md",
+   "notes": "Owned local-only adaptation (ADR 0024): adapted C++ over an owned error-returning Rust FFI shim on the HF tokenizers 0.21.2 engine; crate closure vendored under rust/vendor with offline builds. Not a submodule; upgrades are repo commits."
+  }
+ ]
 }
