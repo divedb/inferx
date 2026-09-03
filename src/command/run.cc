@@ -176,7 +176,11 @@ absl::StatusOr<PreparedRequest> PrepareRequest(const RunOptions& options,
   if (prompt_tokens == nullptr) {
     return absl::InternalError("prompt processor produced no token IDs");
   }
-  return PreparedRequest{std::move(*request), *prompt_tokens};
+  // Copy before moving the request: prompt_tokens points into the request's
+  // input variant, so an elided aggregate initialization could otherwise read
+  // it after the move has emptied it.
+  std::vector<TokenId> prompt_ids = *prompt_tokens;
+  return PreparedRequest{std::move(*request), std::move(prompt_ids)};
 }
 
 /// Generated output tokens plus their decoded text.
