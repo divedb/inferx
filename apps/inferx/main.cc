@@ -21,6 +21,7 @@ int ExitStatus(const absl::Status& status) {
 
 int main(int argc, char** argv) {
   try {
+    inferx::log::Initialize();
     auto parsed = inferx::cli::ParseFromCommandLine(argc, argv);
     if (!parsed.ok()) return ExitStatus(parsed.status());
 

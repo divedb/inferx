@@ -1,98 +1,71 @@
 #include "inferx/base/log.h"
 
-#include <atomic>
 #include <fstream>
-#include <iostream>
+#include <memory>
 #include <mutex>
 #include <utility>
+
+#include "absl/log/initialize.h"
+#include "absl/log/log_entry.h"
+#include "absl/log/log_sink.h"
+#include "absl/log/log_sink_registry.h"
 
 namespace inferx::log {
 namespace {
 
-class StderrSink final : public Sink {
+// absl::LogSink writing each formatted record to the --log-file.
+class LogFileSink final : public absl::LogSink {
  public:
-  void Write(Severity severity, std::string_view message) override {
-    std::cerr << FormatLine(severity, message);
-  }
-};
-
-class FileSink final : public Sink {
- public:
-  explicit FileSink(const std::string& path)
+  explicit LogFileSink(const std::string& path)
       : file_(path, std::ios::out | std::ios::trunc) {}
 
   [[nodiscard]] bool ok() const { return file_.is_open(); }
 
-  void Write(Severity severity, std::string_view message) override {
-    if (file_.is_open()) file_ << FormatLine(severity, message);
+  void Send(const absl::LogEntry& entry) override {
+    const std::lock_guard<std::mutex> lock(file_mutex_);
+    if (file_.is_open()) {
+      file_ << entry.text_message_with_prefix_and_newline();
+      file_.flush();
+    }
   }
 
  private:
+  std::mutex file_mutex_;
   std::ofstream file_;
 };
 
-std::mutex& RegistryMutex() {
-  static std::mutex mutex;
-  return mutex;
-}
-
-std::atomic<Severity>& MinimumSeverity() {
-  static std::atomic<Severity> severity{Severity::kInfo};
-  return severity;
-}
-
-std::shared_ptr<Sink>& ActiveSink() {
-  static std::shared_ptr<Sink> sink = std::make_shared<StderrSink>();
-  return sink;
-}
+// The installed --log-file sink, or null while logs go to stderr.
+LogFileSink* active_file_sink = nullptr;
 
 }  // namespace
 
-std::string FormatLine(Severity severity, std::string_view message) {
-  std::string line;
-  line.reserve(message.size() + 12);
-  switch (severity) {
-    case Severity::kError:
-      line += "error: ";
-      break;
-    case Severity::kWarning:
-      line += "warning: ";
-      break;
-    case Severity::kTrace:
-    case Severity::kDebug:
-    case Severity::kInfo:
-      break;
-  }
-  line += message;
-  line += '\n';
-  return line;
+void Initialize() {
+  absl::InitializeLog();
+  absl::SetStderrThreshold(absl::LogSeverity::kInfo);
 }
 
-bool Enabled(Severity severity) { return severity >= MinimumSeverity().load(); }
-
-Severity MinSeverity() { return MinimumSeverity().load(); }
-
-void SetMinSeverity(Severity severity) { MinimumSeverity().store(severity); }
-
-void SetSink(std::shared_ptr<Sink> sink) {
-  const std::lock_guard<std::mutex> lock(RegistryMutex());
-  ActiveSink() = sink != nullptr ? std::move(sink) : std::make_shared<StderrSink>();
+void SetLevel(absl::LogSeverity minimum, int vlog_level) {
+  absl::SetMinLogLevel(static_cast<absl::LogSeverityAtLeast>(minimum));
+  absl::SetGlobalVLogLevel(vlog_level);
 }
 
-bool SetFileSink(const std::string& path) {
-  auto file = std::make_shared<FileSink>(path);
-  if (!file->ok()) return false;
-  SetSink(std::move(file));
+bool SetLogFile(const std::string& path) {
+  auto sink = std::make_unique<LogFileSink>(path);
+  if (!sink->ok()) return false;
+  ClearLogFile();
+  active_file_sink = sink.release();
+  absl::AddLogSink(active_file_sink);
+  // While the file sink is installed it is the sole destination.
+  absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfinity);
   return true;
 }
 
-void Write(Severity severity, std::string_view message) {
-  std::shared_ptr<Sink> sink;
-  {
-    const std::lock_guard<std::mutex> lock(RegistryMutex());
-    sink = ActiveSink();
-  }
-  if (sink != nullptr) sink->Write(severity, message);
+void ClearLogFile() {
+  if (active_file_sink == nullptr) return;
+  absl::RemoveLogSink(active_file_sink);
+  delete active_file_sink;
+  active_file_sink = nullptr;
+  absl::SetStderrThreshold(absl::LogSeverity::kInfo);
 }
 
 }  // namespace inferx::log

@@ -18,7 +18,9 @@ target_link_libraries(inferx_base PUBLIC
   $<BUILD_INTERFACE:absl::status>
   $<BUILD_INTERFACE:absl::statusor>
   $<BUILD_INTERFACE:absl::strings>
-  $<BUILD_INTERFACE:absl::hash>)
+  $<BUILD_INTERFACE:absl::hash>
+  $<BUILD_INTERFACE:absl::log>
+  $<BUILD_INTERFACE:absl::log_initialize>)
 
 target_include_directories(inferx_base
   PUBLIC

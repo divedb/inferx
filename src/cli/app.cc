@@ -186,9 +186,8 @@ struct CommandLine {
 
 void AddGlobalOptions(CommandLine& cli) {
   cli.app.set_help_flag("-h,--help", "Show help and exit");
-  cli.app.set_version_flag(
-      "--version", std::string("inferx ") + std::string(GetVersionString()),
-      "Print the concise InferX version");
+  cli.app.set_version_flag("--version", std::string("inferx ") + std::string(GetVersionString()),
+                           "Print the concise InferX version");
   cli.app.failure_message([](const CLI::App* failed_app, const CLI::Error& failure) {
     return "error: " + failed_app->get_display_name() + ": " + failure.what() +
            "\nRun with --help for more information.\n";
@@ -214,12 +213,10 @@ void AddServeCommand(CommandLine& cli) {
   EnableGlobalFallthrough(*cli.serve_command);
   AddModelOptions(*cli.serve_command, cli.serve.model, true);
   AddSamplingOptions(*cli.serve_command, cli.serve.sampling);
-  cli.serve_command
-      ->add_option("--host", cli.serve.host, "Listener host or address")
+  cli.serve_command->add_option("--host", cli.serve.host, "Listener host or address")
       ->check(NonEmptyValidator("host"))
       ->capture_default_str();
-  cli.serve_command
-      ->add_option("--port", cli.serve.port, "Listener port")
+  cli.serve_command->add_option("--port", cli.serve.port, "Listener port")
       ->check(CLI::Range(uint16_t{1}, (std::numeric_limits<uint16_t>::max)()))
       ->capture_default_str();
   cli.serve_command
@@ -245,8 +242,7 @@ void AddBenchCommands(CommandLine& cli) {
   AddModelOptions(*cli.latency_command, cli.latency.model, true);
   AddSamplingOptions(*cli.latency_command, cli.latency.sampling);
   AddOutputFormat(*cli.latency_command, cli.latency.output_format);
-  cli.latency_command
-      ->add_option("--requests", cli.latency.num_prompts, "Measured request count")
+  cli.latency_command->add_option("--requests", cli.latency.num_prompts, "Measured request count")
       ->check(CLI::Range(uint32_t{1}, (std::numeric_limits<uint32_t>::max)()))
       ->capture_default_str();
 
@@ -285,12 +281,10 @@ void AddRunCommand(CommandLine& cli) {
   AddModelOptions(*cli.run_command, cli.run.model, true);
   AddSamplingOptions(*cli.run_command, cli.run.sampling);
   AddResolverOptions(*cli.run_command, cli.run.resolver);
-  cli.run_command
-      ->add_option("--prompt", cli.run.prompt, "Non-empty prompt text")
+  cli.run_command->add_option("--prompt", cli.run.prompt, "Non-empty prompt text")
       ->check(NonEmptyValidator("prompt"))
       ->required();
-  cli.run_command
-      ->add_option("--max-tokens", cli.run.max_tokens, "Maximum generated tokens")
+  cli.run_command->add_option("--max-tokens", cli.run.max_tokens, "Maximum generated tokens")
       ->check(CLI::Range(uint32_t{1}, (std::numeric_limits<uint32_t>::max)()))
       ->capture_default_str();
 }
@@ -298,28 +292,25 @@ void AddRunCommand(CommandLine& cli) {
 void AddClientCommands(CommandLine& cli) {
   cli.chat_command = cli.app.add_subcommand("chat", "Chat with a running inferx server");
   EnableGlobalFallthrough(*cli.chat_command);
-  cli.chat_command
-      ->add_option("--endpoint", cli.chat.endpoint, "Server base URL")
+  cli.chat_command->add_option("--endpoint", cli.chat.endpoint, "Server base URL")
       ->check(NonEmptyValidator("endpoint"))
       ->capture_default_str();
   cli.chat_command->add_option("--model", cli.chat.model, "Served model name");
   CLI::Option* chat_prompt =
       cli.chat_command->add_option("--prompt", cli.chat.prompt, "One-shot message")
           ->check(NonEmptyValidator("prompt"));
-  CLI::Option* interactive = cli.chat_command->add_flag(
-      "--interactive", cli.chat.interactive, "Start an interactive session");
+  CLI::Option* interactive = cli.chat_command->add_flag("--interactive", cli.chat.interactive,
+                                                        "Start an interactive session");
   interactive->excludes(chat_prompt);
 
   cli.complete_command =
       cli.app.add_subcommand("complete", "Send a completion request to a running inferx server");
   EnableGlobalFallthrough(*cli.complete_command);
-  cli.complete_command
-      ->add_option("--endpoint", cli.complete.endpoint, "Server base URL")
+  cli.complete_command->add_option("--endpoint", cli.complete.endpoint, "Server base URL")
       ->check(NonEmptyValidator("endpoint"))
       ->capture_default_str();
   cli.complete_command->add_option("--model", cli.complete.model, "Served model name");
-  cli.complete_command
-      ->add_option("--prompt", cli.complete.prompt, "Completion prompt")
+  cli.complete_command->add_option("--prompt", cli.complete.prompt, "Completion prompt")
       ->check(NonEmptyValidator("prompt"))
       ->required();
 }
@@ -330,9 +321,9 @@ void AddInspectCommand(CommandLine& cli) {
   EnableGlobalFallthrough(*cli.inspect_command);
   AddModelOptions(*cli.inspect_command, cli.inspect.model, false);
   AddResolverOptions(*cli.inspect_command, cli.inspect.resolver);
-  CLI::Option* fsm_schema = cli.inspect_command->add_flag(
-      "--fsm-schema", cli.inspect.fsm_schema,
-      "Print the compiled request-state-machine schema as JSON");
+  CLI::Option* fsm_schema =
+      cli.inspect_command->add_flag("--fsm-schema", cli.inspect.fsm_schema,
+                                    "Print the compiled request-state-machine schema as JSON");
   fsm_schema->excludes("--model");
 }
 
@@ -348,11 +339,9 @@ void AddDownloadCommand(CommandLine& cli) {
 }
 
 void AddInfoCommands(CommandLine& cli) {
-  cli.version_command =
-      cli.app.add_subcommand("version", "Print version and build information");
+  cli.version_command = cli.app.add_subcommand("version", "Print version and build information");
   EnableGlobalFallthrough(*cli.version_command);
-  cli.environment_command =
-      cli.app.add_subcommand("env", "Print runtime environment diagnostics");
+  cli.environment_command = cli.app.add_subcommand("env", "Print runtime environment diagnostics");
   EnableGlobalFallthrough(*cli.environment_command);
 }
 
@@ -407,8 +396,8 @@ StatusOr<command::Invocation> SelectInvocation(CommandLine& cli) {
     }
     invocation.options = cli.serve;
   } else if (cli.latency_command->parsed()) {
-    if (absl::Status status = ValidateSelection("bench latency", cli.latency.sampling,
-                                                "invalid sampling values");
+    if (absl::Status status =
+            ValidateSelection("bench latency", cli.latency.sampling, "invalid sampling values");
         !status.ok()) {
       return status;
     }
@@ -462,26 +451,29 @@ StatusOr<command::Invocation> ParseFromCommandLine(int argc, const char* const* 
 }
 
 void ConfigureLogging(const command::GlobalOptions& global) {
-  log::Severity severity = log::Severity::kInfo;
+  absl::LogSeverity minimum = absl::LogSeverity::kInfo;
+  int vlog_level = 0;
+
   switch (global.log_level) {
     case LogLevel::kTrace:
-      severity = log::Severity::kTrace;
+      vlog_level = 2;
       break;
     case LogLevel::kDebug:
-      severity = log::Severity::kDebug;
+      vlog_level = 1;
       break;
     case LogLevel::kInfo:
-      severity = log::Severity::kInfo;
       break;
     case LogLevel::kWarning:
-      severity = log::Severity::kWarning;
+      minimum = absl::LogSeverity::kWarning;
       break;
     case LogLevel::kError:
-      severity = log::Severity::kError;
+      minimum = absl::LogSeverity::kError;
       break;
   }
-  log::SetMinSeverity(severity);
-  if (!global.log_file.empty() && !log::SetFileSink(global.log_file)) {
+
+  log::SetLevel(minimum, vlog_level);
+
+  if (!global.log_file.empty() && !log::SetLogFile(global.log_file)) {
     LOG(ERROR) << "inferx: cannot open log file: " << global.log_file;
   }
 }
