@@ -29,6 +29,7 @@ __pycache__/
 .DS_Store
 tools/bench/tokenspeed/
 bench-venv/
+.zcode
 
 # Tokenizer vendor package: cargo build tree (the crate closure is vendored;
 # the staticlib is built into out/ via --target-dir).
