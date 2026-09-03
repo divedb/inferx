@@ -121,20 +121,6 @@ jobs:
           cmake --build --preset asan-ubsan --parallel
           python3 tools/ci/check_test_labels.py --build-dir out/build/asan-ubsan
           ctest --preset asan-ubsan -L 'core|operators' --output-on-failure
-      - name: Nightly 1,000,000-operation deterministic stress
-        if: github.event_name == 'schedule'
-        run: |
-          out/build/asan-ubsan/inferx_simulator_stress \
-            --seed=5562318636401906515 \
-            --operations=1000000 \
-            --failure_output=out/failures/simulator
-      - name: Upload minimized stress failures
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: simulator-stress-failures
-          path: out/failures/simulator/
-          if-no-files-found: ignore
 
   tsan:
     name: sanitizers (tsan)
@@ -203,10 +189,7 @@ jobs:
           out/build/cpu-release/inferx_scheduler_benchmark --benchmark_format=json \
             --benchmark_out=out/metrics/scheduler.json
           python3 tools/ci/check_scheduler_benchmark.py --input out/metrics/scheduler.json
-          out/build/cpu-release/inferx_simulator_benchmark --benchmark_format=json \
-            --benchmark_out=out/metrics/simulator.json
           python3 -c "import json;json.load(open('out/metrics/base_startup_benchmark.json'))"
-          python3 -c "import json;json.load(open('out/metrics/simulator.json'))"
       - name: Upload metrics
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

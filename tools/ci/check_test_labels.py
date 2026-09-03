@@ -9,11 +9,8 @@ import subprocess
 
 REQUIRED = (
     "core-unit",
-    "core-integration",
     "core-correctness",
-    "core-failure",
     "core-channel",
-    "core-stress",
 )
 
 

@@ -36,14 +36,9 @@ struct SourcedValue {
   X(MaxQueuedRequests, "max_queued_requests", 4096)                         \
   X(MaxScheduledTokensPerStep, "max_scheduled_tokens_per_step", 4096)       \
   X(MaxSequencesPerStep, "max_sequences_per_step", 32)                      \
-  X(MaxSimulationEvents, "max_simulation_events", 10000000)                 \
   X(PlanBufferSlots, "plan_buffer_slots", 1)                                \
   X(ResponseChannelCapacity, "response_channel_capacity", 4096)             \
-  X(SimulatedKvTokenCapacity, "simulated_kv_token_capacity", 1114112)       \
-  X(SubmissionChannelCapacity, "submission_channel_capacity", 4096)         \
-  X(FakeBaseLatencyNs, "fake_base_latency_ns", 1000)                        \
-  X(FakePrefillLatencyPerTokenNs, "fake_prefill_latency_per_token_ns", 100) \
-  X(FakeDecodeLatencyPerSequenceNs, "fake_decode_latency_per_sequence_ns", 100)
+  X(SubmissionChannelCapacity, "submission_channel_capacity", 4096)
 
 // CUDA fields use flattened internal names while JSON serialization keeps
 // the documented nested `cuda` object. DeviceBudgetBytes == 0 denotes null.

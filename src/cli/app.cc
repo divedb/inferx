@@ -159,11 +159,6 @@ int Run(int argc, const char* const* argv, command::Dispatcher& dispatcher, std:
   command::ClientOptions complete_options;
   command::InspectOptions inspect_options;
   command::DownloadOptions download_options;
-  command::SimulateOptions validate_options;
-  command::SimulateOptions explain_options;
-  command::SimulateOptions simulate_run_options;
-  command::SimulateOptions replay_options;
-  command::SimulateOptions check_trace_options;
 
   CLI::App app{"InferX unified inference runtime", "inferx"};
   app.set_help_flag("-h,--help", "Show help and exit");
@@ -218,7 +213,7 @@ int Run(int argc, const char* const* argv, command::Dispatcher& dispatcher, std:
   AddModelOptions(*latency, latency_options.model, true);
   AddSamplingOptions(*latency, latency_options.sampling);
   AddOutputFormat(*latency, latency_options.output_format);
-  latency->add_option("--requests", latency_options.requests, "Measured request count")
+  latency->add_option("--requests", latency_options.num_prompts, "Measured request count")
       ->check(CLI::Range(uint32_t{1}, (std::numeric_limits<uint32_t>::max)()))
       ->capture_default_str();
 
@@ -229,7 +224,7 @@ int Run(int argc, const char* const* argv, command::Dispatcher& dispatcher, std:
   AddModelOptions(*throughput, throughput_options.model, true);
   AddSamplingOptions(*throughput, throughput_options.sampling);
   AddOutputFormat(*throughput, throughput_options.output_format);
-  throughput->add_option("--requests", throughput_options.requests, "Measured request count")
+  throughput->add_option("--requests", throughput_options.num_prompts, "Measured request count")
       ->check(CLI::Range(uint32_t{1}, (std::numeric_limits<uint32_t>::max)()))
       ->capture_default_str();
 
@@ -243,7 +238,7 @@ int Run(int argc, const char* const* argv, command::Dispatcher& dispatcher, std:
   serve_benchmark->add_option("--model", serve_benchmark_options.model.model, "Served model name");
   AddOutputFormat(*serve_benchmark, serve_benchmark_options.output_format);
   serve_benchmark
-      ->add_option("--requests", serve_benchmark_options.requests, "Measured request count")
+      ->add_option("--requests", serve_benchmark_options.num_prompts, "Measured request count")
       ->check(CLI::Range(uint32_t{1}, (std::numeric_limits<uint32_t>::max)()))
       ->capture_default_str();
 
@@ -297,75 +292,6 @@ int Run(int argc, const char* const* argv, command::Dispatcher& dispatcher, std:
       ->check(NonEmptyValidator("model"))
       ->required();
   AddResolverOptions(*download, download_options.resolver);
-
-  CLI::App* simulate =
-      app.add_subcommand("simulate", "Run deterministic scheduler and replay tools");
-  simulate->require_subcommand(1);
-  EnableGlobalFallthrough(*simulate);
-
-  auto add_simulator_overrides = [](CLI::App& command_app, command::SimulateOptions& options) {
-#define INFERX_ADD_SIMULATOR_OPTION(field, option_name) \
-  command_app.add_option(option_name, options.field, "Override " #field)
-    INFERX_ADD_SIMULATOR_OPTION(max_active_sequences, "--max-active-sequences");
-    INFERX_ADD_SIMULATOR_OPTION(max_model_tokens, "--max-model-tokens");
-    INFERX_ADD_SIMULATOR_OPTION(max_output_tokens, "--max-output-tokens");
-    INFERX_ADD_SIMULATOR_OPTION(max_prompt_tokens, "--max-prompt-tokens");
-    INFERX_ADD_SIMULATOR_OPTION(max_queued_requests, "--max-queued-requests");
-    INFERX_ADD_SIMULATOR_OPTION(max_scheduled_tokens_per_step, "--max-scheduled-tokens-per-step");
-    INFERX_ADD_SIMULATOR_OPTION(max_sequences_per_step, "--max-sequences-per-step");
-    INFERX_ADD_SIMULATOR_OPTION(max_simulation_events, "--max-simulation-events");
-    INFERX_ADD_SIMULATOR_OPTION(plan_buffer_slots, "--plan-buffer-slots");
-    INFERX_ADD_SIMULATOR_OPTION(response_channel_capacity, "--response-channel-capacity");
-    INFERX_ADD_SIMULATOR_OPTION(simulated_kv_token_capacity, "--simulated-kv-token-capacity");
-    INFERX_ADD_SIMULATOR_OPTION(submission_channel_capacity, "--submission-channel-capacity");
-    INFERX_ADD_SIMULATOR_OPTION(fake_base_latency_ns, "--fake-base-latency-ns");
-    INFERX_ADD_SIMULATOR_OPTION(fake_prefill_latency_per_token_ns,
-                                "--fake-prefill-latency-per-token-ns");
-    INFERX_ADD_SIMULATOR_OPTION(fake_decode_latency_per_sequence_ns,
-                                "--fake-decode-latency-per-sequence-ns");
-#undef INFERX_ADD_SIMULATOR_OPTION
-  };
-  auto add_config = [&add_simulator_overrides](CLI::App& command_app,
-                                               command::SimulateOptions& options) {
-    EnableGlobalFallthrough(command_app);
-    command_app.add_option("--config", options.config, "Schema-v1 JSON configuration file")
-        ->required();
-    add_simulator_overrides(command_app, options);
-  };
-
-  CLI::App* validate = simulate->add_subcommand("validate-config", "Validate configuration");
-  validate_options.operation = command::SimulateOperation::kValidateConfig;
-  add_config(*validate, validate_options);
-
-  CLI::App* explain =
-      simulate->add_subcommand("explain-config", "Print effective configuration values");
-  explain_options.operation = command::SimulateOperation::kExplainConfig;
-  add_config(*explain, explain_options);
-
-  CLI::App* simulate_run = simulate->add_subcommand("run", "Run a simulator workload");
-  simulate_run_options.operation = command::SimulateOperation::kRun;
-  add_config(*simulate_run, simulate_run_options);
-  simulate_run->add_option("--workload", simulate_run_options.workload, "Schema-v1 JSONL workload")
-      ->required();
-  simulate_run->add_option("--trace", simulate_run_options.trace, "Output replay trace")
-      ->required();
-  simulate_run->add_flag("--overwrite", simulate_run_options.overwrite,
-                         "Replace an existing trace");
-  simulate_run->add_flag("--verbose", simulate_run_options.verbose,
-                         "Print the canonical effective configuration");
-
-  CLI::App* replay = simulate->add_subcommand("replay", "Replay and compare an existing trace");
-  EnableGlobalFallthrough(*replay);
-  replay_options.operation = command::SimulateOperation::kReplay;
-  replay->add_option("--trace", replay_options.trace, "Input replay trace")->required();
-  replay->add_option("--output", replay_options.output, "New replay trace")->required();
-  replay->add_flag("--overwrite", replay_options.overwrite, "Replace an existing output trace");
-
-  CLI::App* check_trace =
-      simulate->add_subcommand("check-trace", "Validate an existing replay trace");
-  EnableGlobalFallthrough(*check_trace);
-  check_trace_options.operation = command::SimulateOperation::kCheckTrace;
-  check_trace->add_option("--trace", check_trace_options.trace, "Replay trace")->required();
 
   CLI::App* version = app.add_subcommand("version", "Print version and build information");
   EnableGlobalFallthrough(*version);
@@ -425,11 +351,6 @@ int Run(int argc, const char* const* argv, command::Dispatcher& dispatcher, std:
     return Code(dispatcher.Inspect(global, inspect_options));
   }
   if (download->parsed()) return Code(dispatcher.Download(global, download_options));
-  if (validate->parsed()) return Code(dispatcher.Simulate(global, validate_options));
-  if (explain->parsed()) return Code(dispatcher.Simulate(global, explain_options));
-  if (simulate_run->parsed()) return Code(dispatcher.Simulate(global, simulate_run_options));
-  if (replay->parsed()) return Code(dispatcher.Simulate(global, replay_options));
-  if (check_trace->parsed()) return Code(dispatcher.Simulate(global, check_trace_options));
   if (version->parsed()) return Code(dispatcher.Version(global));
   if (environment->parsed()) return Code(dispatcher.Environment(global));
   return UsageError(error, "inferx", "a subcommand is required");

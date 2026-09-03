@@ -1,9 +1,0 @@
-{
-  "max_active_sequences": 2,
-  "max_queued_requests": 8,
-  "max_sequences_per_step": 2,
-  "max_simulation_events": 1000,
-  "response_channel_capacity": 16,
-  "simulated_kv_token_capacity": 32,
-  "submission_channel_capacity": 8
-}

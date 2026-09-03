@@ -51,7 +51,7 @@ class RequestRegistry {
  private:
   std::unordered_map<RequestId, std::unique_ptr<RequestContext>, RequestIdHash> by_id_;
   absl::btree_map<ArrivalKey, RequestId> arrival_order_;
-  uint64_t next_arrival_ordinal_ = 0;  // simulator generators start at 1
+  uint64_t next_arrival_ordinal_ = 0;
 };
 
 }  // namespace inferx

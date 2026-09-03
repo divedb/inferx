@@ -19,7 +19,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-root", type=Path, required=True)
     args = parser.parse_args()
-    roots = ["include/inferx", "src", "simulator", "tests/unit/tensor", "tests/unit/runtime"]
+    roots = ["include/inferx", "src", "tests/unit/tensor", "tests/unit/runtime"]
     failures: list[str] = []
     for relative in roots:
         root = args.source_root / relative

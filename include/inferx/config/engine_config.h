@@ -1,8 +1,7 @@
 // Immutable effective configuration. Constructed
 // only through ValidateConfig; no mutators, no environment reads after
 // creation. CanonicalJson() emits the canonical UTF-8 form (schema version
-// first, lexicographic field order, decimal integers, no whitespace) that is
-// embedded byte-for-byte in replay headers.
+// first, lexicographic field order, decimal integers, no whitespace).
 
 #ifndef INFERX_CONFIG_ENGINE_CONFIG_H_
 #define INFERX_CONFIG_ENGINE_CONFIG_H_
@@ -18,7 +17,6 @@
 namespace inferx::config {
 
 struct BuildCapabilities {
-  bool simulator = true;
   bool cuda = false;
 };
 
@@ -29,8 +27,8 @@ struct ModelCapabilities {
 
 class EngineConfig {
  public:
-  // Validates ranges, cross-field rules, capabilities, and latency overflow;
-  // reports independent field errors in stable (lexicographic) order.
+  // Validates ranges, cross-field rules, and capabilities; reports
+  // independent field errors in stable (lexicographic) order.
   static absl::StatusOr<EngineConfig> Validate(const ParsedConfig& parsed,
                                                const BuildCapabilities& build,
                                                const ModelCapabilities& model);

@@ -24,9 +24,6 @@
 #include "inferx/base/status.h"
 #include "inferx/base/token.h"
 #include "inferx/base/version.h"
-#include "inferx/config/config_loader.h"
-#include "inferx/config/engine_config.h"
-#include "inferx/config/parsed_config.h"
 #include "inferx/engine/event_sink.h"
 #include "inferx/engine/request_event.h"
 #include "inferx/engine/request_state_machine.h"
@@ -37,9 +34,6 @@
 #include "inferx/runtime/cpu_execution_backend.h"
 #include "inferx/runtime/execution_backend.h"
 #include "inferx/runtime/single_request_runner.h"
-#include "inferx/simulator/engine_simulator.h"
-#include "inferx/simulator/replay.h"
-#include "inferx/simulator/workload.h"
 #include "inferx/tokenization/tokenizer_options.h"
 
 namespace inferx::command {
@@ -133,101 +127,6 @@ class DiscardingResponseSink final : public ResponseSink {
   }
   void Commit(ResponseReservation) noexcept override {}
 };
-
-config::ModelCapabilities FakeModel() {
-  return {.max_context_tokens = TokenCount(32768), .accepts_text = false};
-}
-
-config::FieldValues CommandLineValues(const SimulateOptions& options) {
-  config::FieldValues values;
-#define INFERX_COPY_OVERRIDE(field)         \
-  if (options.field.has_value()) {          \
-    values.emplace(#field, *options.field); \
-  }
-  INFERX_COPY_OVERRIDE(max_active_sequences)
-  INFERX_COPY_OVERRIDE(max_model_tokens)
-  INFERX_COPY_OVERRIDE(max_output_tokens)
-  INFERX_COPY_OVERRIDE(max_prompt_tokens)
-  INFERX_COPY_OVERRIDE(max_queued_requests)
-  INFERX_COPY_OVERRIDE(max_scheduled_tokens_per_step)
-  INFERX_COPY_OVERRIDE(max_sequences_per_step)
-  INFERX_COPY_OVERRIDE(max_simulation_events)
-  INFERX_COPY_OVERRIDE(plan_buffer_slots)
-  INFERX_COPY_OVERRIDE(response_channel_capacity)
-  INFERX_COPY_OVERRIDE(simulated_kv_token_capacity)
-  INFERX_COPY_OVERRIDE(submission_channel_capacity)
-  INFERX_COPY_OVERRIDE(fake_base_latency_ns)
-  INFERX_COPY_OVERRIDE(fake_prefill_latency_per_token_ns)
-  INFERX_COPY_OVERRIDE(fake_decode_latency_per_sequence_ns)
-#undef INFERX_COPY_OVERRIDE
-  return values;
-}
-
-absl::StatusOr<config::ParsedConfig> ReadParsedConfig(const SimulateOptions& options) {
-  std::optional<config::FieldValues> file_values;
-  if (!options.config.empty()) {
-    auto loaded = config::ReadConfigFile(options.config);
-    if (!loaded.ok()) return loaded.status();
-    file_values = std::move(*loaded);
-  }
-  auto environment = config::ReadConfigEnvironment();
-  if (!environment.ok()) return environment.status();
-  return config::LoadConfig(file_values, std::move(*environment), CommandLineValues(options));
-}
-
-absl::StatusOr<config::EngineConfig> ReadEffectiveConfig(const SimulateOptions& options) {
-  auto parsed = ReadParsedConfig(options);
-  if (!parsed.ok()) return parsed.status();
-  return config::EngineConfig::Validate(*parsed, config::BuildCapabilities{}, FakeModel());
-}
-
-std::string_view SourceName(config::ConfigSource source) {
-  switch (source) {
-    case config::ConfigSource::kDefault:
-      return "default";
-    case config::ConfigSource::kFile:
-      return "file";
-    case config::ConfigSource::kEnvironment:
-      return "environment";
-    case config::ConfigSource::kCommandLine:
-      return "command-line";
-  }
-  return "unknown";
-}
-
-void PrintExplanation(std::ostream& output, const config::ParsedConfig& parsed) {
-  std::vector<std::pair<std::string, config::SourcedValue>> values;
-#define INFERX_EXPLAIN(camel, json_name, default_value) \
-  values.emplace_back(json_name, parsed.camel);
-  INFERX_CONFIG_FIELDS(INFERX_EXPLAIN)
-#undef INFERX_EXPLAIN
-  std::sort(values.begin(), values.end(),
-            [](const auto& left, const auto& right) { return left.first < right.first; });
-  for (const auto& [name, value] : values) {
-    output << name << '=' << value.value << " source=" << SourceName(value.source) << '\n';
-  }
-}
-
-absl::Status RunSimulation(std::ostream& output, const config::EngineConfig& config,
-                           const std::vector<simulator::WorkloadEvent>& workload,
-                           const std::string& trace_path, bool overwrite) {
-  auto sink = simulator::FileReplaySink::Create(trace_path, overwrite);
-  if (!sink.ok()) return sink.status();
-  auto engine = simulator::EngineSimulator::Create(config, FakeModel(), **sink);
-  if (!engine.ok()) return engine.status();
-  absl::Status loaded = (*engine)->LoadWorkload(workload);
-  if (!loaded.ok()) return loaded;
-  auto result = (*engine)->Run();
-  if (!result.ok()) return result.status();
-  const auto& summary = result->summary;
-  output << "events=" << summary.events << " steps=" << summary.steps
-         << " requests=" << summary.requests << " finished=" << summary.finished
-         << " cancelled=" << summary.cancelled << " failed=" << summary.failed
-         << " resources=" << summary.used_sequences << '/' << summary.used_kv_tokens
-         << " tickets=" << summary.live_tickets << " plans=" << summary.leased_plan_slots
-         << " invariants=" << (summary.invariants_ok ? "ok" : "failed") << '\n';
-  return result->status;
-}
 
 class DefaultDispatcher final : public Dispatcher {
  public:
@@ -424,65 +323,6 @@ class DefaultDispatcher final : public Dispatcher {
             << "model_source=" << artifacts::ModelSourceName(resolved->source) << '\n'
             << "model_path=" << resolved->path.string() << '\n'
             << "model_revision=" << resolved->revision << '\n';
-    return ExitCode::kSuccess;
-  }
-
-  ExitCode Simulate(const GlobalOptions&, const SimulateOptions& options) override {
-    if (options.operation == SimulateOperation::kValidateConfig) {
-      auto config = ReadEffectiveConfig(options);
-      if (!config.ok())
-        return Fail("simulate validate-config failed", config.status(), ExitCode::kUsage);
-      output_ << "valid\n";
-      return ExitCode::kSuccess;
-    }
-    if (options.operation == SimulateOperation::kExplainConfig) {
-      auto parsed = ReadParsedConfig(options);
-      if (!parsed.ok())
-        return Fail("simulate explain-config failed", parsed.status(), ExitCode::kUsage);
-      auto effective =
-          config::EngineConfig::Validate(*parsed, config::BuildCapabilities{}, FakeModel());
-      if (!effective.ok()) {
-        return Fail("simulate explain-config failed", effective.status(), ExitCode::kUsage);
-      }
-      PrintExplanation(output_, *parsed);
-      return ExitCode::kSuccess;
-    }
-    if (options.operation == SimulateOperation::kCheckTrace) {
-      auto replay = simulator::ReadReplayInputs(options.trace);
-      if (!replay.ok())
-        return Fail("simulate check-trace failed", replay.status(), ExitCode::kRuntime);
-      output_ << "valid records trace=" << options.trace << '\n';
-      return ExitCode::kSuccess;
-    }
-    if (options.operation == SimulateOperation::kRun) {
-      auto config = ReadEffectiveConfig(options);
-      if (!config.ok()) return Fail("simulate run failed", config.status(), ExitCode::kUsage);
-      auto workload = simulator::ReadWorkloadFile(options.workload, true);
-      if (!workload.ok()) return Fail("simulate run failed", workload.status(), ExitCode::kUsage);
-      if (options.verbose) output_ << "config=" << config->CanonicalJson() << '\n';
-      const absl::Status status =
-          RunSimulation(output_, *config, *workload, options.trace, options.overwrite);
-      if (!status.ok()) return Fail("simulate run failed", status, ExitCode::kRuntime);
-      return ExitCode::kSuccess;
-    }
-
-    auto inputs = simulator::ReadReplayInputs(options.trace);
-    if (!inputs.ok()) return Fail("simulate replay failed", inputs.status(), ExitCode::kRuntime);
-    auto parsed = config::LoadConfig(inputs->config_values, std::nullopt, std::nullopt);
-    if (!parsed.ok()) return Fail("simulate replay failed", parsed.status(), ExitCode::kRuntime);
-    auto effective =
-        config::EngineConfig::Validate(*parsed, config::BuildCapabilities{}, FakeModel());
-    if (!effective.ok())
-      return Fail("simulate replay failed", effective.status(), ExitCode::kRuntime);
-    absl::Status status =
-        RunSimulation(output_, *effective, inputs->workload, options.output, options.overwrite);
-    if (!status.ok()) return Fail("simulate replay failed", status, ExitCode::kRuntime);
-    auto replayed = simulator::ReadReplayInputs(options.output);
-    if (!replayed.ok())
-      return Fail("simulate replay failed", replayed.status(), ExitCode::kRuntime);
-    status = simulator::CompareReplayBytes(inputs->original_bytes, replayed->original_bytes);
-    if (!status.ok()) return Fail("simulate replay failed", status, ExitCode::kRuntime);
-    output_ << "replay=byte-identical\n";
     return ExitCode::kSuccess;
   }
 

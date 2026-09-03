@@ -62,7 +62,6 @@ def main() -> int:
         "complete",
         "inspect",
         "download",
-        "simulate",
         "version",
         "env",
     ):
@@ -77,7 +76,6 @@ def main() -> int:
         ("complete",),
         ("inspect",),
         ("download",),
-        ("simulate",),
         ("version",),
         ("env",),
     ):

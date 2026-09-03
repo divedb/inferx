@@ -15,7 +15,7 @@ target_include_directories(inferx_command PUBLIC
 target_link_libraries(inferx_command
   PUBLIC inferx::base
   PRIVATE inferx::artifacts inferx::config inferx::engine inferx::execution_runtime
-          inferx::input inferx::lifecycle inferx::simulator
+          inferx::input inferx::lifecycle
           absl::status absl::statusor)
 
 set(_INFERX_COMMAND_FEATURES "cpu")

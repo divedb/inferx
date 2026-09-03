@@ -163,16 +163,6 @@ TEST(ConfigValidateTest, ModelCapabilityMismatch) {
   EXPECT_NE(rejected.status().message().find("config.max_model_tokens"), std::string::npos);
 }
 
-TEST(ConfigValidateTest, LatencyOverflowRejected) {
-  ParsedConfig huge;
-  huge.SetMaxScheduledTokensPerStep(2147483647, ConfigSource::kFile);
-  // 2^31-1 tokens * 1e10 ns/token exceeds uint64 on purpose.
-  huge.SetFakePrefillLatencyPerTokenNs(10000000000ull, ConfigSource::kFile);
-  const auto rejected = EngineConfig::Validate(huge, BuildCapabilities{}, DefaultModel());
-  ASSERT_FALSE(rejected.ok());
-  EXPECT_EQ(rejected.status().code(), absl::StatusCode::kOutOfRange);
-}
-
 bool CanonicalShapeOk(const std::string& canonical);
 
 TEST(ConfigCanonicalTest, ByteIdenticalAcrossInputOrderAndLayers) {

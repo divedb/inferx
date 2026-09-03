@@ -33,8 +33,8 @@ class SteadyClock final : public Clock {
   }
 };
 
-// Simulator/test-only controlled clock. Single-threaded by contract (the
-// simulator loop and tests advance it from one thread); Now() is noexcept.
+// Test-only controlled clock. Single-threaded by contract (tests advance it
+// from one thread); Now() is noexcept.
 // Time only moves forward; overflow is rejected rather than clamped.
 class ManualClock final : public Clock {
  public:

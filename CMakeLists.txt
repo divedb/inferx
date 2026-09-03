@@ -41,7 +41,6 @@ add_subdirectory(src/tokenization)
 add_subdirectory(src/input)
 add_subdirectory(src/ops)
 add_subdirectory(src/model_adapters)
-add_subdirectory(simulator)
 
 if(INFERX_ENABLE_CUDA)
   include(cmake/InferXCuda.cmake)

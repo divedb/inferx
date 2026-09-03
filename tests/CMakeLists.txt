@@ -195,65 +195,6 @@ target_link_libraries(inferx_scheduler_test PRIVATE
 gtest_discover_tests(inferx_scheduler_test
   PROPERTIES TIMEOUT 60)
 
-add_executable(inferx_simulator_components_test
-  unit/simulator/simulator_components_test.cc)
-inferx_apply_project_options(inferx_simulator_components_test)
-target_link_libraries(inferx_simulator_components_test PRIVATE
-  inferx::simulator GTest::gtest_main absl::status absl::strings)
-gtest_discover_tests(inferx_simulator_components_test
-  PROPERTIES TIMEOUT 60)
-
-add_executable(inferx_simulator_integration_test
-  integration/simulator/simulator_integration_test.cc)
-inferx_apply_project_options(inferx_simulator_integration_test)
-target_link_libraries(inferx_simulator_integration_test PRIVATE
-  inferx::simulator GTest::gtest_main absl::status absl::strings)
-gtest_discover_tests(inferx_simulator_integration_test
-  PROPERTIES TIMEOUT 120)
-
-add_executable(inferx_replay_correctness_test
-  correctness/replay/replay_correctness_test.cc)
-inferx_apply_project_options(inferx_replay_correctness_test)
-target_link_libraries(inferx_replay_correctness_test PRIVATE
-  inferx::simulator GTest::gtest_main absl::status absl::strings)
-target_compile_definitions(inferx_replay_correctness_test PRIVATE
-  INFERX_REPLAY_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/correctness/replay/data")
-gtest_discover_tests(inferx_replay_correctness_test
-  PROPERTIES TIMEOUT 120)
-
-add_executable(inferx_simulator_failure_test
-  failure/simulator/simulator_failure_test.cc)
-inferx_apply_project_options(inferx_simulator_failure_test)
-target_link_libraries(inferx_simulator_failure_test PRIVATE
-  inferx::simulator GTest::gtest_main absl::status absl::strings)
-gtest_discover_tests(inferx_simulator_failure_test
-  PROPERTIES TIMEOUT 120)
-
-add_executable(inferx_simulator_stress
-  stress/simulator/simulator_stress.cc)
-inferx_apply_project_options(inferx_simulator_stress)
-target_link_libraries(inferx_simulator_stress PRIVATE
-  inferx::simulator absl::status absl::strings)
-set_target_properties(inferx_simulator_stress PROPERTIES
-  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
-add_test(NAME simulator_stress_50000
-  COMMAND $<TARGET_FILE:inferx_simulator_stress>
-          --seed=5562318636401906515
-          --operations=50000
-          --failure_output=${CMAKE_SOURCE_DIR}/out/failures/simulator)
-set_tests_properties(simulator_stress_50000 PROPERTIES
-  LABELS "core;core-stress" TIMEOUT 300)
-
-if(TARGET inferx)
-  add_test(NAME simulator_cli
-    COMMAND Python3::Interpreter ${CMAKE_CURRENT_SOURCE_DIR}/integration/simulator_cli_test.py
-            --binary $<TARGET_FILE:inferx>
-            --config ${CMAKE_CURRENT_SOURCE_DIR}/integration/simulator/data/basic_config.json
-            --workload ${CMAKE_CURRENT_SOURCE_DIR}/integration/simulator/data/basic_workload.json)
-  set_tests_properties(simulator_cli PROPERTIES
-    LABELS "core;core-integration" TIMEOUT 120)
-endif()
-
 if(TARGET inferx)
   add_test(NAME fsm_docs_current
     COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/docs/render_request_fsm.py

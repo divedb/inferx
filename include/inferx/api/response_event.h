@@ -25,13 +25,12 @@ struct TokenDelta {
 
 enum class FinishReason : uint8_t {
   kLength,
-  kSimulatedEos,
   kCancelled,
   kDeadline,
   kExecutorError,
   kShutdown,
   // Real EOS stop (M5 schema extension, m5.md section 13.4): the emitted
-  // token matched a stop id. Never kSimulatedEos.
+  // token matched a stop id.
   kEos,
 };
 

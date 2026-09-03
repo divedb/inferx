@@ -51,7 +51,7 @@ struct GenerateRequest {
   TenantScope tenant{0};  // explicitly constructed process-default scope
 };
 
-// The simulator's single fake model capability record: ModelId(0), context
+// The single in-process model capability record: ModelId(0), context
 // 32,768, and no text support.
 struct ModelRecord {
   ModelId id{0};
@@ -64,8 +64,7 @@ struct ModelRecord {
 // context and the configured token budget; output limit must not overflow
 // the configured cap; deadline must not already be expired; priority must be
 // the default; tenant must be the process default; model must be the known
-// fake model. The clock is passed in for expiry checks (manual time in the
-// simulator).
+// in-process model. The clock is passed in for expiry checks.
 absl::StatusOr<GenerateRequest> ValidateGenerateRequest(const GenerateRequest& request,
                                                         const ModelRecord& model,
                                                         MonotonicTime now);

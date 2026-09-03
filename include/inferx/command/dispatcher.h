@@ -28,7 +28,6 @@ class Dispatcher {
   virtual ExitCode Complete(const GlobalOptions& global, const ClientOptions& options) = 0;
   virtual ExitCode Inspect(const GlobalOptions& global, const InspectOptions& options) = 0;
   virtual ExitCode Download(const GlobalOptions& global, const DownloadOptions& options) = 0;
-  virtual ExitCode Simulate(const GlobalOptions& global, const SimulateOptions& options) = 0;
   virtual ExitCode Version(const GlobalOptions& global) = 0;
   virtual ExitCode Environment(const GlobalOptions& global) = 0;
 };

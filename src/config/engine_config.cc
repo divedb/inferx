@@ -28,35 +28,6 @@ struct Range {
   uint64_t max;  // inclusive; 0 means "no upper check beyond 64-bit"
 };
 
-// Latency products must not overflow when the fake executor scales them by
-// worst-case token/sequence budgets.
-absl::Status CheckLatencyOverflow(const ParsedConfig& values) {
-  const uint64_t max_tokens = values.MaxScheduledTokensPerStep.value;
-  const uint64_t max_sequences = values.MaxSequencesPerStep.value;
-  absl::StatusOr<uint64_t> prefill =
-      CheckedMul(values.FakePrefillLatencyPerTokenNs.value, max_tokens,
-                 "config.fake_prefill_latency_per_token_ns");
-  if (!prefill.ok()) {
-    return prefill.status();
-  }
-  absl::StatusOr<uint64_t> decode =
-      CheckedMul(values.FakeDecodeLatencyPerSequenceNs.value, max_sequences,
-                 "config.fake_decode_latency_per_sequence_ns");
-  if (!decode.ok()) {
-    return decode.status();
-  }
-  absl::StatusOr<uint64_t> scaled = CheckedAdd(*prefill, *decode, "config.fake_latency");
-  if (!scaled.ok()) {
-    return scaled.status();
-  }
-  absl::StatusOr<uint64_t> total =
-      CheckedAdd(values.FakeBaseLatencyNs.value, *scaled, "config.fake_latency");
-  if (!total.ok()) {
-    return total.status();
-  }
-  return absl::OkStatus();
-}
-
 }  // namespace
 
 std::vector<std::string> CanonicalFieldOrder() {
@@ -82,14 +53,9 @@ absl::StatusOr<EngineConfig> EngineConfig::Validate(const ParsedConfig& parsed,
       {"max_queued_requests", parsed.MaxQueuedRequests.value, 1, 1000000},
       {"max_scheduled_tokens_per_step", parsed.MaxScheduledTokensPerStep.value, 1, 2147483647},
       {"max_sequences_per_step", parsed.MaxSequencesPerStep.value, 1, 16384},
-      {"max_simulation_events", parsed.MaxSimulationEvents.value, 1, 100000000},
       {"plan_buffer_slots", parsed.PlanBufferSlots.value, 1, 64},
       {"response_channel_capacity", parsed.ResponseChannelCapacity.value, 1, 0},
-      {"simulated_kv_token_capacity", parsed.SimulatedKvTokenCapacity.value, 1, 0},
       {"submission_channel_capacity", parsed.SubmissionChannelCapacity.value, 1, 0},
-      {"fake_base_latency_ns", parsed.FakeBaseLatencyNs.value, 1, 0},
-      {"fake_prefill_latency_per_token_ns", parsed.FakePrefillLatencyPerTokenNs.value, 0, 0},
-      {"fake_decode_latency_per_sequence_ns", parsed.FakeDecodeLatencyPerSequenceNs.value, 0, 0},
       {"cuda.device_budget_bytes", parsed.CudaDeviceBudgetBytes.value, 0, 0},
       {"cuda.device_id", parsed.CudaDeviceId.value, 0, std::numeric_limits<uint32_t>::max()},
       {"cuda.device_reserve_bytes", parsed.CudaDeviceReserveBytes.value, 0, 0},
@@ -140,13 +106,6 @@ absl::StatusOr<EngineConfig> EngineConfig::Validate(const ParsedConfig& parsed,
     return FieldError("max_model_tokens", absl::StrCat("must not exceed model capability ",
                                                        model.max_context_tokens.value()));
   }
-  if (!build.simulator) {
-    return FieldError("build_capabilities", "configuration requires the simulator build");
-  }
-  if (absl::Status overflow = CheckLatencyOverflow(parsed); !overflow.ok()) {
-    return overflow;
-  }
-
   const bool has_cuda_section =
 #define INFERX_CUDA_PRESENT(camel, json_name, default_value) \
   parsed.camel.source != ConfigSource::kDefault ||

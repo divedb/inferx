@@ -6,8 +6,6 @@ absl::string_view ToString(FinishReason reason) {
   switch (reason) {
     case FinishReason::kLength:
       return "length";
-    case FinishReason::kSimulatedEos:
-      return "simulated_eos";
     case FinishReason::kCancelled:
       return "cancelled";
     case FinishReason::kDeadline:

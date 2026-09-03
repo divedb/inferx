@@ -26,13 +26,6 @@ if(NOT INFERX_ENABLE_TSAN)
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 endif()
 
-add_executable(inferx_simulator_benchmark scheduler/simulator_benchmark.cc)
-inferx_apply_project_options(inferx_simulator_benchmark)
-target_link_libraries(inferx_simulator_benchmark PRIVATE
-  inferx::simulator benchmark::benchmark absl::status absl::strings)
-set_target_properties(inferx_simulator_benchmark PROPERTIES
-  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
-
 if(INFERX_ENABLE_CUDA AND INFERX_BUILD_BENCHMARKS)
   add_executable(inferx_kernels_benchmark kernels/kernels_benchmark.cc)
   inferx_apply_project_options(inferx_kernels_benchmark)

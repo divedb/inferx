@@ -51,11 +51,6 @@ class FakeDispatcher final : public command::Dispatcher {
     called = "download";
     return result;
   }
-  command::ExitCode Simulate(const command::GlobalOptions&,
-                             const command::SimulateOptions&) override {
-    called = "simulate";
-    return result;
-  }
   command::ExitCode Version(const command::GlobalOptions&) override {
     called = "version";
     return result;
@@ -155,7 +150,7 @@ TEST(CliAppTest, NestedBenchmarkDispatchesWithEnumOutputFormat) {
   EXPECT_EQ(dispatcher.called, "bench");
   EXPECT_EQ(dispatcher.benchmark_options.mode, command::BenchmarkMode::kThroughput);
   EXPECT_EQ(dispatcher.benchmark_options.output_format, command::OutputFormat::kJson);
-  EXPECT_EQ(dispatcher.benchmark_options.requests, 12U);
+  EXPECT_EQ(dispatcher.benchmark_options.num_prompts, 12U);
 }
 
 TEST(CliAppTest, InvalidValuesNeverDispatch) {
@@ -184,7 +179,6 @@ TEST(CliAppTest, EveryCommandDispatchesThroughTheInjectedImplementation) {
       {{"inferx", "complete", "--prompt", "hello"}, "complete"},
       {{"inferx", "inspect", "--model", "m"}, "inspect"},
       {{"inferx", "download", "--model", "m"}, "download"},
-      {{"inferx", "simulate", "validate-config", "--config", "config.json"}, "simulate"},
       {{"inferx", "version"}, "version"},
       {{"inferx", "env"}, "env"},
   };
