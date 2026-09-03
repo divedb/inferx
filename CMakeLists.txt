@@ -62,8 +62,7 @@ if(BUILD_TESTING)
 endif()
 
 if(INFERX_BUILD_BENCHMARKS)
-  add_subdirectory(benchmarks)
-endif()
+  endif()
 
 # ---------------------------------------------------------------------------
 # Format targets: 'format' mutates tracked InferX

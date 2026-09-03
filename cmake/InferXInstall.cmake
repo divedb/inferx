@@ -1,8 +1,3 @@
-# InferX install/export rules (ADR 0004: static, no ABI
-# promise). Included from the top-level CMakeLists after targets are ready —
-# the actual install(TARGETS) call lives with the target that owns it
-# (src/base/CMakeLists.txt); this file defines the package scaffolding.
-
 include(CMakePackageConfigHelpers)
 
 set(INFERX_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/InferX")

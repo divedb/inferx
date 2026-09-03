@@ -51,8 +51,6 @@ enum class RequestEventKind : uint8_t {
 [[nodiscard]] absl::string_view ToString(RequestEventKind kind);
 [[nodiscard]] std::optional<RequestEventKind> RequestEventKindFromName(absl::string_view name);
 
-// --- Typed payloads ---------------------------------------------------------
-
 struct InputReadyPayload {
   std::vector<TokenId> tokens;
 };

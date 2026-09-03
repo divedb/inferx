@@ -13,12 +13,20 @@
 namespace inferx::log {
 namespace {
 
+/// \brief File-backed sink used to implement the `--log-file` policy.
+///
+/// Each record keeps Abseil's standard prefix and trailing newline. Abseil may
+/// call `Send` concurrently, so writes are serialized and flushed before the
+/// call returns.
 class LogFileSink final : public absl::LogSink {
  public:
+  /// \brief Opens `path` for output, truncating an existing file.
   explicit LogFileSink(const std::string& path) : file_(path, std::ios::out | std::ios::trunc) {}
 
+  /// \brief Reports whether the destination file was opened successfully.
   [[nodiscard]] bool IsOk() const { return file_.is_open(); }
 
+  /// \brief Writes one fully formatted Abseil log entry to the destination file.
   void Send(const absl::LogEntry& entry) override {
     const std::lock_guard<std::mutex> lock(file_mutex_);
 
@@ -33,19 +41,17 @@ class LogFileSink final : public absl::LogSink {
   std::ofstream file_;
 };
 
+/// The sink currently registered with Abseil, or null while logs use stderr.
+/// Logging configuration is process-wide and must not be changed concurrently.
 LogFileSink* active_file_sink = nullptr;
 
 }  // namespace
 
-/// \brief
 void Initialize() {
   absl::InitializeLog();
   absl::SetStderrThreshold(absl::LogSeverity::kInfo);
 }
 
-/// \brief
-/// \param minimum
-/// \param vlog_level
 void SetLevel(absl::LogSeverity minimum, int vlog_level) {
   absl::SetMinLogLevel(static_cast<absl::LogSeverityAtLeast>(minimum));
   absl::SetGlobalVLogLevel(vlog_level);

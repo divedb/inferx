@@ -1,17 +1,16 @@
+#include "inferx/command/dispatcher.h"
+
 #include <type_traits>
 #include <variant>
 
-#include "common.h"
-
 namespace inferx::command {
 
-// One implementation file per command under src/command/.
-void Serve(const ServeOptions&);
-void Benchmark(const BenchmarkOptions&);
-void Run(const GlobalOptions& global, const RunOptions& options);
-void Chat(const ChatOptions&);
-void Version();
-void CollectEnv();
+extern void Serve(const ServeOptions&);
+extern void Benchmark(const BenchmarkOptions&);
+extern void Run(const GlobalOptions& global, const RunOptions& options);
+extern void Chat(const ChatOptions&);
+extern void Version();
+extern void CollectEnv();
 
 void Dispatch(const Invocation& invocation) {
   std::visit(

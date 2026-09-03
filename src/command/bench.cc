@@ -2,8 +2,6 @@
 
 namespace inferx::command {
 
-void Benchmark(const BenchmarkOptions&) {
-  internal::Unavailable("benchmark", "the unified benchmark runner is not compiled in this milestone");
-}
+void Benchmark(const BenchmarkOptions&) {}
 
 }  // namespace inferx::command
