@@ -21,7 +21,10 @@ namespace {
 
 using command::BenchmarkMode;
 using command::DType;
+using command::KVCacheDType;
+using command::LoadFormat;
 using command::LogLevel;
+using command::Quantization;
 using command::OutputFormat;
 
 // Terminal-exit contract shared with main: parse and usage errors carry
@@ -85,27 +88,82 @@ void AddModelOptions(CLI::App& app, command::ModelOptions& options, bool require
   CLI::Option* model =
       app.add_option("--model", options.model, "Hugging Face model ID or local model directory");
   model->check(NonEmptyValidator("model"));
+
   if (require_model) model->required();
+
   app.add_option("--tokenizer", options.tokenizer,
                  "Tokenizer ID or path (defaults to the model tokenizer)")
       ->check(NonEmptyValidator("tokenizer"));
   app.add_option("--device", options.device, "Execution device")
       ->check(DeviceValidator())
       ->capture_default_str();
+
   const std::map<std::string, DType> dtypes{{"auto", DType::kAuto},
                                             {"float32", DType::kFloat32},
                                             {"float16", DType::kFloat16},
                                             {"bfloat16", DType::kBFloat16}};
+
   app.add_option("--dtype", options.dtype, "Model/runtime data type")
       ->transform(StrictEnumTransformer(dtypes))
       ->default_str("auto");
+
+  const std::map<std::string, Quantization> quantizations{
+      {"none", Quantization::kNone},     {"auto", Quantization::kAuto},
+      {"awq", Quantization::kAwq},       {"gptq", Quantization::kGptq},
+      {"fp8", Quantization::kFp8},       {"bitsandbytes", Quantization::kBitsAndBytes},
+      {"gguf", Quantization::kGguf}};
+  app.add_option("--quantization", options.quantization, "Weight quantization scheme")
+      ->transform(StrictEnumTransformer(quantizations))
+      ->default_str("none");
+
+  const std::map<std::string, KVCacheDType> kv_cache_dtypes{{"auto", KVCacheDType::kAuto},
+                                                            {"fp8", KVCacheDType::kFp8}};
+  app.add_option("--kv-cache-dtype", options.kv_cache_dtype, "KV cache storage data type")
+      ->transform(StrictEnumTransformer(kv_cache_dtypes))
+      ->default_str("auto");
+
+  const std::map<std::string, LoadFormat> load_formats{{"auto", LoadFormat::kAuto},
+                                                       {"safetensors", LoadFormat::kSafetensors},
+                                                       {"pt", LoadFormat::kPt},
+                                                       {"npcache", LoadFormat::kNpcache},
+                                                       {"dummy", LoadFormat::kDummy},
+                                                       {"tensorizer", LoadFormat::kTensorizer}};
+  app.add_option("--load-format", options.load_format, "Checkpoint format to load")
+      ->transform(StrictEnumTransformer(load_formats))
+      ->default_str("auto");
+
+  app.add_flag("--trust-remote-code", options.trust_remote_code,
+               "Execute custom modeling/tokenizer code shipped with the checkpoint");
+  app.add_option("--served-model-name", options.served_model_name,
+                 "Name the serving API exposes (defaults to the model id)")
+      ->check(NonEmptyValidator("served-model-name"));
+
   app.add_option("--tensor-parallel-size", options.tensor_parallel_size,
                  "Number of tensor-parallel devices")
       ->check(CLI::Range(uint32_t{1}, (std::numeric_limits<uint32_t>::max)()))
       ->capture_default_str();
+  app.add_option("--pipeline-parallel-size", options.pipeline_parallel_size,
+                 "Number of pipeline-parallel stages")
+      ->check(CLI::Range(uint32_t{1}, (std::numeric_limits<uint32_t>::max)()))
+      ->capture_default_str();
+
   app.add_option("--max-model-len", options.max_model_len,
                  "Maximum model context length in tokens (0 uses the model limit)")
       ->capture_default_str();
+  app.add_option("--max-seq-len-to-capture", options.max_seq_len_to_capture,
+                 "Maximum sequence length captured by CUDA graphs")
+      ->capture_default_str();
+
+  app.add_flag("--enforce-eager", options.enforce_eager,
+               "Always run eagerly (no CUDA graphs)");
+  app.add_option("--swap-space", options.swap_space_gib,
+                 "CPU swap space per GPU in GiB for KV offload")
+      ->check(CLI::NonNegativeNumber)
+      ->capture_default_str();
+  app.add_option("--num-gpu-blocks-override", options.num_gpu_blocks_override,
+                 "Fixed GPU KV cache block count (default: profile)")
+      ->check(CLI::PositiveNumber);
+
   app.add_option("--max-batch-size", options.max_batch_size, "Maximum requests in one batch")
       ->check(CLI::Range(uint32_t{1}, (std::numeric_limits<uint32_t>::max)()))
       ->capture_default_str();
