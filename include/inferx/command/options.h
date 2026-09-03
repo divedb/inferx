@@ -98,7 +98,6 @@ struct GlobalOptions {
 /// \brief Options describing which model to load and how to run it.
 struct ModelOptions {
   /// Path or identifier of the model to load (e.g. local path or hub repo).
-  /// Corresponds to vllm's `--model`.
   std::string model;
 
   /// Path or identifier of the tokenizer to use. Defaults to the
@@ -477,8 +476,8 @@ struct RunOptions {
 };
 
 /// \brief Options for the interactive/one-shot client that talks to a
-///        running server (`client` command).
-struct ClientOptions {
+///        running server (`chat` command).
+struct ChatOptions {
   /// Server endpoint to connect to.
   std::string endpoint = "http://127.0.0.1:8000";
 
@@ -493,29 +492,6 @@ struct ClientOptions {
   bool interactive = false;
 };
 
-/// \brief Options for inspecting a model without running inference
-///        (`inspect` command).
-struct InspectOptions {
-  /// Model to inspect.
-  ModelOptions model;
-
-  /// Options for resolving/downloading the model artifacts.
-  ResolverOptions resolver;
-
-  /// If true, also print/derive the finite-state-machine (grammar)
-  /// schema associated with the model, when applicable.
-  bool fsm_schema = false;
-};
-
-/// \brief Options for downloading model artifacts ahead of time (`download` command).
-struct DownloadOptions {
-  /// Model to download.
-  std::string model;
-
-  /// Options controlling how the download is resolved and cached.
-  ResolverOptions resolver;
-};
-
 /// \brief `version`: print version and build information.
 struct VersionOptions {};
 
@@ -525,8 +501,8 @@ struct CollectEnvOptions {};
 /// \brief One parsed command line: the global options plus the selected
 ///        subcommand's typed options.
 struct Invocation {
-  using Options = std::variant<ServeOptions, BenchmarkOptions, RunOptions, ClientOptions,
-                               InspectOptions, DownloadOptions, VersionOptions, CollectEnvOptions>;
+  using Options = std::variant<ServeOptions, BenchmarkOptions, RunOptions, ChatOptions,
+                               VersionOptions, CollectEnvOptions>;
 
   /// Options shared across all commands (logging, reproducibility).
   GlobalOptions global;
@@ -560,12 +536,8 @@ constexpr std::string_view CommandName(const Invocation& invocation) {
           return "benchmark";
         } else if constexpr (std::is_same_v<T, RunOptions>) {
           return "run";
-        } else if constexpr (std::is_same_v<T, ClientOptions>) {
-          return "client";
-        } else if constexpr (std::is_same_v<T, InspectOptions>) {
-          return "inspect";
-        } else if constexpr (std::is_same_v<T, DownloadOptions>) {
-          return "download";
+        } else if constexpr (std::is_same_v<T, ChatOptions>) {
+          return "chat";
         } else if constexpr (std::is_same_v<T, VersionOptions>) {
           return "version";
         } else if constexpr (std::is_same_v<T, CollectEnvOptions>) {

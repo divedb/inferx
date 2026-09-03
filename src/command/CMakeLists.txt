@@ -1,4 +1,11 @@
-add_library(inferx_command STATIC dispatcher.cc)
+add_library(inferx_command STATIC
+  dispatcher.cc
+  serve.cc
+  bench.cc
+  run.cc
+  chat.cc
+  version.cc
+  collect_env.cc)
 add_library(inferx::command ALIAS inferx_command)
 
 if(INFERX_ENABLE_CUDA)

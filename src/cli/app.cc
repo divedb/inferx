@@ -235,9 +235,8 @@ struct SubcommandBinding {
 
 /// The CLI11 application plus the option storage it binds. One instance
 /// per `ParseFromCommandLine` call. `bench_latency`/`bench_throughput`/
-/// `bench_serve` and `client_chat`/`client_complete` intentionally share
-/// nothing extra beyond `app` — which one ran is read off
-/// `BenchmarkOptions::mode` / `ClientOptions::interactive`, set at
+/// `bench_serve` share nothing extra beyond `app` — which one ran is read
+/// off `BenchmarkOptions::mode`, set at
 /// registration time, not off which struct field got written.
 struct CommandLine {
   CLI::App app{"InferX unified inference runtime", "inferx"};
@@ -249,10 +248,7 @@ struct CommandLine {
   SubcommandBinding<command::BenchmarkOptions> bench_throughput;
   SubcommandBinding<command::BenchmarkOptions> bench_serve;
   SubcommandBinding<command::RunOptions> run;
-  SubcommandBinding<command::ClientOptions> client_chat;
-  SubcommandBinding<command::ClientOptions> client_complete;
-  SubcommandBinding<command::InspectOptions> inspect;
-  SubcommandBinding<command::DownloadOptions> download;
+  SubcommandBinding<command::ChatOptions> chat;
   SubcommandBinding<command::VersionOptions> version;
   SubcommandBinding<command::CollectEnvOptions> collect_env;
 };
@@ -309,7 +305,7 @@ void AddServeCommand(CommandLine& cli) {
 }
 
 void AddBenchCommands(CommandLine& cli) {
-  CLI::App* bench = cli.app.add_subcommand("bench", "Run inference performance benchmarks");
+  CLI::App* bench = cli.app.add_subcommand("benchmark", "Run inference performance benchmarks");
   bench->require_subcommand(1);
   bench->fallthrough();
 
@@ -366,55 +362,19 @@ void AddRunCommand(CommandLine& cli) {
       ->capture_default_str();
 }
 
-void AddClientCommands(CommandLine& cli) {
-  cli.client_chat.app = cli.app.add_subcommand("chat", "Chat with a running inferx server");
-  cli.client_chat.app->fallthrough();
-  cli.client_chat.app->add_option("--endpoint", cli.client_chat.options.endpoint, "Server base URL")
+void AddChatCommand(CommandLine& cli) {
+  cli.chat.app = cli.app.add_subcommand("chat", "Chat with a running inferx server");
+  cli.chat.app->fallthrough();
+  cli.chat.app->add_option("--endpoint", cli.chat.options.endpoint, "Server base URL")
       ->check(NonEmptyValidator("endpoint"))
       ->capture_default_str();
-  cli.client_chat.app->add_option("--model", cli.client_chat.options.model, "Served model name");
+  cli.chat.app->add_option("--model", cli.chat.options.model, "Served model name");
   CLI::Option* chat_prompt =
-      cli.client_chat.app
-          ->add_option("--prompt", cli.client_chat.options.prompt, "One-shot message")
+      cli.chat.app->add_option("--prompt", cli.chat.options.prompt, "One-shot message")
           ->check(NonEmptyValidator("prompt"));
-  CLI::Option* interactive = cli.client_chat.app->add_flag(
-      "--interactive", cli.client_chat.options.interactive, "Start an interactive session");
+  CLI::Option* interactive = cli.chat.app->add_flag(
+      "--interactive", cli.chat.options.interactive, "Start an interactive session");
   interactive->excludes(chat_prompt);
-
-  cli.client_complete.app =
-      cli.app.add_subcommand("complete", "Send a completion request to a running inferx server");
-  cli.client_complete.app->fallthrough();
-  cli.client_complete.app
-      ->add_option("--endpoint", cli.client_complete.options.endpoint, "Server base URL")
-      ->check(NonEmptyValidator("endpoint"))
-      ->capture_default_str();
-  cli.client_complete.app->add_option("--model", cli.client_complete.options.model,
-                                      "Served model name");
-  cli.client_complete.app
-      ->add_option("--prompt", cli.client_complete.options.prompt, "Completion prompt")
-      ->check(NonEmptyValidator("prompt"))
-      ->required();
-}
-
-void AddInspectCommand(CommandLine& cli) {
-  cli.inspect.app = cli.app.add_subcommand("inspect", "Inspect a model or compiled FSM metadata");
-  cli.inspect.app->fallthrough();
-  AddModelOptions(*cli.inspect.app, cli.inspect.options.model, false);
-  AddResolverOptions(*cli.inspect.app, cli.inspect.options.resolver);
-  CLI::Option* fsm_schema =
-      cli.inspect.app->add_flag("--fsm-schema", cli.inspect.options.fsm_schema,
-                                "Print the compiled request-state-machine schema as JSON");
-  fsm_schema->excludes("--model");
-}
-
-void AddDownloadCommand(CommandLine& cli) {
-  cli.download.app = cli.app.add_subcommand("download", "Prefetch a model into the local cache");
-  cli.download.app->fallthrough();
-  cli.download.app
-      ->add_option("--model", cli.download.options.model, "Hugging Face model ID or local path")
-      ->check(NonEmptyValidator("model"))
-      ->required();
-  AddResolverOptions(*cli.download.app, cli.download.options.resolver);
 }
 
 void AddInfoCommands(CommandLine& cli) {
@@ -432,9 +392,7 @@ void RegisterCommands(CommandLine& cli) {
   AddServeCommand(cli);
   AddBenchCommands(cli);
   AddRunCommand(cli);
-  AddClientCommands(cli);
-  AddInspectCommand(cli);
-  AddDownloadCommand(cli);
+  AddChatCommand(cli);
   AddInfoCommands(cli);
 }
 
@@ -481,7 +439,8 @@ StatusOr<command::Invocation> SelectInvocation(CommandLine& cli) {
     }
     invocation.options = cli.serve.options;
   } else if (cli.bench_latency.app->parsed()) {
-    if (absl::Status status = ValidateSelection("bench latency", cli.bench_latency.options.sampling,
+    if (absl::Status status = ValidateSelection("benchmark latency",
+                                                cli.bench_latency.options.sampling,
                                                 "invalid sampling values");
         !status.ok()) {
       return status;
@@ -489,7 +448,8 @@ StatusOr<command::Invocation> SelectInvocation(CommandLine& cli) {
     invocation.options = cli.bench_latency.options;
   } else if (cli.bench_throughput.app->parsed()) {
     if (absl::Status status = ValidateSelection(
-            "bench throughput", cli.bench_throughput.options.sampling, "invalid sampling values");
+            "benchmark throughput", cli.bench_throughput.options.sampling,
+            "invalid sampling values");
         !status.ok()) {
       return status;
     }
@@ -501,20 +461,11 @@ StatusOr<command::Invocation> SelectInvocation(CommandLine& cli) {
       return UsageError("run", "prompt and sampling values are invalid");
     }
     invocation.options = cli.run.options;
-  } else if (cli.client_chat.app->parsed()) {
-    if (!cli.client_chat.options.interactive && cli.client_chat.options.prompt.empty()) {
-      cli.client_chat.options.interactive = true;
+  } else if (cli.chat.app->parsed()) {
+    if (!cli.chat.options.interactive && cli.chat.options.prompt.empty()) {
+      cli.chat.options.interactive = true;
     }
-    invocation.options = cli.client_chat.options;
-  } else if (cli.client_complete.app->parsed()) {
-    invocation.options = cli.client_complete.options;
-  } else if (cli.inspect.app->parsed()) {
-    if (!cli.inspect.options.fsm_schema && cli.inspect.options.model.model.empty()) {
-      return UsageError("inspect", "--model is required unless --fsm-schema is used");
-    }
-    invocation.options = cli.inspect.options;
-  } else if (cli.download.app->parsed()) {
-    invocation.options = cli.download.options;
+    invocation.options = cli.chat.options;
   } else if (cli.version.app->parsed()) {
     invocation.options = command::VersionOptions{};
   } else if (cli.collect_env.app->parsed()) {

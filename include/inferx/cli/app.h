@@ -2,7 +2,6 @@
 #define INFERX_CLI_APP_H_
 
 #include "absl/status/statusor.h"
-
 #include "inferx/command/options.h"
 
 namespace inferx::cli {

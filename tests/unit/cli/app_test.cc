@@ -86,7 +86,7 @@ TEST(CliParseTest, ServeMapsGlobalAndCommandOptions) {
 
 TEST(CliParseTest, BenchThroughputKeepsModeFormatAndRequestCount) {
   auto result = Parse(
-      {"inferx", "bench", "throughput", "--model", "m", "--output-format", "JSON", "--num-prompts", "12"});
+      {"inferx", "benchmark", "throughput", "--model", "m", "--output-format", "JSON", "--num-prompts", "12"});
 
   ASSERT_TRUE(result.ok()) << result.status();
   ASSERT_TRUE(std::holds_alternative<command::BenchmarkOptions>(result->options));
@@ -97,11 +97,11 @@ TEST(CliParseTest, BenchThroughputKeepsModeFormatAndRequestCount) {
 }
 
 TEST(CliParseTest, BenchNestedSubcommandsSelectTheirMode) {
-  auto latency = Parse({"inferx", "bench", "latency", "--model", "m"});
+  auto latency = Parse({"inferx", "benchmark", "latency", "--model", "m"});
   ASSERT_TRUE(latency.ok()) << latency.status();
   EXPECT_EQ(std::get<command::BenchmarkOptions>(latency->options).mode, BenchmarkMode::kLatency);
 
-  auto serve = Parse({"inferx", "bench", "serve", "--endpoint", "http://127.0.0.1:9"});
+  auto serve = Parse({"inferx", "benchmark", "serve", "--endpoint", "http://127.0.0.1:9"});
   ASSERT_TRUE(serve.ok()) << serve.status();
   EXPECT_EQ(std::get<command::BenchmarkOptions>(serve->options).mode, BenchmarkMode::kServe);
 }
@@ -114,14 +114,11 @@ TEST(CliParseTest, EveryCommandParsesToItsOptionsAndName) {
   };
   const std::vector<ParseCase> cases{
       {{"inferx", "serve", "--model", "m"}, 0, "serve"},
-      {{"inferx", "bench", "latency", "--model", "m"}, 1, "benchmark"},
+      {{"inferx", "benchmark", "latency", "--model", "m"}, 1, "benchmark"},
       {{"inferx", "run", "--model", "m", "--prompt", "hello"}, 2, "run"},
-      {{"inferx", "chat"}, 3, "client"},
-      {{"inferx", "complete", "--prompt", "hello"}, 3, "client"},
-      {{"inferx", "inspect", "--model", "m"}, 4, "inspect"},
-      {{"inferx", "download", "--model", "m"}, 5, "download"},
-      {{"inferx", "version"}, 6, "version"},
-      {{"inferx", "collect-env"}, 7, "collect-env"},
+      {{"inferx", "chat"}, 3, "chat"},
+      {{"inferx", "version"}, 4, "version"},
+      {{"inferx", "collect-env"}, 5, "collect-env"},
   };
 
   for (const ParseCase& test_case : cases) {
@@ -145,22 +142,14 @@ TEST(CliParseTest, MissingPromptIsAUsageError) {
   EXPECT_EQ(result.status().code(), absl::StatusCode::kUnknown);
 }
 
-TEST(CliParseTest, InspectRequiresModelOrFsmSchema) {
-  auto result = Parse({"inferx", "inspect"});
-  ASSERT_FALSE(result.ok());
-  EXPECT_EQ(result.status().code(), absl::StatusCode::kUnknown);
-  EXPECT_NE(result.status().message().find("--model is required unless --fsm-schema is used"),
-            std::string::npos);
-}
-
 TEST(CliParseTest, ChatDefaultsToInteractiveWithoutPrompt) {
   auto plain = Parse({"inferx", "chat"});
   ASSERT_TRUE(plain.ok()) << plain.status();
-  EXPECT_TRUE(std::get<command::ClientOptions>(plain->options).interactive);
+  EXPECT_TRUE(std::get<command::ChatOptions>(plain->options).interactive);
 
   auto prompted = Parse({"inferx", "chat", "--prompt", "hi"});
   ASSERT_TRUE(prompted.ok()) << prompted.status();
-  const auto& chat = std::get<command::ClientOptions>(prompted->options);
+  const auto& chat = std::get<command::ChatOptions>(prompted->options);
   EXPECT_FALSE(chat.interactive);
   EXPECT_EQ(chat.prompt, "hi");
 }
