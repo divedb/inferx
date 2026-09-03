@@ -59,17 +59,13 @@ if(INFERX_ENABLE_TOKENIZATION)
     PROPERTIES TIMEOUT 120)
 
 endif()
-# GoogleTest discovers individual cases after build. Assign the labels at
-# CTest time so the semicolon-separated label list remains one property value.
-set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
-  "${CMAKE_CURRENT_SOURCE_DIR}/artifact_test_labels.cmake")
-
 if(INFERX_BUILD_OPERATOR_REFERENCE_TESTS)
   add_executable(inferx_ops_test unit/ops/ops_test.cc)
   inferx_apply_project_options(inferx_ops_test)
   target_link_libraries(inferx_ops_test PRIVATE
     inferx::ops inferx::tensor GTest::gtest_main absl::status absl::statusor)
-  gtest_discover_tests(inferx_ops_test PROPERTIES TIMEOUT 120)
+  gtest_discover_tests(inferx_ops_test
+    PROPERTIES TIMEOUT 120)
 
   add_executable(inferx_artifact_adapter_test
     unit/ops/artifact_adapter_test.cc)
@@ -77,7 +73,8 @@ if(INFERX_BUILD_OPERATOR_REFERENCE_TESTS)
   target_include_directories(inferx_artifact_adapter_test PRIVATE ${CMAKE_SOURCE_DIR})
   target_link_libraries(inferx_artifact_adapter_test PRIVATE
     inferx_artifact_tensor_adapter GTest::gtest_main absl::status absl::statusor)
-  gtest_discover_tests(inferx_artifact_adapter_test PROPERTIES TIMEOUT 120)
+  gtest_discover_tests(inferx_artifact_adapter_test
+    PROPERTIES TIMEOUT 120)
 endif()
 
 if(INFERX_BUILD_OPERATOR_REFERENCE_TESTS)
@@ -99,7 +96,8 @@ if(INFERX_ENABLE_CUDA AND INFERX_BUILD_OPERATOR_GPU_TESTS)
     inferx_kernels inferx_kernels_cuda inferx::ops inferx::tensor
     GTest::gtest_main CUDA::cudart absl::status absl::statusor absl::strings
     absl::synchronization)
-  gtest_discover_tests(inferx_kernels_cuda_test PROPERTIES TIMEOUT 120)
+  gtest_discover_tests(inferx_kernels_cuda_test
+    PROPERTIES TIMEOUT 120)
 endif()
 
 if(INFERX_ENABLE_CUDA AND INFERX_BUILD_OPERATOR_GPU_TESTS)
@@ -113,14 +111,9 @@ if(INFERX_ENABLE_CUDA AND INFERX_BUILD_OPERATOR_GPU_TESTS)
     inferx_kernels inferx_kernels_cuda inferx::ops inferx::tensor
     GTest::gtest_main CUDA::cudart absl::status absl::statusor absl::strings
     absl::synchronization)
-  gtest_discover_tests(inferx_kernels_ops_oracle_test PROPERTIES TIMEOUT 120)
+  gtest_discover_tests(inferx_kernels_ops_oracle_test
+    PROPERTIES TIMEOUT 120)
 
-endif()
-
-if(INFERX_BUILD_OPERATOR_REFERENCE_TESTS OR
-   (INFERX_ENABLE_CUDA AND INFERX_BUILD_OPERATOR_GPU_TESTS))
-  set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/operator_test_labels.cmake")
 endif()
 
 # ---------------------------------------------------------------------------
@@ -171,12 +164,6 @@ target_link_libraries(inferx_scheduler_test PRIVATE
 gtest_discover_tests(inferx_scheduler_test
   PROPERTIES TIMEOUT 60)
 
-# GoogleTest discovers individual cases after build. This CTest-time include
-# runs after those discovery includes and assigns both the general core label
-# and the required subsystem category without lossy list escaping.
-set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
-  "${CMAKE_CURRENT_SOURCE_DIR}/core_test_labels.cmake")
-
 # ---------------------------------------------------------------------------
 # platform-unit: checked tensor values, views, ownership, and CPU reference copy.
 # ---------------------------------------------------------------------------
@@ -215,13 +202,6 @@ target_link_libraries(inferx_m5_runtime_test PRIVATE
 gtest_discover_tests(inferx_m5_runtime_test
   PROPERTIES TIMEOUT 120)
 
-set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
-  "${CMAKE_CURRENT_SOURCE_DIR}/m5_test_labels.cmake")
-if(DEFINED inferx_execution_config_test_TESTS)
-  set_tests_properties(${inferx_execution_config_test_TESTS}
-    PROPERTIES LABELS "m5;m5-unit;config" TIMEOUT 120)
-endif()
-
 add_executable(inferx_cuda_config_test unit/config/cuda_config_test.cc)
 
 add_executable(inferx_execution_config_test unit/config/execution_config_test.cc)
@@ -235,12 +215,6 @@ target_link_libraries(inferx_cuda_config_test PRIVATE
   inferx::config GTest::gtest_main absl::status absl::statusor)
 gtest_discover_tests(inferx_cuda_config_test
   PROPERTIES TIMEOUT 120)
-
-# GoogleTest discovers individual cases after build. Assign both the general
-# platform label and the required category at CTest time; passing a semicolon list
-# through gtest_discover_tests loses the second label.
-set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
-  "${CMAKE_CURRENT_SOURCE_DIR}/runtime_test_labels.cmake")
 
 add_test(NAME cuda_header_boundary
   COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/check_cuda_boundaries.py
@@ -283,3 +257,9 @@ add_custom_target(check
   VERBATIM
   USES_TERMINAL
   COMMENT "InferX check: all CPU quality gates in this build tree")
+
+# GoogleTest discovers individual cases after build; the include runs after
+# those discovery includes and assigns the multi-label categories that
+# gtest_discover_tests cannot carry (it drops labels after the first).
+set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
+  "${CMAKE_SOURCE_DIR}/cmake/InferXTestLabels.cmake")
