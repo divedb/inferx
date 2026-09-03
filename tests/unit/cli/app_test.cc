@@ -1,11 +1,12 @@
 #include "inferx/cli/app.h"
 
-#include <sstream>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <variant>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "gtest/gtest.h"
 #include "inferx/command/options.h"
 
@@ -13,66 +14,60 @@ namespace inferx::cli {
 namespace {
 
 using command::BenchmarkMode;
-using command::Command;
 using command::LogLevel;
 using command::OutputFormat;
 
-ParseResult Parse(const std::vector<std::string>& arguments, std::ostringstream& output,
-                  std::ostringstream& error) {
+StatusOr<command::Invocation> Parse(const std::vector<std::string>& arguments) {
   std::vector<const char*> argv;
   argv.reserve(arguments.size());
   for (const std::string& argument : arguments) argv.push_back(argument.c_str());
-  return ParseFromCommandLine(static_cast<int>(argv.size()), argv.data(), output, error);
+  return ParseFromCommandLine(static_cast<int>(argv.size()), argv.data());
 }
 
 TEST(CliParseTest, ServeMapsGlobalAndCommandOptions) {
-  std::ostringstream output;
-  std::ostringstream error;
-  const ParseResult result = Parse({"inferx",
-                                    "--log-level",
-                                    "debug",
-                                    "--log-file",
-                                    "inferx.log",
-                                    "--seed",
-                                    "42",
-                                    "serve",
-                                    "--model",
-                                    "model-id",
-                                    "--tokenizer",
-                                    "tokenizer-id",
-                                    "--device",
-                                    "cuda:1",
-                                    "--dtype",
-                                    "bfloat16",
-                                    "--tensor-parallel-size",
-                                    "2",
-                                    "--max-model-len",
-                                    "8192",
-                                    "--max-batch-size",
-                                    "8",
-                                    "--temperature",
-                                    "0.5",
-                                    "--top-p",
-                                    "0.9",
-                                    "--top-k",
-                                    "20",
-                                    "--host",
-                                    "0.0.0.0",
-                                    "--port",
-                                    "9000",
-                                    "--max-running-requests",
-                                    "64",
-                                    "--gpu-memory-utilization",
-                                    "0.8"},
-                                   output, error);
+  auto result = Parse({"inferx",
+                       "--log-level",
+                       "debug",
+                       "--log-file",
+                       "inferx.log",
+                       "--seed",
+                       "42",
+                       "serve",
+                       "--model",
+                       "model-id",
+                       "--tokenizer",
+                       "tokenizer-id",
+                       "--device",
+                       "cuda:1",
+                       "--dtype",
+                       "bfloat16",
+                       "--tensor-parallel-size",
+                       "2",
+                       "--max-model-len",
+                       "8192",
+                       "--max-batch-size",
+                       "8",
+                       "--temperature",
+                       "0.5",
+                       "--top-p",
+                       "0.9",
+                       "--top-k",
+                       "20",
+                       "--host",
+                       "0.0.0.0",
+                       "--port",
+                       "9000",
+                       "--max-running-requests",
+                       "64",
+                       "--gpu-memory-utilization",
+                       "0.8"});
 
-  EXPECT_TRUE(result.should_run);
-  EXPECT_EQ(result.exit_code, command::ExitCode::kSuccess);
-  ASSERT_EQ(result.invocation.command, Command::kServe);
-  EXPECT_EQ(result.invocation.global.log_level, LogLevel::kDebug);
-  EXPECT_EQ(result.invocation.global.log_file, "inferx.log");
-  EXPECT_EQ(result.invocation.global.seed, 42U);
-  const auto& serve = std::get<command::ServeOptions>(result.invocation.options);
+  ASSERT_TRUE(result.ok()) << result.status();
+  EXPECT_EQ(result->global.log_level, LogLevel::kDebug);
+  EXPECT_EQ(result->global.log_file, "inferx.log");
+  EXPECT_EQ(result->global.seed, 42U);
+  ASSERT_TRUE(std::holds_alternative<command::ServeOptions>(result->options));
+  const auto& serve = std::get<command::ServeOptions>(result->options);
   EXPECT_EQ(serve.model.model, "model-id");
   EXPECT_EQ(serve.model.tokenizer, "tokenizer-id");
   EXPECT_EQ(serve.model.device, "cuda:1");
@@ -90,130 +85,104 @@ TEST(CliParseTest, ServeMapsGlobalAndCommandOptions) {
 }
 
 TEST(CliParseTest, BenchThroughputKeepsModeFormatAndRequestCount) {
-  std::ostringstream output;
-  std::ostringstream error;
-  const ParseResult result = Parse(
-      {"inferx", "bench", "throughput", "--model", "m", "--output-format", "JSON", "--requests", "12"},
-      output, error);
+  auto result = Parse(
+      {"inferx", "bench", "throughput", "--model", "m", "--output-format", "JSON", "--requests", "12"});
 
-  EXPECT_TRUE(result.should_run);
-  ASSERT_EQ(result.invocation.command, Command::kBench);
-  const auto& bench = std::get<command::BenchmarkOptions>(result.invocation.options);
+  ASSERT_TRUE(result.ok()) << result.status();
+  ASSERT_TRUE(std::holds_alternative<command::BenchmarkOptions>(result->options));
+  const auto& bench = std::get<command::BenchmarkOptions>(result->options);
   EXPECT_EQ(bench.mode, BenchmarkMode::kThroughput);
   EXPECT_EQ(bench.output_format, OutputFormat::kJson);
   EXPECT_EQ(bench.num_prompts, 12U);
 }
 
 TEST(CliParseTest, BenchNestedSubcommandsSelectTheirMode) {
-  std::ostringstream output;
-  std::ostringstream error;
-  const ParseResult latency =
-      Parse({"inferx", "bench", "latency", "--model", "m"}, output, error);
-  ASSERT_EQ(latency.invocation.command, Command::kBench);
-  EXPECT_EQ(std::get<command::BenchmarkOptions>(latency.invocation.options).mode,
-            BenchmarkMode::kLatency);
+  auto latency = Parse({"inferx", "bench", "latency", "--model", "m"});
+  ASSERT_TRUE(latency.ok()) << latency.status();
+  EXPECT_EQ(std::get<command::BenchmarkOptions>(latency->options).mode, BenchmarkMode::kLatency);
 
-  const ParseResult serve =
-      Parse({"inferx", "bench", "serve", "--endpoint", "http://127.0.0.1:9"}, output, error);
-  ASSERT_EQ(serve.invocation.command, Command::kBench);
-  EXPECT_EQ(std::get<command::BenchmarkOptions>(serve.invocation.options).mode,
-            BenchmarkMode::kServe);
+  auto serve = Parse({"inferx", "bench", "serve", "--endpoint", "http://127.0.0.1:9"});
+  ASSERT_TRUE(serve.ok()) << serve.status();
+  EXPECT_EQ(std::get<command::BenchmarkOptions>(serve->options).mode, BenchmarkMode::kServe);
 }
 
-TEST(CliParseTest, EveryCommandParsesToItsInvocation) {
-  struct DispatchCase {
+TEST(CliParseTest, EveryCommandParsesToItsOptionsAndName) {
+  struct ParseCase {
     std::vector<std::string> arguments;
-    Command command;
+    size_t option_index;
+    std::string_view command_name;
   };
-  const std::vector<DispatchCase> cases{
-      {{"inferx", "serve", "--model", "m"}, Command::kServe},
-      {{"inferx", "bench", "latency", "--model", "m"}, Command::kBench},
-      {{"inferx", "run", "--model", "m", "--prompt", "hello"}, Command::kRun},
-      {{"inferx", "chat"}, Command::kChat},
-      {{"inferx", "complete", "--prompt", "hello"}, Command::kComplete},
-      {{"inferx", "inspect", "--model", "m"}, Command::kInspect},
-      {{"inferx", "download", "--model", "m"}, Command::kDownload},
-      {{"inferx", "version"}, Command::kVersion},
-      {{"inferx", "env"}, Command::kEnvironment},
+  const std::vector<ParseCase> cases{
+      {{"inferx", "serve", "--model", "m"}, 0, "serve"},
+      {{"inferx", "bench", "latency", "--model", "m"}, 1, "benchmark"},
+      {{"inferx", "run", "--model", "m", "--prompt", "hello"}, 2, "run"},
+      {{"inferx", "chat"}, 3, "client"},
+      {{"inferx", "complete", "--prompt", "hello"}, 3, "client"},
+      {{"inferx", "inspect", "--model", "m"}, 4, "inspect"},
+      {{"inferx", "download", "--model", "m"}, 5, "download"},
+      {{"inferx", "version"}, 6, "version"},
+      {{"inferx", "env"}, 7, "env"},
   };
 
-  for (const DispatchCase& test_case : cases) {
-    SCOPED_TRACE(test_case.arguments.back());
-    std::ostringstream output;
-    std::ostringstream error;
-    const ParseResult result = Parse(test_case.arguments, output, error);
-    EXPECT_EQ(result.exit_code, command::ExitCode::kSuccess);
-    EXPECT_TRUE(result.should_run);
-    EXPECT_EQ(result.invocation.command, test_case.command);
-    if (test_case.command == Command::kVersion || test_case.command == Command::kEnvironment) {
-      EXPECT_TRUE(std::holds_alternative<std::monostate>(result.invocation.options));
-    }
+  for (const ParseCase& test_case : cases) {
+    SCOPED_TRACE(test_case.command_name);
+    auto result = Parse(test_case.arguments);
+    ASSERT_TRUE(result.ok()) << result.status();
+    EXPECT_EQ(result->options.index(), test_case.option_index);
+    EXPECT_EQ(CommandName(*result), test_case.command_name);
   }
 }
 
-TEST(CliParseTest, InvalidValuesNeverRun) {
-  std::ostringstream output;
-  std::ostringstream error;
-  const ParseResult result =
-      Parse({"inferx", "serve", "--model", "m", "--gpu-memory-utilization", "0"}, output, error);
-
-  EXPECT_FALSE(result.should_run);
-  EXPECT_EQ(result.exit_code, command::ExitCode::kUsage);
-  EXPECT_NE(error.str().find("error:"), std::string::npos);
+TEST(CliParseTest, InvalidSamplingIsAUsageError) {
+  auto result = Parse({"inferx", "serve", "--model", "m", "--gpu-memory-utilization", "0"});
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ(result.status().code(), absl::StatusCode::kUnknown);
 }
 
 TEST(CliParseTest, MissingPromptIsAUsageError) {
-  std::ostringstream output;
-  std::ostringstream error;
-  const ParseResult result = Parse({"inferx", "run", "--model", "m"}, output, error);
-
-  EXPECT_FALSE(result.should_run);
-  EXPECT_EQ(result.exit_code, command::ExitCode::kUsage);
-  EXPECT_NE(error.str().find("error:"), std::string::npos);
+  auto result = Parse({"inferx", "run", "--model", "m"});
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ(result.status().code(), absl::StatusCode::kUnknown);
 }
 
 TEST(CliParseTest, InspectRequiresModelOrFsmSchema) {
-  std::ostringstream output;
-  std::ostringstream error;
-  const ParseResult result = Parse({"inferx", "inspect"}, output, error);
-
-  EXPECT_FALSE(result.should_run);
-  EXPECT_EQ(result.exit_code, command::ExitCode::kUsage);
-  EXPECT_NE(error.str().find("--model is required unless --fsm-schema is used"), std::string::npos);
+  auto result = Parse({"inferx", "inspect"});
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ(result.status().code(), absl::StatusCode::kUnknown);
+  EXPECT_NE(result.status().message().find("--model is required unless --fsm-schema is used"),
+            std::string::npos);
 }
 
 TEST(CliParseTest, ChatDefaultsToInteractiveWithoutPrompt) {
-  std::ostringstream output;
-  std::ostringstream error;
-  const ParseResult plain = Parse({"inferx", "chat"}, output, error);
-  ASSERT_EQ(plain.invocation.command, Command::kChat);
-  EXPECT_TRUE(std::get<command::ClientOptions>(plain.invocation.options).interactive);
+  auto plain = Parse({"inferx", "chat"});
+  ASSERT_TRUE(plain.ok()) << plain.status();
+  EXPECT_TRUE(std::get<command::ClientOptions>(plain->options).interactive);
 
-  const ParseResult prompted = Parse({"inferx", "chat", "--prompt", "hi"}, output, error);
-  const auto& chat = std::get<command::ClientOptions>(prompted.invocation.options);
+  auto prompted = Parse({"inferx", "chat", "--prompt", "hi"});
+  ASSERT_TRUE(prompted.ok()) << prompted.status();
+  const auto& chat = std::get<command::ClientOptions>(prompted->options);
   EXPECT_FALSE(chat.interactive);
   EXPECT_EQ(chat.prompt, "hi");
 }
 
-TEST(CliParseTest, HelpAndVersionExitsDoNotRun) {
-  std::ostringstream output;
-  std::ostringstream error;
-  const ParseResult help = Parse({"inferx", "--help"}, output, error);
-  EXPECT_FALSE(help.should_run);
-  EXPECT_EQ(help.exit_code, command::ExitCode::kSuccess);
-  EXPECT_NE(output.str().find("InferX unified inference runtime"), std::string::npos);
+TEST(CliParseTest, TerminalExitsDoNotProduceAnInvocation) {
+  // Help and --version print their output and report kCancelled (exit 0);
+  // a bare invocation and parse failures report kUnknown (exit 2, kUsage).
+  auto help = Parse({"inferx", "--help"});
+  EXPECT_FALSE(help.ok());
+  EXPECT_EQ(help.status().code(), absl::StatusCode::kCancelled);
 
-  output.str("");
-  const ParseResult version = Parse({"inferx", "--version"}, output, error);
-  EXPECT_FALSE(version.should_run);
-  EXPECT_EQ(version.exit_code, command::ExitCode::kSuccess);
-  EXPECT_NE(output.str().find("inferx"), std::string::npos);
+  auto version = Parse({"inferx", "--version"});
+  EXPECT_FALSE(version.ok());
+  EXPECT_EQ(version.status().code(), absl::StatusCode::kCancelled);
 
-  output.str("");
-  const ParseResult no_arguments = Parse({"inferx"}, output, error);
-  EXPECT_FALSE(no_arguments.should_run);
-  EXPECT_EQ(no_arguments.exit_code, command::ExitCode::kUsage);
-  EXPECT_NE(output.str().find("InferX unified inference runtime"), std::string::npos);
+  auto no_arguments = Parse({"inferx"});
+  EXPECT_FALSE(no_arguments.ok());
+  EXPECT_EQ(no_arguments.status().code(), absl::StatusCode::kUnknown);
+
+  auto bad_flag = Parse({"inferx", "--no-such-flag", "version"});
+  EXPECT_FALSE(bad_flag.ok());
+  EXPECT_EQ(bad_flag.status().code(), absl::StatusCode::kUnknown);
 }
 
 }  // namespace

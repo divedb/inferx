@@ -10,6 +10,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -134,29 +135,33 @@ class DefaultDispatcher final : public Dispatcher {
   explicit DefaultDispatcher(std::ostream& output) : output_(output) {}
 
   ExitCode Dispatch(const Invocation& invocation) override {
-    switch (invocation.command) {
-      case Command::kServe:
-        return Unavailable("serve", "HTTP serving is scheduled for the server milestone");
-      case Command::kBench:
-        return Unavailable("bench", "the unified benchmark runner is not compiled in this milestone");
-      case Command::kRun:
-        return Run(invocation.global, std::get<RunOptions>(invocation.options));
-      case Command::kChat:
-        return Unavailable("chat",
-                           "the OpenAI-compatible HTTP client is not compiled in this milestone");
-      case Command::kComplete:
-        return Unavailable("complete",
-                           "the OpenAI-compatible HTTP client is not compiled in this milestone");
-      case Command::kInspect:
-        return Inspect(std::get<InspectOptions>(invocation.options));
-      case Command::kDownload:
-        return Download(std::get<DownloadOptions>(invocation.options));
-      case Command::kVersion:
-        return Version(invocation.global);
-      case Command::kEnvironment:
-        return Environment(invocation.global);
-    }
-    return Unavailable("inferx", "unknown command");
+    return std::visit(
+        [this, &invocation](const auto& options) -> ExitCode {
+          using Selected = std::decay_t<decltype(options)>;
+          if constexpr (std::is_same_v<Selected, ServeOptions>) {
+            return Unavailable(CommandName(invocation),
+                               "HTTP serving is scheduled for the server milestone");
+          } else if constexpr (std::is_same_v<Selected, BenchmarkOptions>) {
+            return Unavailable(CommandName(invocation),
+                               "the unified benchmark runner is not compiled in this milestone");
+          } else if constexpr (std::is_same_v<Selected, RunOptions>) {
+            return Run(invocation.global, options);
+          } else if constexpr (std::is_same_v<Selected, ClientOptions>) {
+            return Unavailable(CommandName(invocation),
+                               "the OpenAI-compatible HTTP client is not compiled in this milestone");
+          } else if constexpr (std::is_same_v<Selected, InspectOptions>) {
+            return Inspect(options);
+          } else if constexpr (std::is_same_v<Selected, DownloadOptions>) {
+            return Download(options);
+          } else if constexpr (std::is_same_v<Selected, VersionOptions>) {
+            return Version(invocation.global);
+          } else if constexpr (std::is_same_v<Selected, EnvironmentOptions>) {
+            return Environment(invocation.global);
+          } else {
+            static_assert(always_false<Selected>::value, "non-exhaustive visitor!");
+          }
+        },
+        invocation.options);
   }
 
  private:

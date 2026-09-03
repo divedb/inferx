@@ -4,20 +4,12 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
+#include <type_traits>
 #include <variant>
 #include <vector>
 
 namespace inferx::command {
-
-/// \brief Process exit status of one command execution.
-enum class ExitCode : int {
-  kSuccess = 0,
-  kUsage = 2,
-  kModel = 3,
-  kRuntime = 4,
-  kBenchmark = 5,
-  kUnavailable = 6,
-};
 
 /// \brief Numeric precision used for model weights and activations.
 enum class DType : uint8_t {
@@ -524,36 +516,66 @@ struct DownloadOptions {
   ResolverOptions resolver;
 };
 
-/// \brief Which `inferx` subcommand was selected on the command line.
-enum class Command : uint8_t {
-  kServe,       ///< `serve`: start an inference server.
-  kBench,       ///< `bench`: run performance benchmarks.
-  kRun,         ///< `run`: local one-shot inference.
-  kChat,        ///< `chat`: chat with a running server.
-  kComplete,    ///< `complete`: one completion request against a server.
-  kInspect,     ///< `inspect`: report model or compiled FSM metadata.
-  kDownload,    ///< `download`: prefetch a model into the local cache.
-  kVersion,     ///< `version`: print version and build information.
-  kEnvironment  ///< `env`: runtime environment diagnostics.
-};
+/// \brief `version`: print version and build information.
+struct VersionOptions {};
+
+/// \brief `env`: runtime environment diagnostics.
+struct EnvironmentOptions {};
 
 /// \brief One parsed command line: the global options plus the selected
-///        subcommand and its typed options.
+///        subcommand's typed options.
 struct Invocation {
+  using Options = std::variant<ServeOptions, BenchmarkOptions, RunOptions, ClientOptions,
+                               InspectOptions, DownloadOptions, VersionOptions, EnvironmentOptions>;
+
   /// Options shared across all commands (logging, reproducibility).
   GlobalOptions global;
 
-  /// Which subcommand was selected.
-  Command command = Command::kVersion;
-
-  /// Options of the selected subcommand; `monostate` for the commands
-  /// that take none (`version`, `env`). `BenchmarkOptions::mode`
-  /// distinguishes the nested `bench` subcommands; `Command::kChat`
-  /// and `kComplete` share `ClientOptions`.
-  std::variant<std::monostate, ServeOptions, BenchmarkOptions, RunOptions, ClientOptions,
-               InspectOptions, DownloadOptions>
-      options;
+  /// Options of the selected subcommand.
+  Options options = VersionOptions{};
 };
+
+/// \brief Human-readable name of the subcommand an `Invocation` selected,
+///        for logging/help text. Derived from `Invocation::options`, so it can
+///        never disagree with the actual parsed options.
+///
+/// EXAMPLE:
+/// ```
+/// Invocation inv;
+/// inv.options = ServeOptions{...};
+/// assert(CommandName(inv) == "serve");
+/// ```
+/// Compile-time "never instantiated" guard for exhaustive visitors.
+template <typename T>
+struct always_false : std::false_type {};
+
+constexpr std::string_view CommandName(const Invocation& invocation) {
+  return std::visit(
+      [](const auto& options) -> std::string_view {
+        using T = std::decay_t<decltype(options)>;
+
+        if constexpr (std::is_same_v<T, ServeOptions>) {
+          return "serve";
+        } else if constexpr (std::is_same_v<T, BenchmarkOptions>) {
+          return "benchmark";
+        } else if constexpr (std::is_same_v<T, RunOptions>) {
+          return "run";
+        } else if constexpr (std::is_same_v<T, ClientOptions>) {
+          return "client";
+        } else if constexpr (std::is_same_v<T, InspectOptions>) {
+          return "inspect";
+        } else if constexpr (std::is_same_v<T, DownloadOptions>) {
+          return "download";
+        } else if constexpr (std::is_same_v<T, VersionOptions>) {
+          return "version";
+        } else if constexpr (std::is_same_v<T, EnvironmentOptions>) {
+          return "env";
+        } else {
+          static_assert(always_false<T>::value, "non-exhaustive visitor!");
+        }
+      },
+      invocation.options);
+}
 
 }  // namespace inferx::command
 

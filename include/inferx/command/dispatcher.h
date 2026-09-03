@@ -8,6 +8,16 @@
 
 namespace inferx::command {
 
+/// \brief Process exit status of one command execution.
+enum class ExitCode : int {
+  kSuccess = 0,
+  kUsage = 2,
+  kModel = 3,
+  kRuntime = 4,
+  kBenchmark = 5,
+  kUnavailable = 6,
+};
+
 // Executes one parsed command line. Diagnostics are emitted through the
 // process logger (inferx/base/log.h: stderr or --log-file); `results`
 // carries command output (stdout by default, injectable for tests).
