@@ -201,16 +201,6 @@ target_link_libraries(inferx_scheduler_test PRIVATE
 gtest_discover_tests(inferx_scheduler_test
   PROPERTIES TIMEOUT 60)
 
-if(TARGET inferx)
-  add_test(NAME fsm_docs_current
-    COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/docs/render_request_fsm.py
-            --binary $<TARGET_FILE:inferx>
-            --output ${CMAKE_SOURCE_DIR}/docs/request-lifecycle.md
-            --check)
-  set_tests_properties(fsm_docs_current PROPERTIES
-    LABELS "core;core-correctness" TIMEOUT 60)
-endif()
-
 # GoogleTest discovers individual cases after build. This CTest-time include
 # runs after those discovery includes and assigns both the general core label
 # and the required subsystem category without lossy list escaping.

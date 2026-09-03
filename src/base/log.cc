@@ -13,16 +13,15 @@
 namespace inferx::log {
 namespace {
 
-// absl::LogSink writing each formatted record to the --log-file.
 class LogFileSink final : public absl::LogSink {
  public:
-  explicit LogFileSink(const std::string& path)
-      : file_(path, std::ios::out | std::ios::trunc) {}
+  explicit LogFileSink(const std::string& path) : file_(path, std::ios::out | std::ios::trunc) {}
 
-  [[nodiscard]] bool ok() const { return file_.is_open(); }
+  [[nodiscard]] bool IsOk() const { return file_.is_open(); }
 
   void Send(const absl::LogEntry& entry) override {
     const std::lock_guard<std::mutex> lock(file_mutex_);
+
     if (file_.is_open()) {
       file_ << entry.text_message_with_prefix_and_newline();
       file_.flush();
@@ -34,16 +33,19 @@ class LogFileSink final : public absl::LogSink {
   std::ofstream file_;
 };
 
-// The installed --log-file sink, or null while logs go to stderr.
 LogFileSink* active_file_sink = nullptr;
 
 }  // namespace
 
+/// \brief
 void Initialize() {
   absl::InitializeLog();
   absl::SetStderrThreshold(absl::LogSeverity::kInfo);
 }
 
+/// \brief
+/// \param minimum
+/// \param vlog_level
 void SetLevel(absl::LogSeverity minimum, int vlog_level) {
   absl::SetMinLogLevel(static_cast<absl::LogSeverityAtLeast>(minimum));
   absl::SetGlobalVLogLevel(vlog_level);
@@ -51,17 +53,22 @@ void SetLevel(absl::LogSeverity minimum, int vlog_level) {
 
 bool SetLogFile(const std::string& path) {
   auto sink = std::make_unique<LogFileSink>(path);
-  if (!sink->ok()) return false;
+
+  if (!sink->IsOk()) return false;
+
   ClearLogFile();
   active_file_sink = sink.release();
   absl::AddLogSink(active_file_sink);
+
   // While the file sink is installed it is the sole destination.
   absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfinity);
+
   return true;
 }
 
 void ClearLogFile() {
   if (active_file_sink == nullptr) return;
+
   absl::RemoveLogSink(active_file_sink);
   delete active_file_sink;
   active_file_sink = nullptr;

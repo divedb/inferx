@@ -1223,7 +1223,7 @@ hardware-constrained release job.
 **Implementation specification:** [`docs/milestones/m1.md`](milestones/m1.md)
 
 > The simulator deliverables, simulator tests, and replay completion criteria below were removed
-> with the M1 simulator ([ADR 0042](adr/0042-retire-m1-simulator.md)); the core-contract items
+> with the M1 simulator (ADR 0042); the core-contract items
 > remain in force. The section text is kept as the historical M1 record.
 
 **Deliverables**

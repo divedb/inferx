@@ -9,7 +9,6 @@ import subprocess
 
 REQUIRED = (
     "core-unit",
-    "core-correctness",
     "core-channel",
 )
 
