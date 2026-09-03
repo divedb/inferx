@@ -86,7 +86,7 @@ TEST(CliParseTest, ServeMapsGlobalAndCommandOptions) {
 
 TEST(CliParseTest, BenchThroughputKeepsModeFormatAndRequestCount) {
   auto result = Parse(
-      {"inferx", "bench", "throughput", "--model", "m", "--output-format", "JSON", "--requests", "12"});
+      {"inferx", "bench", "throughput", "--model", "m", "--output-format", "JSON", "--num-prompts", "12"});
 
   ASSERT_TRUE(result.ok()) << result.status();
   ASSERT_TRUE(std::holds_alternative<command::BenchmarkOptions>(result->options));
@@ -121,7 +121,7 @@ TEST(CliParseTest, EveryCommandParsesToItsOptionsAndName) {
       {{"inferx", "inspect", "--model", "m"}, 4, "inspect"},
       {{"inferx", "download", "--model", "m"}, 5, "download"},
       {{"inferx", "version"}, 6, "version"},
-      {{"inferx", "env"}, 7, "env"},
+      {{"inferx", "collect-env"}, 7, "collect-env"},
   };
 
   for (const ParseCase& test_case : cases) {

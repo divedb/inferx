@@ -155,7 +155,7 @@ class DefaultDispatcher final : public Dispatcher {
             return Download(options);
           } else if constexpr (std::is_same_v<Selected, VersionOptions>) {
             return Version(invocation.global);
-          } else if constexpr (std::is_same_v<Selected, EnvironmentOptions>) {
+          } else if constexpr (std::is_same_v<Selected, CollectEnvOptions>) {
             return Environment(invocation.global);
           } else {
             static_assert(always_false<Selected>::value, "non-exhaustive visitor!");

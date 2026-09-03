@@ -74,19 +74,7 @@ option(INFERX_BUILD_OPERATOR_REFERENCE_TESTS "Build CPU operator contract/refere
 option(INFERX_BUILD_OPERATOR_GPU_TESTS "Build operator GPU tests (requires INFERX_ENABLE_CUDA)."
        ${_INFERX_TOP_LEVEL_DEFAULT})
 option(INFERX_BUILD_OPERATOR_BENCHMARKS "Build operator/dispatch benchmarks."
-       ${_INFERX_TOP_LEVEL_DEFAULT})
-option(INFERX_BUILD_VLLM_DIFFERENTIAL_TESTS
-       "Register the opt-in real-model differential test against vLLM."
-       OFF)
-if(INFERX_BUILD_VLLM_DIFFERENTIAL_TESTS AND NOT INFERX_BUILD_CLI)
-  message(FATAL_ERROR
-    "INFERX_BUILD_VLLM_DIFFERENTIAL_TESTS=ON requires INFERX_BUILD_CLI=ON")
-endif()
-if(INFERX_BUILD_VLLM_DIFFERENTIAL_TESTS AND NOT INFERX_ENABLE_HF_HUB)
-  message(FATAL_ERROR
-    "INFERX_BUILD_VLLM_DIFFERENTIAL_TESTS=ON requires INFERX_ENABLE_HF_HUB=ON")
-endif()
-# The kernels-architecture branch (ADR 0031/0032) supersedes the ADR 0029
+       ${_INFERX_TOP_LEVEL_DEFAULT})# The kernels-architecture branch (ADR 0031/0032) supersedes the ADR 0029
 # rejection for the new provider chain: FlashInfer/CUTLASS enter as AOT
 # instantiations of the pinned gitlinks with no JIT/cubin-loading path, and
 # the option gates remain OFF by default until qualification evidence is

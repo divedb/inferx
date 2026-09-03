@@ -519,14 +519,14 @@ struct DownloadOptions {
 /// \brief `version`: print version and build information.
 struct VersionOptions {};
 
-/// \brief `env`: runtime environment diagnostics.
-struct EnvironmentOptions {};
+/// \brief `collect-env`: runtime environment and build diagnostics.
+struct CollectEnvOptions {};
 
 /// \brief One parsed command line: the global options plus the selected
 ///        subcommand's typed options.
 struct Invocation {
   using Options = std::variant<ServeOptions, BenchmarkOptions, RunOptions, ClientOptions,
-                               InspectOptions, DownloadOptions, VersionOptions, EnvironmentOptions>;
+                               InspectOptions, DownloadOptions, VersionOptions, CollectEnvOptions>;
 
   /// Options shared across all commands (logging, reproducibility).
   GlobalOptions global;
@@ -568,8 +568,8 @@ constexpr std::string_view CommandName(const Invocation& invocation) {
           return "download";
         } else if constexpr (std::is_same_v<T, VersionOptions>) {
           return "version";
-        } else if constexpr (std::is_same_v<T, EnvironmentOptions>) {
-          return "env";
+        } else if constexpr (std::is_same_v<T, CollectEnvOptions>) {
+          return "collect-env";
         } else {
           static_assert(always_false<T>::value, "non-exhaustive visitor!");
         }

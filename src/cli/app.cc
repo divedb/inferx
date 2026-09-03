@@ -390,10 +390,10 @@ absl::Status ParseArguments(CommandLine& cli, int argc, const char* const* argv)
     return absl::Status(kUsageExit, "inferx: a subcommand is required");
   }
   try {
-    // Use the string-vector overload rather than App::parse(int, char**):
-    // that overload wants a non-const char**, which a
-    // `const char* const*` parameter cannot supply without a const_cast.
-    cli.app.parse(std::vector<std::string>(argv + 1, argv + argc));
+    // The vector overloads expect arguments in reverse order (CLI11 pops
+    // from the back); the const-argv overload handles that and the
+    // program-name skip itself.
+    cli.app.parse(argc, argv);
   } catch (const CLI::ParseError& parse_error) {
     const int exit_status = cli.app.exit(parse_error, std::cout, std::cerr);
     return exit_status == 0 ? absl::Status(kTerminalOutputExit, "terminal output printed")

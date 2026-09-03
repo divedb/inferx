@@ -9,8 +9,7 @@ set(INFERX_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/InferX")
 
 # Package configuration: finds dependencies of the *installed* targets only.
 # `inferx::base` has public Abseil dependencies, so the package configuration
-# resolves them before loading the targets file. The pinned Abseil is installed
-# into the same prefix in the tests/consumer_absl fixture.
+# resolves them before loading the targets file.
 configure_package_config_file(
   "${CMAKE_CURRENT_LIST_DIR}/InferXConfig.cmake.in"
   "${CMAKE_CURRENT_BINARY_DIR}/InferXConfig.cmake"

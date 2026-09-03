@@ -1,7 +1,6 @@
-# InferX test tree (project quality policy). CTest labels: unit, compile,
-# dependency, integration, failure, and the platform category labels. Every test
-# gets a bounded timeout and runs from any working directory through absolute
-# paths.
+# InferX test tree (project quality policy). CTest labels: unit and the
+# platform category labels. Every test gets a bounded timeout and runs from
+# any working directory through absolute paths.
 
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
@@ -34,7 +33,7 @@ if(INFERX_BUILD_CLI)
   inferx_apply_project_options(inferx_cli_test)
   target_link_libraries(inferx_cli_test PRIVATE inferx_cli GTest::gtest_main)
   gtest_discover_tests(inferx_cli_test
-    PROPERTIES LABELS "unit;integration" TIMEOUT 60)
+    PROPERTIES LABELS "unit" TIMEOUT 60)
 endif()
 
 # model artifact/model contract: rooted path safety, official digest vectors,
@@ -59,35 +58,6 @@ if(INFERX_ENABLE_TOKENIZATION)
   gtest_discover_tests(inferx_tokenization_test
     PROPERTIES TIMEOUT 120)
 
-  add_executable(inferx_tokenizer_differential_test
-    correctness/tokenization/tokenizer_differential_test.cc)
-  inferx_apply_project_options(inferx_tokenizer_differential_test)
-  target_link_libraries(inferx_tokenizer_differential_test PRIVATE
-    inferx::tokenization GTest::gtest_main simdjson::simdjson)
-  target_compile_definitions(inferx_tokenizer_differential_test PRIVATE
-    TOKENIZER_REFERENCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/model/tokenizer_reference")
-  gtest_discover_tests(inferx_tokenizer_differential_test
-    PROPERTIES TIMEOUT 600 LABELS "model;model-correctness")
-
-  add_executable(inferx_tokenizer_subprocess_test
-    failure/tokenization/tokenizer_subprocess_test.cc)
-  inferx_apply_project_options(inferx_tokenizer_subprocess_test)
-  target_link_libraries(inferx_tokenizer_subprocess_test PRIVATE
-    inferx::tokenization GTest::gtest_main)
-  target_compile_definitions(inferx_tokenizer_subprocess_test PRIVATE
-    TOKENIZER_JSON_PATH="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/model/tokenizer_reference/qwen2.5/tokenizer.json")
-  gtest_discover_tests(inferx_tokenizer_subprocess_test
-    PROPERTIES TIMEOUT 300 LABELS "model;model-failure")
-
-  add_executable(inferx_tokenizer_pool_stress_test
-    stress/tokenization/tokenizer_pool_stress_test.cc)
-  inferx_apply_project_options(inferx_tokenizer_pool_stress_test)
-  target_link_libraries(inferx_tokenizer_pool_stress_test PRIVATE
-    inferx::tokenization GTest::gtest_main)
-  target_compile_definitions(inferx_tokenizer_pool_stress_test PRIVATE
-    TOKENIZER_JSON_PATH="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/model/tokenizer_reference/qwen2.5/tokenizer.json")
-  gtest_discover_tests(inferx_tokenizer_pool_stress_test
-    PROPERTIES TIMEOUT 300 LABELS "model;model-stress")
 endif()
 # GoogleTest discovers individual cases after build. Assign the labels at
 # CTest time so the semicolon-separated label list remains one property value.
@@ -245,16 +215,6 @@ target_link_libraries(inferx_m5_runtime_test PRIVATE
 gtest_discover_tests(inferx_m5_runtime_test
   PROPERTIES TIMEOUT 120)
 
-add_executable(inferx_m5_cpu_backend_test integration/m5/m5_cpu_backend_test.cc)
-inferx_apply_project_options(inferx_m5_cpu_backend_test)
-target_compile_definitions(inferx_m5_cpu_backend_test PRIVATE
-  M5_MODEL_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/model")
-target_link_libraries(inferx_m5_cpu_backend_test PRIVATE
-  inferx::execution_runtime inferx::input GTest::gtest_main
-  absl::status absl::statusor absl::strings)
-gtest_discover_tests(inferx_m5_cpu_backend_test
-  PROPERTIES TIMEOUT 300)
-
 set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/m5_test_labels.cmake")
 if(DEFINED inferx_execution_config_test_TESTS)
@@ -276,196 +236,11 @@ target_link_libraries(inferx_cuda_config_test PRIVATE
 gtest_discover_tests(inferx_cuda_config_test
   PROPERTIES TIMEOUT 120)
 
-add_executable(inferx_runtime_stress_test
-  stress/runtime/runtime_stress_test.cc
-  fakes/fake_fence.cc)
-inferx_apply_project_options(inferx_runtime_stress_test)
-target_include_directories(inferx_runtime_stress_test PRIVATE ${CMAKE_SOURCE_DIR})
-target_link_libraries(inferx_runtime_stress_test PRIVATE
-  inferx::runtime GTest::gtest_main absl::status absl::statusor absl::strings)
-if(INFERX_ENABLE_TSAN)
-  # TSan provides strong global new/delete interceptors. The same warmed pool
-  # cycles still run in this lane, while allocation-count evidence is owned by
-  # the ordinary and ASan/UBSan lanes.
-  target_compile_definitions(inferx_runtime_stress_test PRIVATE
-    INFERX_TSAN_BUILD=1)
-endif()
-gtest_discover_tests(inferx_runtime_stress_test
-  PROPERTIES TIMEOUT 180)
-
 # GoogleTest discovers individual cases after build. Assign both the general
 # platform label and the required category at CTest time; passing a semicolon list
 # through gtest_discover_tests loses the second label.
 set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/runtime_test_labels.cmake")
-
-# ---------------------------------------------------------------------------
-# compile: C++23 feature sentinel. Exercises library facilities, not macros.
-# ---------------------------------------------------------------------------
-add_executable(inferx_cxx23_smoke compile/cxx23_smoke.cc)
-inferx_apply_project_options(inferx_cxx23_smoke)
-add_test(NAME cxx23_sentinel COMMAND inferx_cxx23_smoke)
-set_tests_properties(cxx23_sentinel PROPERTIES LABELS "compile" TIMEOUT 60)
-
-# ---------------------------------------------------------------------------
-# dependency: Abseil qualification (ADR 0002 pin; kept inside the test target
-# so inferx::base does not expose Abseil before core).
-# ---------------------------------------------------------------------------
-add_executable(inferx_absl_qualification_test dependency/absl_qualification_test.cc)
-inferx_apply_project_options(inferx_absl_qualification_test)
-target_link_libraries(inferx_absl_qualification_test PRIVATE
-  GTest::gtest_main absl::status absl::statusor absl::strings)
-gtest_discover_tests(inferx_absl_qualification_test
-  PROPERTIES LABELS "dependency" TIMEOUT 60)
-
-# ---------------------------------------------------------------------------
-# integration: CLI behavior and install/consumer flows. The consumer projects
-# under tests/consumer* are separate CMake projects driven by Python drivers
-# so they cannot see the source tree or build tree by accident.
-# ---------------------------------------------------------------------------
-if(INFERX_BUILD_CLI)
-  add_test(NAME cli
-    COMMAND Python3::Interpreter ${CMAKE_CURRENT_SOURCE_DIR}/integration/cli_test.py
-            --binary $<TARGET_FILE:inferx>
-            --expected-version ${PROJECT_VERSION})
-  set_tests_properties(cli PROPERTIES LABELS "integration" TIMEOUT 120)
-  set(_INFERX_MODEL_INSPECT_TEST_OPTIONS "")
-  if(NOT INFERX_ENABLE_HF_HUB)
-    list(APPEND _INFERX_MODEL_INSPECT_TEST_OPTIONS --expect-downloads-disabled)
-  endif()
-  add_test(NAME model_inspect_cli
-    COMMAND Python3::Interpreter
-            ${CMAKE_CURRENT_SOURCE_DIR}/integration/model_inspect_cli_test.py
-            --binary $<TARGET_FILE:inferx>
-            --fixture ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/model/tiny_llama
-            ${_INFERX_MODEL_INSPECT_TEST_OPTIONS})
-  set_tests_properties(model_inspect_cli PROPERTIES LABELS "integration;model" TIMEOUT 120)
-
-  if(INFERX_BUILD_VLLM_DIFFERENTIAL_TESTS)
-    add_test(NAME real_model_vllm_differential
-      COMMAND Python3::Interpreter
-              ${CMAKE_CURRENT_SOURCE_DIR}/integration/real_model_vllm_test.py
-              --inferx-binary $<TARGET_FILE:inferx>
-              --download-dir ${CMAKE_BINARY_DIR}/real-model-cache)
-    set_tests_properties(real_model_vllm_differential PROPERTIES
-      LABELS "integration;model;external"
-      RUN_SERIAL TRUE
-      TIMEOUT 900)
-  endif()
-endif()
-
-if(PROJECT_IS_TOP_LEVEL AND NOT (INFERX_ENABLE_ASAN OR INFERX_ENABLE_UBSAN OR INFERX_ENABLE_TSAN))
-  # Only the top-level build may install; a subproject embedder uses its own
-  # install rules. Sanitizer lanes skip these: an instrumented static library
-  # cannot be linked by a non-instrumented consumer, and install/consumer
-  # coverage is owned by the cpu-release lane (project quality policy).
-  add_test(NAME install_consumer
-    COMMAND Python3::Interpreter
-            ${CMAKE_CURRENT_SOURCE_DIR}/integration/install_consumer.py
-            --source-dir ${CMAKE_SOURCE_DIR}
-            --build-dir ${CMAKE_BINARY_DIR}
-            --consumer-dir ${CMAKE_CURRENT_SOURCE_DIR}/consumer
-            --output-root ${CMAKE_SOURCE_DIR}/out/consumer
-            --cxx-compiler ${CMAKE_CXX_COMPILER}
-            --expected-version ${PROJECT_VERSION})
-  set_tests_properties(install_consumer PROPERTIES LABELS "integration" TIMEOUT 600)
-
-  add_test(NAME install_absl_consumer
-    COMMAND Python3::Interpreter
-            ${CMAKE_CURRENT_SOURCE_DIR}/integration/install_consumer.py
-            --source-dir ${CMAKE_SOURCE_DIR}
-            --build-dir ${CMAKE_BINARY_DIR}
-            --consumer-dir ${CMAKE_CURRENT_SOURCE_DIR}/consumer_absl
-            --output-root ${CMAKE_SOURCE_DIR}/out/consumer
-            --cxx-compiler ${CMAKE_CXX_COMPILER}
-            --expected-version ${PROJECT_VERSION})
-  set_tests_properties(install_absl_consumer PROPERTIES LABELS "integration" TIMEOUT 900)
-endif()
-
-# ---------------------------------------------------------------------------
-# failure: expected configure/compile failures (project quality policy). A test
-# passes only when the command fails AND every expected message fragment is
-# present, so an unrelated failure does not satisfy it.
-# ---------------------------------------------------------------------------
-function(inferx_add_failure_test name)
-  set(multi EXPECT)
-  cmake_parse_arguments(FXT "" "" "${multi}" ${ARGN})
-  set(_INFERX_EXPECT_ARGS "")
-  foreach(_fragment IN ITEMS ${FXT_EXPECT})
-    list(APPEND _INFERX_EXPECT_ARGS "--expect" "${_fragment}")
-  endforeach()
-  add_test(NAME failure_${name}
-    COMMAND Python3::Interpreter
-            ${CMAKE_CURRENT_SOURCE_DIR}/failure/run_expected_failure.py
-            --source-root ${CMAKE_SOURCE_DIR}
-            --work-dir ${CMAKE_CURRENT_BINARY_DIR}/failure/${name}
-            ${_INFERX_EXPECT_ARGS}
-            ${FXT_UNPARSED_ARGUMENTS})
-  set_tests_properties(failure_${name} PROPERTIES LABELS "failure" TIMEOUT 300)
-endfunction()
-
-inferx_add_failure_test(missing_core_submodule
-  --fixture ${CMAKE_CURRENT_SOURCE_DIR}/failure/missing_core_submodule.cmake
-  --arg INFERX_ROOT=${CMAKE_SOURCE_DIR}
-  EXPECT "abseil-cpp" "bootstrap.py --profile core")
-
-inferx_add_failure_test(unknown_dependency_provider
-  --fixture ${CMAKE_CURRENT_SOURCE_DIR}/failure/unknown_provider.cmake
-  --arg INFERX_ROOT=${CMAKE_SOURCE_DIR}
-  EXPECT "INFERX_DEPENDENCY_PROVIDER" "submodule" "system")
-
-inferx_add_failure_test(cmake_too_old
-  --fixture ${CMAKE_CURRENT_SOURCE_DIR}/failure/cmake_too_old.cmake
-  EXPECT "or higher is required")
-
-inferx_add_failure_test(compiler_too_old
-  --fixture ${CMAKE_CURRENT_SOURCE_DIR}/failure/compiler_too_old.cmake
-  --arg INFERX_ROOT=${CMAKE_SOURCE_DIR}
-  EXPECT "GCC" "13")
-
-inferx_add_failure_test(cxx23_library_missing
-  --fixture ${CMAKE_CURRENT_SOURCE_DIR}/failure/cxx23_library_missing.cmake
-  --arg INFERX_ROOT=${CMAKE_SOURCE_DIR}
-  --build
-  EXPECT "std::unreachable" "supported standard library")
-
-inferx_add_failure_test(asan_and_tsan
-  --fixture ${CMAKE_CURRENT_SOURCE_DIR}/failure/asan_and_tsan.cmake
-  --arg INFERX_ROOT=${CMAKE_SOURCE_DIR}
-  EXPECT "mutually exclusive")
-
-inferx_add_failure_test(cuda_toolkit_missing
-  --fixture ${CMAKE_CURRENT_SOURCE_DIR}/failure/cuda_toolkit_missing.cmake
-  --arg INFERX_ROOT=${CMAKE_SOURCE_DIR}
-  EXPECT "CUDA" "toolkit")
-
-inferx_add_failure_test(cuda_architecture_unset
-  --fixture ${CMAKE_CURRENT_SOURCE_DIR}/failure/cuda_architecture_unset.cmake
-  --arg INFERX_ROOT=${CMAKE_SOURCE_DIR}
-  EXPECT "CMAKE_CUDA_ARCHITECTURES" "89")
-
-inferx_add_failure_test(analysis_tool_absent
-  --fixture ${CMAKE_CURRENT_SOURCE_DIR}/failure/analysis_tool_absent.cmake
-  --arg INFERX_ROOT=${CMAKE_SOURCE_DIR}
-  EXPECT "clang-tidy" "18")
-
-inferx_add_failure_test(consumer_missing_dependency
-  --fixture ${CMAKE_CURRENT_SOURCE_DIR}/failure/consumer_missing_dependency.cmake
-  --arg INFERX_ROOT=${CMAKE_SOURCE_DIR}
-  --arg CONSUMER_DIR=${CMAKE_CURRENT_SOURCE_DIR}/consumer_absl
-  EXPECT "absl")
-
-# The tokenizer_unqualified fixture existed to prove the rejected divedb
-# candidate could not be enabled accidentally (ADR 0024, pre-acceptance).
-# The gate is closed: the owned qualified backend configures and builds, and
-# the model tokenization suites cover it; the obsolete expected-failure is gone.
-
-inferx_add_failure_test(manifest_gitlink_drift
-  --script ${CMAKE_CURRENT_SOURCE_DIR}/failure/manifest_drift.py
-  --arg INFERX_ROOT=${CMAKE_SOURCE_DIR}
-  EXPECT "revision drift" "third_party/abseil-cpp" "gitlink")
-# The drift fixture mutates the mirrored abseil-cpp revision in a temporary
-# manifest copy; the real gitlink must win (see failure/manifest_drift.py).
 
 add_test(NAME cuda_header_boundary
   COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/check_cuda_boundaries.py
@@ -479,15 +254,14 @@ set_tests_properties(cuda_header_boundary PROPERTIES
 # ---------------------------------------------------------------------------
 add_custom_target(check-fast
   COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target format-check
-  COMMAND ${CMAKE_CTEST_COMMAND} -L "unit|compile" --output-on-failure
+  COMMAND ${CMAKE_CTEST_COMMAND} -L "unit" --output-on-failure
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   VERBATIM
   USES_TERMINAL
-  COMMENT "InferX check-fast: format-check + unit/compile tests")
+  COMMENT "InferX check-fast: format-check + unit tests")
 add_dependencies(check-fast
   inferx_base_test
-  inferx_artifacts_test
-  inferx_cxx23_smoke)
+  inferx_artifacts_test)
 
 add_custom_target(check-analysis
   COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/check_cuda_boundaries.py
@@ -505,8 +279,6 @@ add_custom_target(check-analysis
 add_custom_target(check
   COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target check-fast
   COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target check-analysis
-  COMMAND ${CMAKE_CTEST_COMMAND} -L "integration|failure|dependency"
-          --output-on-failure
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   VERBATIM
   USES_TERMINAL

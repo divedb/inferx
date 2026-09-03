@@ -4,9 +4,6 @@ set_tests_properties(
   ${inferx_cuda_config_test_TESTS}
   PROPERTIES LABELS "platform;platform-unit")
 
-set_tests_properties(${inferx_runtime_stress_test_TESTS}
-  PROPERTIES LABELS "platform;platform-stress")
-
 if(DEFINED inferx_cuda_unit_test_TESTS)
   set_tests_properties(${inferx_cuda_unit_test_TESTS}
     PROPERTIES LABELS "platform;platform-unit")

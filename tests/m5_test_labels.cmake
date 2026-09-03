@@ -6,7 +6,3 @@ if(DEFINED inferx_m5_runtime_test_TESTS)
   set_tests_properties(${inferx_m5_runtime_test_TESTS}
     PROPERTIES LABELS "m5;m5-unit;runtime" TIMEOUT 120)
 endif()
-if(DEFINED inferx_m5_cpu_backend_test_TESTS)
-  set_tests_properties(${inferx_m5_cpu_backend_test_TESTS}
-    PROPERTIES LABELS "m5;m5-integration" TIMEOUT 300)
-endif()

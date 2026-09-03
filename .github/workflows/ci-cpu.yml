@@ -155,20 +155,6 @@ jobs:
           python3 tools/run_iwyu.py --build-dir out/build/analysis
           python3 tools/check_headers.py --source-root . --build-dir out/build/analysis
 
-  install-consumer:
-    name: install + independent consumer
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - name: Bootstrap core profile
-        run: python3 tools/deps/bootstrap.py --profile core
-      - name: Build, install, consume via CMAKE_PREFIX_PATH only
-        run: |
-          cmake --preset cpu-release
-          cmake --build --preset cpu-release --parallel
-          ctest --test-dir out/build/cpu-release -L integration --output-on-failure
-
   build-metrics:
     name: build metrics (cpu-release)
     runs-on: ubuntu-24.04

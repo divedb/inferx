@@ -90,7 +90,7 @@ if(_INFERX_CORE_PROFILE)
       # names, e.g. a `check` library that collides with our aggregate
       # target). The installed package instead resolves Abseil by name via
       # find_dependency(absl CONFIG) against the standalone-installed pinned
-      # Abseil in the same prefix (tests/integration/install_consumer.py).
+      # Abseil in the same prefix when installed together.
       set(ABSL_ENABLE_INSTALL OFF)
       set(ABSL_RUN_TESTS OFF)
       set(ABSL_BUILD_TESTING_HELPERS OFF)
