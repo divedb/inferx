@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "CLI/CLI.hpp"
+#include "inferx/base/log.h"
 #include "inferx/base/version.h"
 #include "inferx/command/options.h"
 
@@ -15,12 +16,11 @@ namespace inferx::cli {
 namespace {
 
 using command::BenchmarkMode;
+using command::Command;
 using command::DType;
 using command::ExitCode;
 using command::LogLevel;
 using command::OutputFormat;
-
-constexpr int Code(ExitCode code) { return static_cast<int>(code); }
 
 template <typename Enum>
 CLI::Validator StrictEnumTransformer(std::map<std::string, Enum> values) {
@@ -131,9 +131,9 @@ void AddOutputFormat(CLI::App& app, OutputFormat& output_format) {
 
 void EnableGlobalFallthrough(CLI::App& app) { app.fallthrough(); }
 
-int UsageError(std::ostream& error, std::string_view command, std::string_view message) {
+ExitCode UsageError(std::ostream& error, std::string_view command, std::string_view message) {
   error << "error: " << command << ": " << message << '\n';
-  return Code(ExitCode::kUsage);
+  return ExitCode::kUsage;
 }
 
 bool ValidProbability(double value, bool allow_zero) {
@@ -147,8 +147,8 @@ bool ValidSampling(const command::SamplingOptions& options) {
 
 }  // namespace
 
-int Run(int argc, const char* const* argv, command::Dispatcher& dispatcher, std::ostream& output,
-        std::ostream& error) {
+ParseResult ParseFromCommandLine(int argc, const char* const* argv, std::ostream& output,
+                                 std::ostream& error) {
   command::GlobalOptions global;
   command::ServeOptions serve_options;
   command::BenchmarkOptions latency_options;
@@ -298,62 +298,110 @@ int Run(int argc, const char* const* argv, command::Dispatcher& dispatcher, std:
   CLI::App* environment = app.add_subcommand("env", "Print runtime environment diagnostics");
   EnableGlobalFallthrough(*environment);
 
+  ParseResult result;
+
   if (argc <= 1) {
     output << app.help();
-    return Code(ExitCode::kUsage);
+    result.exit_code = ExitCode::kUsage;
+    return result;
   }
 
   try {
     app.parse(argc, argv);
   } catch (const CLI::ParseError& parse_error) {
-    const int result = app.exit(parse_error, output, error);
-    return result == 0 ? Code(ExitCode::kSuccess) : Code(ExitCode::kUsage);
+    const int exit_status = app.exit(parse_error, output, error);
+    result.exit_code = exit_status == 0 ? ExitCode::kSuccess : ExitCode::kUsage;
+    return result;
   }
+
+  result.invocation.global = global;
 
   if (serve->parsed()) {
     if (!ValidSampling(serve_options.sampling) ||
         !ValidProbability(serve_options.gpu_memory_utilization, false)) {
-      return UsageError(error, "serve",
-                        "probabilities must be finite and in their documented ranges");
+      result.exit_code =
+          UsageError(error, "serve", "probabilities must be finite and in their documented ranges");
+      return result;
     }
-    return Code(dispatcher.Serve(global, serve_options));
-  }
-  if (latency->parsed()) {
+    result.invocation.command = Command::kServe;
+    result.invocation.options = serve_options;
+  } else if (latency->parsed()) {
     if (!ValidSampling(latency_options.sampling)) {
-      return UsageError(error, "bench latency", "invalid sampling values");
+      result.exit_code = UsageError(error, "bench latency", "invalid sampling values");
+      return result;
     }
-    return Code(dispatcher.Bench(global, latency_options));
-  }
-  if (throughput->parsed()) {
+    result.invocation.command = Command::kBench;
+    result.invocation.options = latency_options;
+  } else if (throughput->parsed()) {
     if (!ValidSampling(throughput_options.sampling)) {
-      return UsageError(error, "bench throughput", "invalid sampling values");
+      result.exit_code = UsageError(error, "bench throughput", "invalid sampling values");
+      return result;
     }
-    return Code(dispatcher.Bench(global, throughput_options));
-  }
-  if (serve_benchmark->parsed()) {
-    return Code(dispatcher.Bench(global, serve_benchmark_options));
-  }
-  if (run->parsed()) {
+    result.invocation.command = Command::kBench;
+    result.invocation.options = throughput_options;
+  } else if (serve_benchmark->parsed()) {
+    result.invocation.command = Command::kBench;
+    result.invocation.options = serve_benchmark_options;
+  } else if (run->parsed()) {
     if (!ValidSampling(run_options.sampling) || run_options.prompt.empty()) {
-      return UsageError(error, "run", "prompt and sampling values are invalid");
+      result.exit_code = UsageError(error, "run", "prompt and sampling values are invalid");
+      return result;
     }
-    return Code(dispatcher.Run(global, run_options));
-  }
-  if (chat->parsed()) {
+    result.invocation.command = Command::kRun;
+    result.invocation.options = run_options;
+  } else if (chat->parsed()) {
     if (!chat_options.interactive && chat_options.prompt.empty()) chat_options.interactive = true;
-    return Code(dispatcher.Chat(global, chat_options));
-  }
-  if (complete->parsed()) return Code(dispatcher.Complete(global, complete_options));
-  if (inspect->parsed()) {
+    result.invocation.command = Command::kChat;
+    result.invocation.options = chat_options;
+  } else if (complete->parsed()) {
+    result.invocation.command = Command::kComplete;
+    result.invocation.options = complete_options;
+  } else if (inspect->parsed()) {
     if (!inspect_options.fsm_schema && inspect_options.model.model.empty()) {
-      return UsageError(error, "inspect", "--model is required unless --fsm-schema is used");
+      result.exit_code = UsageError(error, "inspect", "--model is required unless --fsm-schema is used");
+      return result;
     }
-    return Code(dispatcher.Inspect(global, inspect_options));
+    result.invocation.command = Command::kInspect;
+    result.invocation.options = inspect_options;
+  } else if (download->parsed()) {
+    result.invocation.command = Command::kDownload;
+    result.invocation.options = download_options;
+  } else if (version->parsed()) {
+    result.invocation.command = Command::kVersion;
+  } else if (environment->parsed()) {
+    result.invocation.command = Command::kEnvironment;
+  } else {
+    result.exit_code = UsageError(error, "inferx", "a subcommand is required");
+    return result;
   }
-  if (download->parsed()) return Code(dispatcher.Download(global, download_options));
-  if (version->parsed()) return Code(dispatcher.Version(global));
-  if (environment->parsed()) return Code(dispatcher.Environment(global));
-  return UsageError(error, "inferx", "a subcommand is required");
+
+  result.should_run = true;
+  return result;
+}
+
+void ConfigureLogging(const command::GlobalOptions& global) {
+  log::Severity severity = log::Severity::kInfo;
+  switch (global.log_level) {
+    case LogLevel::kTrace:
+      severity = log::Severity::kTrace;
+      break;
+    case LogLevel::kDebug:
+      severity = log::Severity::kDebug;
+      break;
+    case LogLevel::kInfo:
+      severity = log::Severity::kInfo;
+      break;
+    case LogLevel::kWarning:
+      severity = log::Severity::kWarning;
+      break;
+    case LogLevel::kError:
+      severity = log::Severity::kError;
+      break;
+  }
+  log::SetMinSeverity(severity);
+  if (!global.log_file.empty() && !log::SetFileSink(global.log_file)) {
+    LOG(ERROR) << "inferx: cannot open log file: " << global.log_file;
+  }
 }
 
 }  // namespace inferx::cli

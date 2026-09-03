@@ -23,6 +23,12 @@ include(GoogleTest)
 gtest_discover_tests(inferx_base_test
   PROPERTIES LABELS "unit" TIMEOUT 60)
 
+add_executable(inferx_log_test unit/base/log_test.cc)
+inferx_apply_project_options(inferx_log_test)
+target_link_libraries(inferx_log_test PRIVATE inferx::base GTest::gtest_main)
+gtest_discover_tests(inferx_log_test
+  PROPERTIES TIMEOUT 60)
+
 if(INFERX_BUILD_CLI)
   add_executable(inferx_cli_test unit/cli/app_test.cc)
   inferx_apply_project_options(inferx_cli_test)

@@ -21,6 +21,7 @@
 #include "inferx/artifacts/model_resolver.h"
 #include "inferx/base/clock.h"
 #include "inferx/base/id.h"
+#include "inferx/base/log.h"
 #include "inferx/base/status.h"
 #include "inferx/base/token.h"
 #include "inferx/base/version.h"
@@ -130,17 +131,36 @@ class DiscardingResponseSink final : public ResponseSink {
 
 class DefaultDispatcher final : public Dispatcher {
  public:
-  DefaultDispatcher(std::ostream& output, std::ostream& error) : output_(output), error_(error) {}
+  explicit DefaultDispatcher(std::ostream& output) : output_(output) {}
 
-  ExitCode Serve(const GlobalOptions&, const ServeOptions&) override {
-    return Unavailable("serve", "HTTP serving is scheduled for the server milestone");
+  ExitCode Dispatch(const Invocation& invocation) override {
+    switch (invocation.command) {
+      case Command::kServe:
+        return Unavailable("serve", "HTTP serving is scheduled for the server milestone");
+      case Command::kBench:
+        return Unavailable("bench", "the unified benchmark runner is not compiled in this milestone");
+      case Command::kRun:
+        return Run(invocation.global, std::get<RunOptions>(invocation.options));
+      case Command::kChat:
+        return Unavailable("chat",
+                           "the OpenAI-compatible HTTP client is not compiled in this milestone");
+      case Command::kComplete:
+        return Unavailable("complete",
+                           "the OpenAI-compatible HTTP client is not compiled in this milestone");
+      case Command::kInspect:
+        return Inspect(std::get<InspectOptions>(invocation.options));
+      case Command::kDownload:
+        return Download(std::get<DownloadOptions>(invocation.options));
+      case Command::kVersion:
+        return Version(invocation.global);
+      case Command::kEnvironment:
+        return Environment(invocation.global);
+    }
+    return Unavailable("inferx", "unknown command");
   }
 
-  ExitCode Bench(const GlobalOptions&, const BenchmarkOptions&) override {
-    return Unavailable("bench", "the unified benchmark runner is not compiled in this milestone");
-  }
-
-  ExitCode Run(const GlobalOptions& global, const RunOptions& options) override {
+ private:
+  ExitCode Run(const GlobalOptions& global, const RunOptions& options) {
     if ((!options.model.tokenizer.empty()) ||
         (options.model.device != "auto" && options.model.device != "cpu") ||
         options.model.tensor_parallel_size != 1 ||
@@ -150,7 +170,7 @@ class DefaultDispatcher final : public Dispatcher {
     }
     if (options.sampling.temperature != 0.0 || options.sampling.top_p != 1.0 ||
         options.sampling.top_k != 0) {
-      error_ << "error: run: the current backend supports deterministic greedy decoding only\n";
+      LOG(ERROR) << "run: the current backend supports deterministic greedy decoding only";
       return ExitCode::kUsage;
     }
 
@@ -234,17 +254,7 @@ class DefaultDispatcher final : public Dispatcher {
     return ExitCode::kSuccess;
   }
 
-  ExitCode Chat(const GlobalOptions&, const ClientOptions&) override {
-    return Unavailable("chat",
-                       "the OpenAI-compatible HTTP client is not compiled in this milestone");
-  }
-
-  ExitCode Complete(const GlobalOptions&, const ClientOptions&) override {
-    return Unavailable("complete",
-                       "the OpenAI-compatible HTTP client is not compiled in this milestone");
-  }
-
-  ExitCode Inspect(const GlobalOptions&, const InspectOptions& options) override {
+  ExitCode Inspect(const InspectOptions& options) {
     if (options.fsm_schema) {
       PrintFsmSchema(output_);
       return ExitCode::kSuccess;
@@ -314,7 +324,7 @@ class DefaultDispatcher final : public Dispatcher {
     return ExitCode::kSuccess;
   }
 
-  ExitCode Download(const GlobalOptions&, const DownloadOptions& options) override {
+  ExitCode Download(const DownloadOptions& options) {
     artifacts::ModelResolver resolver;
     auto resolver_options = ResolverOptions(options.resolver);
     auto resolved = resolver.Resolve(options.model, resolver_options);
@@ -326,7 +336,7 @@ class DefaultDispatcher final : public Dispatcher {
     return ExitCode::kSuccess;
   }
 
-  ExitCode Version(const GlobalOptions&) override {
+  ExitCode Version(const GlobalOptions&) {
     const inferx::Version version = GetVersion();
     output_ << "inferx: " << version.major << '.' << version.minor << '.' << version.patch << '\n'
             << "git-revision: " << INFERX_COMMAND_GIT_REVISION << '\n'
@@ -341,7 +351,7 @@ class DefaultDispatcher final : public Dispatcher {
     return ExitCode::kSuccess;
   }
 
-  ExitCode Environment(const GlobalOptions&) override {
+  ExitCode Environment(const GlobalOptions&) {
     output_ << "compiled.cuda=" << (INFERX_COMMAND_ENABLE_CUDA ? "true" : "false") << '\n'
             << "compiled.rocm=false\n"
             << "rocm.driver_version=not-compiled\n"
@@ -354,14 +364,13 @@ class DefaultDispatcher final : public Dispatcher {
     return ExitCode::kSuccess;
   }
 
- private:
   ExitCode Unavailable(std::string_view command, std::string_view detail) {
-    error_ << "error: " << command << ": feature unavailable: " << detail << '\n';
+    LOG(ERROR) << command << ": feature unavailable: " << detail;
     return ExitCode::kUnavailable;
   }
 
   ExitCode Fail(std::string_view scope, const absl::Status& status, ExitCode code) {
-    error_ << "error: " << scope << ": " << status << '\n';
+    LOG(ERROR) << scope << ": " << status;
     return code;
   }
 
@@ -371,13 +380,12 @@ class DefaultDispatcher final : public Dispatcher {
   }
 
   std::ostream& output_;
-  std::ostream& error_;
 };
 
 }  // namespace
 
-std::unique_ptr<Dispatcher> CreateDefaultDispatcher(std::ostream& output, std::ostream& error) {
-  return std::make_unique<DefaultDispatcher>(output, error);
+std::unique_ptr<Dispatcher> CreateDefaultDispatcher(std::ostream& results) {
+  return std::make_unique<DefaultDispatcher>(results);
 }
 
 }  // namespace inferx::command

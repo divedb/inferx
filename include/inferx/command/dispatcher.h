@@ -1,38 +1,24 @@
 #ifndef INFERX_COMMAND_DISPATCHER_H_
 #define INFERX_COMMAND_DISPATCHER_H_
 
+#include <iostream>
 #include <memory>
-#include <ostream>
 
 #include "inferx/command/options.h"
 
 namespace inferx::command {
 
-enum class ExitCode : int {
-  kSuccess = 0,
-  kUsage = 2,
-  kModel = 3,
-  kRuntime = 4,
-  kBenchmark = 5,
-  kUnavailable = 6,
-};
-
+// Executes one parsed command line. Diagnostics are emitted through the
+// process logger (inferx/base/log.h: stderr or --log-file); `results`
+// carries command output (stdout by default, injectable for tests).
 class Dispatcher {
  public:
   virtual ~Dispatcher() = default;
 
-  virtual ExitCode Serve(const GlobalOptions& global, const ServeOptions& options) = 0;
-  virtual ExitCode Bench(const GlobalOptions& global, const BenchmarkOptions& options) = 0;
-  virtual ExitCode Run(const GlobalOptions& global, const RunOptions& options) = 0;
-  virtual ExitCode Chat(const GlobalOptions& global, const ClientOptions& options) = 0;
-  virtual ExitCode Complete(const GlobalOptions& global, const ClientOptions& options) = 0;
-  virtual ExitCode Inspect(const GlobalOptions& global, const InspectOptions& options) = 0;
-  virtual ExitCode Download(const GlobalOptions& global, const DownloadOptions& options) = 0;
-  virtual ExitCode Version(const GlobalOptions& global) = 0;
-  virtual ExitCode Environment(const GlobalOptions& global) = 0;
+  virtual ExitCode Dispatch(const Invocation& invocation) = 0;
 };
 
-std::unique_ptr<Dispatcher> CreateDefaultDispatcher(std::ostream& output, std::ostream& error);
+std::unique_ptr<Dispatcher> CreateDefaultDispatcher(std::ostream& results = std::cout);
 
 }  // namespace inferx::command
 
