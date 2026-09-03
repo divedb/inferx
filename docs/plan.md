@@ -1096,7 +1096,7 @@ yet.
   saturation runs, long-context runs, and multi-hour soaks in nightly CI.
 - **Failure:** malformed artifacts/input, injected allocation/launch/RPC/collective/transfer failures,
   worker death, timeout, stale generations, and restart/drain behavior.
-- **Performance:** micro, model, scheduler-simulation, and serving benchmarks with machine, GPU,
+- **Performance:** micro, model, scheduler, and serving benchmarks with machine, GPU,
   clocks/power mode, driver, CUDA, dependency pins, config, model, and workload recorded.
 
 Every milestone table explicitly covers all six categories. “N/A” requires a reason in the milestone
@@ -1147,7 +1147,7 @@ goodput or p99 by more than 5% on the reference workload. A claimed optimization
 ```text
 M0 Repository/toolchain
  |
- M1 Core contracts + simulator
+ M1 Core contracts
  |\
  | M3 Artifacts + tokenizer
  M2 CUDA/tensor/memory
@@ -1221,6 +1221,10 @@ hardware-constrained release job.
 **Depends on:** M0.
 
 **Implementation specification:** [`docs/milestones/m1.md`](milestones/m1.md)
+
+> The simulator deliverables, simulator tests, and replay completion criteria below were removed
+> with the M1 simulator ([ADR 0042](adr/0042-retire-m1-simulator.md)); the core-contract items
+> remain in force. The section text is kept as the historical M1 record.
 
 **Deliverables**
 
@@ -1477,7 +1481,6 @@ hardware-constrained release job.
   priority aging, deadline-aware admission, recompute preemption, low-water handling, and policy
   configuration snapshots.
 - Two-phase plan/reservation commit fully wired; exact cached/computed/scheduled/committed counters.
-- Scheduler simulation workload importer and policy comparison tool.
 
 **Tests**
 
@@ -1882,7 +1885,7 @@ decision.
 | Beast submodule completeness | Beast depends on other Boost components; current repository declares only Beast | M0 prove hermetic CMake closure or pin required Boost modules/package |
 | Folly value versus cost | It can simplify async structures but brings a large dependency closure | M0/M1 implement with C++23/Asio first; retain Folly only for a measured missing capability |
 | KV page size and layer packing | Affects fragmentation, attention kernels, metadata, prefix granularity, and transfer | M6 sweep 8/16/32+ tokens and supported layouts on target prompts/GPUs; ADR per backend if needed |
-| Reserve full prompt/output versus incremental admission | Full reserve avoids thrash but lowers utilization; incremental reserve can deadlock/preempt heavily | M8 scheduler simulation and near-OOM goodput/fairness tests; choose safe default and watermarks |
+| Reserve full prompt/output versus incremental admission | Full reserve avoids thrash but lowers utilization; incremental reserve can deadlock/preempt heavily | M8 near-OOM goodput/fairness tests; choose safe default and watermarks |
 | Mixed prefill/decode versus alternating batches | Backend support and interference differ by GPU/workload | M8 compare p99 TPOT/goodput across chunk sizes and phase policies; capability-gate mixed batches |
 | Recompute versus host swap preemption | Depends on context, PCIe/NVLink, and memory pressure | Measure after M8; do not implement host swap unless crossover is meaningful |
 | Prefix structure: radix edges vs chained page hashes | CPU cost, memory overhead, eviction, and remote lookup differ | M11 prototype both under 100k+ pages and agent/chat prefix distributions |
@@ -1891,7 +1894,7 @@ decision.
 | GPU sampling backend | Third-party/custom kernels may differ in RNG and penalty order | M12 differential and statistical tests before replacing CPU reference |
 | Quantization order | Hardware and artifact ecosystem determine value; each format multiplies kernels | M13 choose FP8 plus one INT4 format from real target hardware/models and predeclare quality gates |
 | TP collective algorithm/topology | NCCL performance varies sharply across PCIe/NVLink/multi-node | M14 topology sweep; do not advertise arbitrary TP degrees |
-| PP scheduling model | Continuous decode feedback and variable microbatches create bubbles/state complexity | M15 simulator plus PP2 prototype; reject topologies with poor measured goodput |
+| PP scheduling model | Continuous decode feedback and variable microbatches create bubbles/state complexity | M15 PP2 prototype (an offline model must be re-proposed per ADR 0042); reject topologies with poor measured goodput |
 | EP transport backend | NCCL grouped P2P is portable but may be too slow for low-latency decode | M16 compare NCCL with one qualified specialized backend on balanced/skewed routing |
 | Local-SPMD placement compiler | Could reduce handwritten parallel code but is a large compiler project | Keep explicit `ParallelPlan`; reconsider only after two architectures expose repeated placement bugs |
 | P/D crossover and heterogeneous layout | Transfer and remapping can erase interference gains | M18 measure prompt/output/topology matrix; same-layout first; default off without positive SLO result |

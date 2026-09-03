@@ -1,6 +1,6 @@
 # InferX configuration (schemas v1 and v2)
 
-The engine/simulator configuration pipeline (ADR 0011, `m1.md` section 8):
+The engine configuration pipeline (ADR 0011):
 `compiled defaults < JSON file < INFERX_* environment < CLI flags`, strict
 validation, immutable `EngineConfig`, byte-stable canonical JSON. The single
 registry is `INFERX_CONFIG_FIELDS` in
@@ -22,14 +22,9 @@ negation aliases.
 | `max_queued_requests` | 1..1,000,000 | 4,096 | Bounds all live admitted requests |
 | `max_scheduled_tokens_per_step` | 1..2³¹−1 | 4,096 | Prefill + decode token budget |
 | `max_sequences_per_step` | 1..16,384 | 32 | Must be ≤ min(`max_active_sequences`, 16,384) |
-| `max_simulation_events` | 1..100,000,000 | 10,000,000 | Deadlock/runaway bound |
 | `plan_buffer_slots` | 1..64 | 1 | In-flight fake steps |
 | `response_channel_capacity` | ≥1 | 4,096 | Reference channel config |
-| `simulated_kv_token_capacity` | ≥1 (64-bit) | 1,114,112 | = 256 × 4,352 full-reservation reference |
 | `submission_channel_capacity` | ≥1 | 4,096 | Reference channel config |
-| `fake_base_latency_ns` | ≥1 | 1,000 | Fake executor cost; latency products are overflow-checked against token/sequence budgets |
-| `fake_prefill_latency_per_token_ns` | ≥0 | 100 | Checked multiply by tokens |
-| `fake_decode_latency_per_sequence_ns` | ≥0 | 100 | Checked multiply by sequences |
 
 ## Semantics summary
 
@@ -41,17 +36,11 @@ negation aliases.
   would replace it.
 - Validation produces the immutable `EngineConfig`; `CanonicalJson()` emits
   `{"schema_version":1,...}` with lexicographic fields, decimal integers, no
-  whitespace — the bytes embedded in replay headers (ADR 0012).
-- M1 reserves `prompt_tokens + max_output_tokens` KV tokens at admission
-  (conservative oracle; M8 owns utilization changes).
-
-`inferx simulate validate-config` / `explain-config` (M1.6) print effective values
-plus per-field provenance (`default`/`file`/`environment`/`command line`) in
-stable field order.
+  whitespace.
 
 ## Schema v2 CUDA section
 
-M1 files that do not mention a CUDA field retain their byte-identical schema-v1
+Files that do not mention a CUDA field retain their byte-identical schema-v1
 canonical form. Any file, environment layer, or command-line layer that sets a
 CUDA field emits schema v2 with one canonical nested `cuda` object. JSON uses
 booleans for `enabled` and `enable_transfer_stream`, `null` for an automatic

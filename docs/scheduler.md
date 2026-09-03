@@ -18,10 +18,9 @@ The scheduling path is:
 6. `StepPlanValidator` proves the plan still matches snapshot identity, state,
    epoch, reservation, ranges, model, and resource totals before submission.
 
-The fake executor owns the move-only lease until all completion items are
-delivered and the ticket is acknowledged. Slot generations make stale reuse
-observable. `plan_buffer_slots` bounds in-flight plans; M1 normally needs one
-because it submits at most one plan per timestamp.
+The execution backend owns the move-only lease until all completion items
+are delivered and the ticket is acknowledged. Slot generations make stale
+reuse observable. `plan_buffer_slots` bounds in-flight plans.
 
 `inferx_scheduler_benchmark` covers prefill, decode, mixed, and saturated
 snapshots at 1/32/256/1024 requests. Its measured region includes select,

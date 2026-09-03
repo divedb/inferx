@@ -1,6 +1,6 @@
 # ADR 0012: Deterministic simulator and canonical replay
 
-- Status: Proposed
+- Status: Superseded — rejected by [ADR 0042](0042-retire-m1-simulator.md)
 - Date: 2026-08-31
 - Deciding owner: repository owner (implementation proceeds provisionally)
 - Seed: `docs/milestones/m1.md` sections 4, 13-16

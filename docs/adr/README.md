@@ -49,7 +49,7 @@ Every ADR contains, in order:
 | [0009](0009-request-state-machine.md) | Request state machine | Proposed |
 | [0010](0010-scheduler-resource-transactions.md) | Deterministic scheduler and resource transactions | Proposed |
 | [0011](0011-configuration-schema.md) | Configuration schema and pipeline | Proposed |
-| [0012](0012-deterministic-simulator-replay.md) | Deterministic simulator and canonical replay | Proposed |
+| [0012](0012-deterministic-simulator-replay.md) | Deterministic simulator and canonical replay | Rejected by [ADR 0042](0042-retire-m1-simulator.md) |
 | [0013](0013-bounded-channel.md) | Bounded channel semantics | Proposed |
 | [0014](0014-tensor-buffer-contract.md) | Tensor and buffer contract | Accepted |
 | [0015](0015-memory-accounting-and-pools.md) | Memory accounting and fixed pools | Accepted |
@@ -73,3 +73,4 @@ Every ADR contains, in order:
 | [0033](0033-hugging-face-model-resolution.md) | Hugging Face model resolution and cache handoff | Accepted |
 | [0034](0034-local-artifact-trust-boundary.md) | Local artifact trust boundary | Accepted |
 | [0035](0035-hardware-agnostic-upper-layers.md) | Hardware-agnostic upper layers and the backend boundary | Accepted |
+| [0042](0042-retire-m1-simulator.md) | Retire the M1 simulator and `simulate` CLI | Accepted |
