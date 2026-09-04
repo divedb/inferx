@@ -3,8 +3,6 @@
 
 #include <cstdint>
 
-#include "inferx/kernels/build_config.h"
-
 namespace inferx::kernels {
 
 /// \brief Device backends addressable through `ExecutionContext`.
@@ -42,7 +40,7 @@ class Stream {
 
 /// \brief The backend and stream one operation is enqueued on.
 struct ExecutionContext {
-  Backend backend;
+  Backend backend = Backend::kCPU;
   Stream native_stream;
 };
 

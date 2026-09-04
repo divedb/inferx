@@ -1,0 +1,29 @@
+#ifndef INFERX_KERNELS_BUILD_CONFIG_H_
+#define INFERX_KERNELS_BUILD_CONFIG_H_
+
+#define INFERX_ACCELERATOR_CUDA_AVAILABLE @INFERX_DETECTED_CUDA@
+#define INFERX_ACCELERATOR_ROCM_AVAILABLE @INFERX_DETECTED_ROCM@
+#define INFERX_ACCELERATOR_ASCEND_AVAILABLE @INFERX_DETECTED_ASCEND@
+
+#define INFERX_KERNELS_HAS_CUDA @INFERX_KERNELS_BUILD_HAS_CUDA@
+#define INFERX_KERNELS_HAS_ROCM @INFERX_KERNELS_BUILD_HAS_ROCM@
+#define INFERX_KERNELS_HAS_ASCEND @INFERX_KERNELS_BUILD_HAS_ASCEND@
+
+namespace inferx::kernels::build_config {
+
+// Toolchain availability is informational and supports cross-build hosts.
+inline constexpr bool kCudaAvailable =
+    INFERX_ACCELERATOR_CUDA_AVAILABLE != 0;
+inline constexpr bool kRocmAvailable =
+    INFERX_ACCELERATOR_ROCM_AVAILABLE != 0;
+inline constexpr bool kAscendAvailable =
+    INFERX_ACCELERATOR_ASCEND_AVAILABLE != 0;
+
+// Compiled flags describe the backends linked into this kernels target.
+inline constexpr bool kHasCuda = INFERX_KERNELS_HAS_CUDA != 0;
+inline constexpr bool kHasRocm = INFERX_KERNELS_HAS_ROCM != 0;
+inline constexpr bool kHasAscend = INFERX_KERNELS_HAS_ASCEND != 0;
+
+}  // namespace inferx::kernels::build_config
+
+#endif  // INFERX_KERNELS_BUILD_CONFIG_H_
