@@ -1,0 +1,20 @@
+#ifndef INFERX_KERNELS_BUILD_CONFIG_H_
+#define INFERX_KERNELS_BUILD_CONFIG_H_
+
+namespace inferx::kernels {
+
+/// \brief True when the CUDA backend is compiled into this build
+///        (`INFERX_ENABLE_CUDA=ON`).
+inline constexpr bool kHasCuda = @INFERX_KERNELS_BUILD_HAS_CUDA @;
+
+/// \brief True when the ROCm/HIP backend is compiled into this build
+///        (`INFERX_ENABLE_ROCM=ON`).
+inline constexpr bool kHasRocm = @INFERX_KERNELS_BUILD_HAS_ROCM @;
+
+/// \brief True when the Ascend backend is compiled into this build
+///        (`INFERX_ENABLE_ASCEND=ON`).
+inline constexpr bool kHasAscend = @INFERX_KERNELS_BUILD_HAS_ASCEND @;
+
+}  // namespace inferx::kernels
+
+#endif  // INFERX_KERNELS_BUILD_CONFIG_H_

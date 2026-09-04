@@ -9,7 +9,7 @@
 # docs/supported-platforms.md.
 BasedOnStyle: Google
 Standard: Latest
-ColumnLimit: 100
+ColumnLimit: 80
 DerivePointerAlignment: false
 PointerAlignment: Left
 SortIncludes: CaseSensitive
